@@ -638,11 +638,8 @@ export default function PromptGeneratorPage() {
         <div className="flex items-baseline gap-3">
           <h1 className="text-xl md:text-2xl font-black tracking-tighter uppercase flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-500 fill-amber-500 shrink-0" />
-            Prompt_Lab v1.0
+            PromptLab
           </h1>
-          <span className="hidden sm:inline text-[9px] uppercase tracking-widest text-[#888884] font-bold font-mono">
-            {"// Secure Encapsulated Workspace"}
-          </span>
         </div>
         
         <div className="flex items-center gap-3 md:gap-4">
@@ -672,10 +669,6 @@ export default function PromptGeneratorPage() {
           >
             Clear Session
           </button>
-          <div className="hidden md:flex flex-col text-right">
-            <span className="text-[9px] text-[#888884] font-mono uppercase tracking-wider">Session Local Time</span>
-            <span className="text-[10px] text-[#1A1A1A] font-mono font-bold">15:02 PST</span>
-          </div>
         </div>
       </header>
 
@@ -1056,16 +1049,11 @@ export default function PromptGeneratorPage() {
       {/* Footer Status Bar */}
       <footer className="h-10 px-4 md:px-10 bg-[#1A1A1A] text-white flex items-center justify-between text-[9px] font-mono shrink-0">
         <div className="flex flex-wrap gap-x-6 gap-y-1 uppercase">
-          <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-            Local DB: Active
-          </span>
-          <span>Engine: {selectedModel.replace(/-/g, "_").toUpperCase()}</span>
+          <span>Engine: {selectedModel.toUpperCase()}</span>
           <span>Reasoning: {thinkingLevel}</span>
           <span>Temp: {temperature.toFixed(1)}</span>
-          <span className="text-[#66BB66] hidden sm:inline">Files: system_prompt.txt, prompt_template.txt Loaded</span>
         </div>
-        <div className="uppercase opacity-50 tracking-wider">© 2026 Lab_Internal</div>
+        <div className="uppercase opacity-50 tracking-wider">PromptLab</div>
       </footer>
 
       {/* Prompt Configuration Modal */}
@@ -1193,7 +1181,7 @@ export default function PromptGeneratorPage() {
                   <div className="flex flex-col gap-1 text-[#555]">
                     <span className="font-bold text-[#1A1A1A] uppercase tracking-wider text-[9px] font-mono">Variables Parsing Engine:</span>
                     <p>
-                      Use double curly-braces <code className="font-mono bg-[#F4F4F2] px-1 text-[#1A1A1A] font-bold text-[9px]">{"{{ name }}"}</code> in your template. Prompt_Lab generates input composers for them instantly on save.
+                      Use double curly-braces <code className="font-mono bg-[#F4F4F2] px-1 text-[#1A1A1A] font-bold text-[9px]">{"{{ name }}"}</code> in your template. PromptLab generates input composers for them instantly on save.
                     </p>
                   </div>
                 </div>
