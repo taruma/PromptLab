@@ -1,0 +1,6 @@
+{
+  "name": "Personal Prompt Generator",
+  "description": "An elegant, single-page creative workspace to generate rich prompts with custom placeholders and multi-modal reference files.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

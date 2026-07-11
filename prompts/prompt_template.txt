@@ -1,0 +1,23 @@
+=== CREATIVE CONCEPT SPECIFICATIONS ===
+
+MAIN IDEA:
+{{ idea }}
+
+GENRE:
+{{ genre }}
+
+TONE:
+{{ tone }}
+
+TARGET AUDIENCE:
+{{ audience }}
+
+OUTPUT FORMAT:
+{{ format }}
+
+VISUAL REFERENCES & CAST:
+{{ visual_references }}
+
+=======================================
+
+Please generate a detailed, expanded creative breakdown based on the specifications above. Introduce the characters mentioned in the visual references, establish the setting using the tone, and outline the core conflict and sequence of events.
