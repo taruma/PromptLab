@@ -154,15 +154,57 @@ export async function POST(req: NextRequest) {
       config.maxOutputTokens = Number(maxTokens);
     }
 
-    const response = await activeAi.models.generateContent({
-      model: model || "gemini-3.5-flash",
-      contents: { parts },
-      config,
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const responseStream = await activeAi.models.generateContentStream({
+            model: model || "gemini-3.5-flash",
+            contents: { parts },
+            config,
+          });
+
+          // Send the filled template in the very first SSE chunk
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ filledPrompt: filledTemplate })}\n\n`)
+          );
+
+          for await (const chunk of responseStream) {
+            const chunkParts = chunk.candidates?.[0]?.content?.parts || [];
+            let text = "";
+            let thought = "";
+
+            for (const p of chunkParts) {
+              if (p.thought) {
+                thought += p.text || "";
+              } else {
+                text += p.text || "";
+              }
+            }
+
+            if (text || thought) {
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ text, thought })}\n\n`)
+              );
+            }
+          }
+        } catch (streamError: any) {
+          console.error("Error in generate stream:", streamError);
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ error: streamError.message })}\n\n`)
+          );
+        } finally {
+          controller.close();
+        }
+      },
     });
 
-    return NextResponse.json({
-      text: response.text || "",
-      filledPrompt: filledTemplate,
+    return new NextResponse(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
     });
   } catch (error: any) {
     console.error("Gemini Generation Error:", error);

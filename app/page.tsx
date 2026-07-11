@@ -49,6 +49,8 @@ export default function PromptGeneratorPage() {
   // Generation state
   const [generationResult, setGenerationResult] = useState<string>("");
   const [filledPrompt, setFilledPrompt] = useState<string>("");
+  const [thinkingResult, setThinkingResult] = useState<string>("");
+  const [isThinking, setIsThinking] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -301,6 +303,8 @@ export default function PromptGeneratorPage() {
     setUploadedImages(loadedImages);
     setGenerationResult(item.output);
     setFilledPrompt(item.filledPrompt);
+    setThinkingResult("");
+    setIsThinking(false);
     setError(null);
   };
 
@@ -332,6 +336,8 @@ export default function PromptGeneratorPage() {
     setUploadedImages([]);
     setGenerationResult("");
     setFilledPrompt("");
+    setThinkingResult("");
+    setIsThinking(false);
     setError(null);
   };
 
@@ -484,7 +490,13 @@ export default function PromptGeneratorPage() {
   const handleGeneratePrompt = async () => {
     setError(null);
     setIsLoading(true);
+    setGenerationResult("");
+    setThinkingResult("");
+    setIsThinking(true);
     const startTime = performance.now();
+    let accumulatedText = "";
+    let accumulatedThought = "";
+    let activeFilledPrompt = "";
 
     try {
       const payload = {
@@ -509,44 +521,95 @@ export default function PromptGeneratorPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
       if (!res.ok) {
+        const data = await res.json();
         throw new Error(data.error || "Generation request failed");
+      }
+
+      if (!res.body) {
+        throw new Error("Response body is not readable");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        if (value) {
+          const chunkStr = decoder.decode(value, { stream: !done });
+          const lines = chunkStr.split("\n");
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const jsonStr = line.slice(6).trim();
+              if (jsonStr) {
+                try {
+                  const data = JSON.parse(jsonStr);
+                  if (data.error) {
+                    throw new Error(data.error);
+                  }
+                  if (data.filledPrompt) {
+                    activeFilledPrompt = data.filledPrompt;
+                    setFilledPrompt(data.filledPrompt);
+                  }
+                  if (data.thought) {
+                    accumulatedThought += data.thought;
+                    setThinkingResult(accumulatedThought);
+                    setIsThinking(true);
+                  }
+                  if (data.text) {
+                    accumulatedText += data.text;
+                    setGenerationResult(accumulatedText);
+                    setIsThinking(false);
+                  }
+                } catch (e: any) {
+                  if (e.message && e.message.includes("Unexpected end of JSON")) {
+                    continue;
+                  }
+                  console.error("Error parsing stream line:", e, line);
+                }
+              }
+            }
+          }
+        }
       }
 
       const endTime = performance.now();
       setLastLatency((endTime - startTime) / 1000);
 
-      setGenerationResult(data.text);
-      setFilledPrompt(data.filledPrompt);
+      // Save this outline to history list if we have text
+      if (accumulatedText) {
+        const newHistoryItem: HistoryItem = {
+          id: `gen-${Date.now()}`,
+          timestamp: new Date().toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          variables: { ...inputs },
+          images: uploadedImages.map(img => ({
+            label: img.label,
+            base64: img.base64,
+            mimeType: img.mimeType,
+          })),
+          output: accumulatedText,
+          filledPrompt: activeFilledPrompt || filledPrompt,
+        };
 
-      // Save this outline to history list
-      const newHistoryItem: HistoryItem = {
-        id: `gen-${Date.now()}`,
-        timestamp: new Date().toLocaleString("en-US", {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        variables: { ...inputs },
-        images: uploadedImages.map(img => ({
-          label: img.label,
-          base64: img.base64,
-          mimeType: img.mimeType,
-        })),
-        output: data.text,
-        filledPrompt: data.filledPrompt,
-      };
-
-      const updatedHistory = [newHistoryItem, ...history];
-      setHistory(updatedHistory);
-      localStorage.setItem("prompt_generator_history", JSON.stringify(updatedHistory));
+        setHistory(prev => {
+          const updatedHistory = [newHistoryItem, ...prev];
+          localStorage.setItem("prompt_generator_history", JSON.stringify(updatedHistory));
+          return updatedHistory;
+        });
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || "An unexpected generation error occurred. Please try again.");
     } finally {
       setIsLoading(false);
+      setIsThinking(false);
     }
   };
 
@@ -825,21 +888,53 @@ export default function PromptGeneratorPage() {
               </div>
             )}
 
+            {/* Model Thinking / Reasoning Box */}
+            {(thinkingResult || (isLoading && isThinking)) && (
+              <div className="mb-4 bg-[#F4F4F2] border border-dashed border-[#D1D1CF] p-4 flex flex-col gap-2 transition-all" id="thinking-process-block">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-[#888884]">
+                    <span className={`w-2 h-2 rounded-full ${isThinking ? 'bg-amber-500 animate-pulse' : 'bg-stone-400'} inline-block`} />
+                    Engine Reasoning Trace
+                  </div>
+                  <span className="text-[8px] font-mono text-[#888884]">
+                    {isThinking ? "PROCESSING" : "COMPLETED"}
+                  </span>
+                </div>
+                <div className="text-[11px] font-mono text-[#555] leading-relaxed max-h-[140px] overflow-y-auto whitespace-pre-wrap custom-scrollbar">
+                  {thinkingResult || (
+                    <span className="italic text-[#888884]">Engine is formulating reasoning path...</span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Main Display Area */}
             <div className="flex-1 bg-white border border-[#D1D1CF] p-6 flex flex-col justify-between overflow-hidden shadow-inner min-h-[300px]">
-              {isLoading ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4 animate-pulse">
+              {isLoading && !generationResult && !thinkingResult ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4">
                   <RefreshCw className="w-6 h-6 animate-spin text-[#888884]" />
-                  <p className="text-xs uppercase tracking-widest font-bold text-[#888884]">Running Gemini Generator...</p>
+                  <p className="text-xs uppercase tracking-widest font-bold text-[#888884]">Establishing Stream Connection...</p>
                 </div>
-              ) : generationResult ? (
+              ) : generationResult || thinkingResult ? (
                 <div className="flex-1 flex flex-col overflow-hidden">
                   <div className="flex-1 overflow-y-auto pr-1 text-sm leading-relaxed text-[#1A1A1A] font-serif whitespace-pre-wrap max-h-[360px] custom-scrollbar">
-                    {generationResult}
+                    {generationResult || (
+                      <span className="italic text-[#888884] text-xs font-sans">
+                        Reasoning trace active. Waiting for generation output...
+                      </span>
+                    )}
                   </div>
                   <div className="pt-3 border-t border-[#D1D1CF]/40 mt-3 flex items-center justify-between text-[8px] text-[#888884] font-mono uppercase tracking-wider">
                     <span>MIME: TEXT/PLAIN ONLY</span>
-                    <span>No Markdown Output</span>
+                    <span className="flex items-center gap-1.5">
+                      {isLoading && !isThinking && (
+                        <span className="flex items-center gap-1 text-[8px] text-emerald-600 font-bold uppercase tracking-wider font-mono">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                          Streaming...
+                        </span>
+                      )}
+                      <span>No Markdown Output</span>
+                    </span>
                   </div>
                 </div>
               ) : (
