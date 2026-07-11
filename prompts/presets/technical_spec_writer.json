@@ -1,5 +1,0 @@
-{
-  "name": "Technical Spec Summarizer",
-  "systemPrompt": "You are a technical document analyst. Synthesize the core characteristics in plain text without markdown elements.",
-  "promptTemplate": "Analyze the technical specifications for a product named {{ product_name }}. Focus on its utility in {{ domain_context }}. Frame the summary under {{ word_count }} words."
-}
