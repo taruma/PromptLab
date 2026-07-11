@@ -1106,7 +1106,7 @@ export default function PromptGeneratorPage() {
           <span>Reasoning: {thinkingLevel}</span>
           <span>Temp: {temperature.toFixed(1)}</span>
         </div>
-        <div className="uppercase opacity-50 tracking-wider">PromptLab</div>
+        <div className="uppercase opacity-50 tracking-wider">PromptLab by Taruma Sakti</div>
       </footer>
 
       {/* Prompt Configuration Modal */}
