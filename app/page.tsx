@@ -700,13 +700,13 @@ export default function PromptGeneratorPage() {
       <header className="h-20 border-b border-[#D1D1CF] px-4 md:px-10 flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-30" id="app-header">
         <div className="flex items-baseline gap-3">
           <h1 className="text-xl md:text-2xl font-black tracking-tighter uppercase flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#1A1A1A] flex items-center justify-center border border-[#1A1A1A] shrink-0">
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
               <Image 
                 src="/logo_promptlab.png" 
                 alt="PromptLab Logo" 
-                width={24} 
-                height={24} 
-                className="object-contain"
+                width={28} 
+                height={28} 
+                className="object-contain invert"
                 referrerPolicy="no-referrer"
               />
             </div>
