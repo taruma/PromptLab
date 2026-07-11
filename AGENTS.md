@@ -1,12 +1,12 @@
-# AI Developer & Agent Guidelines: Prompt_Lab v1.0
+# AI Developer & Agent Guidelines: PromptLab
 
-Welcome to **Prompt_Lab v1.0** (also configured as **Personal Prompt Generator** in metadata). This document outlines the project architecture, design rules, core conventions, and extensibility guidelines to ensure that any AI agent or human developer can build upon, modify, or debug this application while maintaining its high craftsmanship standards.
+Welcome to **PromptLab**. This document outlines the project architecture, design rules, core conventions, and extensibility guidelines to ensure that any AI agent or human developer can build upon, modify, or debug this application while maintaining its high craftsmanship standards.
 
 ---
 
 ## 1. Core Purpose & Concept
 
-Prompt_Lab v1.0 is an elegant, single-page creative workspace designed to compile rich, structured prompt templates with customizable dynamic placeholders and multi-modal reference files (reference images mapped to `@imageX` casting annotations). The compiled instructions are processed server-side via the modern `@google/genai` SDK using the **Gemini 3.5 Flash** model.
+PromptLab is an elegant, single-page creative workspace designed to compile rich, structured prompt templates with customizable dynamic placeholders and multi-modal reference files (reference images mapped to `@imageX` casting annotations). The compiled instructions are processed server-side via the modern `@google/genai` SDK using the **Gemini 3.5 Flash** model.
 
 Key differentiators:
 - **Zero Database / Hybrid Persistence**: Uses static filesystem templates for fallback config defaults, client-side `localStorage` for active session configurations, and local presets for quick workspace instantiation.
@@ -20,7 +20,7 @@ Key differentiators:
 
 - **Framework**: Next.js 15+ (App Router, standard server-side components where applicable, with `'use client'` on interactive workspace pages).
 - **Styling**: Tailwind CSS v4 using modern `@tailwindcss/postcss` and native configuration.
-- **Animations**: `motion` imported from `motion/react` for micro-interactions and transitions.
+- **Animation Support**: The `motion` package is in the dependency tree but is not currently utilized in any UI components.
 - **Icons**: `lucide-react` for simple, expressive visual indicators.
 - **AI Integration**: `@google/genai` TypeScript SDK (server-side only via App Router API paths).
 
@@ -34,7 +34,7 @@ Key differentiators:
 │   │   ├── /generate/route.ts       # Main Gemini multi-modal generation handler (passes active prompts)
 │   │   └── /prompt-config/route.ts  # Dynamic fallback template loading & presets lookup
 │   ├── globals.css                  # Global Tailwind imports (@import "tailwindcss";)
-│   ├── layout.tsx                   # Font configurations (Inter & JetBrains Mono variables)
+│   ├── layout.tsx                   # Font configurations (Inter, Space Grotesk & JetBrains Mono variables)
 │   └── page.tsx                     # Core Interactive UI Workspace & Prompt Editor Sidebar
 ├── /prompts
 │   ├── prompt_template.txt          # Original default prompt template fallback
@@ -55,7 +55,7 @@ Key differentiators:
 
 ## 4. Visual Identity & Aesthetic Stylebook
 
-Prompt_Lab v1.0 is crafted in an **Analog Brutalist Retro Lab** aesthetic. Any new components, menus, modal dialogs, or inputs must align strictly with the following stylebook:
+PromptLab is crafted in an **Analog Brutalist Retro Lab** aesthetic. Any new components, menus, modal dialogs, or inputs must align strictly with the following stylebook:
 
 - **Theme Colors**:
   - Primary Background: Soft Off-white (`#F4F4F2`)
@@ -66,9 +66,11 @@ Prompt_Lab v1.0 is crafted in an **Analog Brutalist Retro Lab** aesthetic. Any n
   - Secondary Text / Identifiers: Warm Slate Gray (`#888884`)
   - Status Indicators / Glowing Accents: Emerald Green (`#10B981`) and Amber (`#F59E0B`)
 - **Typography Layout**:
-  - UI labels, action buttons, headers: Clean **Inter** sans-serif, uppercase, with tight letter-spacing (`tracking-wider` or `tracking-widest`).
+  - UI labels, action buttons, headers: Clean **Inter** sans-serif (`font-sans`), uppercase, with tight letter-spacing (`tracking-wider` or `tracking-widest`).
   - Technical metadata, place markers, file mappings, and system variables: **JetBrains Mono** (`font-mono`) to highlight its modular/technical personality.
-  - Active Generation Output: Traditional serif typeface for readable script and narrative output.
+  - Active Generation Output: Traditional serif typeface (`font-serif`) for readable script and narrative output.
+  - **Space Grotesk** is loaded as `--font-display` in the layout but is not currently applied in any component.
+
 - **Design Elements**:
   - Sharp corners only: `rounded-none` or subtle default radii. Avoid heavily pill-shaped buttons or rounded UI cards.
   - Symmetrical layouts with clear, stark borders (`border border-[#D1D1CF]`).
