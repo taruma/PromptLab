@@ -66,6 +66,8 @@ export default function PromptGeneratorPage() {
   const [tempSystemPrompt, setTempSystemPrompt] = useState<string>("");
   const [tempPromptTemplate, setTempPromptTemplate] = useState<string>("");
   const [presets, setPresets] = useState<Array<{ id: string; name: string; systemPrompt: string; promptTemplate: string }>>([]);
+  const [customPresets, setCustomPresets] = useState<Array<{ id: string; name: string; systemPrompt: string; promptTemplate: string }>>([]);
+  const [newPresetName, setNewPresetName] = useState<string>("");
   
   // Engine Controls states
   const [selectedModel, setSelectedModel] = useState<string>("gemini-3.5-flash");
@@ -112,6 +114,16 @@ export default function PromptGeneratorPage() {
         if (res.ok) {
           if (data.presets) {
             setPresets(data.presets);
+          }
+
+          // Load custom presets from local storage
+          try {
+            const savedCustomPresets = localStorage.getItem("prompt_generator_custom_presets");
+            if (savedCustomPresets) {
+              setCustomPresets(JSON.parse(savedCustomPresets));
+            }
+          } catch (e) {
+            console.error("Failed to parse custom presets", e);
           }
 
           const savedSystemPrompt = localStorage.getItem("prompt_generator_system_prompt");
@@ -447,6 +459,32 @@ export default function PromptGeneratorPage() {
     };
     reader.readAsText(file);
     e.target.value = "";
+  };
+
+  // Save current configurations inside modal as a custom preset in local storage
+  const handleSaveCustomPreset = () => {
+    if (!newPresetName.trim()) {
+      alert("Please enter a name for your custom preset.");
+      return;
+    }
+    const newPreset = {
+      id: `custom-preset-${Date.now()}`,
+      name: newPresetName.trim(),
+      systemPrompt: tempSystemPrompt,
+      promptTemplate: tempPromptTemplate
+    };
+    const updated = [...customPresets, newPreset];
+    setCustomPresets(updated);
+    localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(updated));
+    setNewPresetName("");
+  };
+
+  // Delete a specific custom preset from local storage
+  const handleDeleteCustomPreset = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = customPresets.filter(p => p.id !== id);
+    setCustomPresets(updated);
+    localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(updated));
   };
 
   // Save the custom configuration to local state and local storage
@@ -1084,10 +1122,10 @@ export default function PromptGeneratorPage() {
               <div className="w-full md:w-64 border-r border-[#D1D1CF] bg-white p-5 flex flex-col justify-between shrink-0 overflow-y-auto">
                 <div className="flex flex-col gap-5">
                   
-                  {/* Preset list header */}
+                  {/* System Presets */}
                   <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-3">
-                      Select Quick Preset
+                    <h4 className="text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2.5">
+                      System Presets
                     </h4>
                     
                     <div className="flex flex-col gap-1.5">
@@ -1115,6 +1153,79 @@ export default function PromptGeneratorPage() {
                           No Presets Found
                         </div>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Custom Presets */}
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2.5 flex justify-between items-center">
+                      <span>Your Presets</span>
+                      <span className="text-[8px] text-[#888884] font-mono">LOCAL</span>
+                    </h4>
+                    
+                    <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-0.5">
+                      {customPresets.map((preset) => {
+                        const isActive = tempSystemPrompt === preset.systemPrompt && tempPromptTemplate === preset.promptTemplate;
+                        return (
+                          <div 
+                            key={preset.id}
+                            className={`w-full border flex items-center justify-between transition-all text-[10px] font-bold uppercase tracking-wider ${
+                              isActive 
+                                ? "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
+                                : "bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
+                            }`}
+                          >
+                            <button
+                              onClick={() => {
+                                setTempSystemPrompt(preset.systemPrompt);
+                                setTempPromptTemplate(preset.promptTemplate);
+                              }}
+                              className="flex-1 text-left px-3 py-2 cursor-pointer truncate"
+                            >
+                              {preset.name}
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteCustomPreset(preset.id, e)}
+                              className={`p-2 transition-all cursor-pointer border-l hover:text-red-500 ${
+                                isActive ? "border-[#333] hover:bg-[#333]" : "border-[#D1D1CF] hover:bg-white"
+                              }`}
+                              title="Delete preset"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                      {customPresets.length === 0 && (
+                        <div className="text-[9px] text-[#888884] font-mono italic p-2 border border-[#D1D1CF] bg-[#F4F4F2] uppercase text-center">
+                          No Custom Presets
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Save current as custom preset */}
+                  <div className="flex flex-col gap-2">
+                    <h4 className="text-[10px] font-black uppercase tracking-wider text-[#1A1A1A]">
+                      Save Current As Preset
+                    </h4>
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="new-preset-name" className="sr-only">New Preset Name</label>
+                      <input
+                        id="new-preset-name"
+                        type="text"
+                        value={newPresetName}
+                        onChange={(e) => setNewPresetName(e.target.value)}
+                        placeholder="Preset name (e.g. Scriptwriter)"
+                        className="w-full bg-white border border-[#D1D1CF] p-2 text-[10px] outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A]"
+                      />
+                      <button
+                        onClick={handleSaveCustomPreset}
+                        className="w-full py-2 bg-[#1A1A1A] text-white hover:bg-[#333] border border-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
+                        Save Preset
+                      </button>
                     </div>
                   </div>
 
