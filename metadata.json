@@ -1,6 +1,6 @@
 {
-  "name": "Personal Prompt Generator",
-  "description": "An elegant, single-page creative workspace to generate rich prompts with custom placeholders and multi-modal reference files.",
+  "name": "PromptLab",
+  "description": "A playground for drafting and iterating on AI prompt templates — experiment, test, and refine before taking your prompts to production.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -18,8 +18,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Personal Prompt Generator',
-  description: 'A polished, single-page creative workspace to generate rich prompts with custom placeholders and multi-modal reference files.',
+  title: 'PromptLab by Taruma Sakti | Prompt Template Playground',
+  description: 'A playground for drafting and iterating on AI prompt templates — experiment, test, and refine before taking your prompts to production.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
