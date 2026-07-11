@@ -201,6 +201,21 @@ export default function PromptGeneratorPage() {
     }
   }, []);
 
+  // Handle escape key to close open modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsPromptConfigOpen(false);
+        setIsEngineConfigOpen(false);
+        setIsClearConfirmOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   // Helper: converts file to Base64
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
