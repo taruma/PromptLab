@@ -61,6 +61,21 @@ export default function PromptGeneratorPage() {
   const [showCompiled, setShowCompiled] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState<boolean>(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("prompt_generator_history_open");
+      return saved !== null ? saved === "true" : true;
+    }
+    return true;
+  });
+
+  const toggleHistory = () => {
+    setIsHistoryOpen(prev => {
+      const newVal = !prev;
+      localStorage.setItem("prompt_generator_history_open", String(newVal));
+      return newVal;
+    });
+  };
 
   // Prompt Config Modal state
   const [isPromptConfigOpen, setIsPromptConfigOpen] = useState<boolean>(false);
@@ -915,8 +930,93 @@ export default function PromptGeneratorPage() {
         </div>
 
         {/* Right Pane: Outputs & History (5 cols of grid) */}
-        <div className="lg:col-span-5 p-6 md:p-10 flex flex-col gap-10 bg-[#EAEAE8]" id="output-history-column">
+        <div className="lg:col-span-5 p-6 md:p-10 flex flex-col gap-8 bg-[#EAEAE8]" id="output-history-column">
           
+          {/* Section: Local History */}
+          <section className={`flex flex-col ${isHistoryOpen ? "h-52 shrink-0" : "shrink-0"}`} id="history-panel">
+            <div 
+              onClick={toggleHistory}
+              className="flex justify-between items-center mb-3 cursor-pointer select-none group"
+            >
+              <div className="flex items-center gap-2">
+                <h2 className="text-[10px] uppercase tracking-[0.20em] text-[#888884] font-bold flex items-center gap-1.5">
+                  <History className="w-3.5 h-3.5" />
+                  Local Session History
+                </h2>
+                <span className="text-[8px] font-mono text-[#888884] bg-white/60 border border-[#D1D1CF] px-1.5 py-0.5 font-bold">
+                  {history.length}
+                </span>
+                <span className="text-[#888884] group-hover:text-[#1A1A1A] transition-colors">
+                  {isHistoryOpen ? (
+                    <ChevronDown className="w-3.5 h-3.5 transform rotate-180 transition-transform" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 transition-transform" />
+                  )}
+                </span>
+              </div>
+              {history.length > 0 && isHistoryOpen && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHistory([]);
+                    localStorage.removeItem("prompt_generator_history");
+                  }}
+                  className="text-[9px] font-bold text-red-500 hover:text-red-700 tracking-wider font-mono uppercase cursor-pointer"
+                  id="clear-all-history"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+
+            {isHistoryOpen && (
+              <div className="flex-1 bg-white border border-[#D1D1CF] overflow-y-auto custom-scrollbar" id="history-container">
+                {history.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#888884]">
+                    <FolderOpen className="w-5 h-5 text-[#D1D1CF] mb-1.5" />
+                    <span className="text-[9px] uppercase tracking-wider font-bold">Asset Log Empty</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col divide-y divide-[#D1D1CF]" id="history-items-list">
+                    {history.map((item) => {
+                      const title = item.variables["idea"] || "Untitled Outline";
+                      const snippet = title.length > 50 ? title.slice(0, 50) + "..." : title;
+                      
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => handleLoadHistoryItem(item)}
+                          className="p-3.5 hover:bg-[#F4F4F2] cursor-pointer transition-all flex items-start justify-between gap-3 group"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[9px] text-[#888884] font-mono">{item.timestamp}</span>
+                              {item.images && item.images.length > 0 && (
+                                <span className="text-[8px] bg-[#1A1A1A] text-white px-1 font-mono uppercase font-bold">
+                                  {item.images.length} IMG
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="text-[11px] font-bold uppercase text-[#1A1A1A] truncate tracking-tight pr-2">
+                              {snippet}
+                            </h4>
+                          </div>
+                          <button
+                            onClick={(e) => handleDeleteHistoryItem(item.id, e)}
+                            className="text-[#888884] hover:text-red-500 opacity-0 group-hover:opacity-100 p-1 transition-all cursor-pointer shrink-0"
+                            title="Delete history slot"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
           {/* Section: Generation Result */}
           <section className="flex-1 flex flex-col min-h-[420px]" id="output-panel">
             <div className="flex justify-between items-end mb-4">
@@ -1027,72 +1127,6 @@ export default function PromptGeneratorPage() {
                 )}
               </div>
             )}
-          </section>
-
-          {/* Section: Local History */}
-          <section className="h-52 flex flex-col" id="history-panel">
-            <div className="flex justify-between items-end mb-3">
-              <h2 className="text-[10px] uppercase tracking-[0.20em] text-[#888884] font-bold">
-                Local Session History
-              </h2>
-              {history.length > 0 && (
-                <button
-                  onClick={() => {
-                    setHistory([]);
-                    localStorage.removeItem("prompt_generator_history");
-                  }}
-                  className="text-[9px] font-bold text-red-500 hover:text-red-700 tracking-wider font-mono uppercase cursor-pointer"
-                  id="clear-all-history"
-                >
-                  Clear All
-                </button>
-              )}
-            </div>
-
-            <div className="flex-1 bg-white border border-[#D1D1CF] overflow-y-auto custom-scrollbar" id="history-container">
-              {history.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#888884]">
-                  <FolderOpen className="w-5 h-5 text-[#D1D1CF] mb-1.5" />
-                  <span className="text-[9px] uppercase tracking-wider font-bold">Asset Log Empty</span>
-                </div>
-              ) : (
-                <div className="flex flex-col divide-y divide-[#D1D1CF]" id="history-items-list">
-                  {history.map((item) => {
-                    const title = item.variables["idea"] || "Untitled Outline";
-                    const snippet = title.length > 50 ? title.slice(0, 50) + "..." : title;
-                    
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => handleLoadHistoryItem(item)}
-                        className="p-3.5 hover:bg-[#F4F4F2] cursor-pointer transition-all flex items-start justify-between gap-3 group"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[9px] text-[#888884] font-mono">{item.timestamp}</span>
-                            {item.images && item.images.length > 0 && (
-                              <span className="text-[8px] bg-[#1A1A1A] text-white px-1 font-mono uppercase font-bold">
-                                {item.images.length} IMG
-                              </span>
-                            )}
-                          </div>
-                          <h4 className="text-[11px] font-bold uppercase text-[#1A1A1A] truncate tracking-tight pr-2">
-                            {snippet}
-                          </h4>
-                        </div>
-                        <button
-                          onClick={(e) => handleDeleteHistoryItem(item.id, e)}
-                          className="text-[#888884] hover:text-red-500 opacity-0 group-hover:opacity-100 p-1 transition-all cursor-pointer"
-                          title="Delete history slot"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </section>
 
         </div>
