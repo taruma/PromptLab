@@ -59,6 +59,7 @@ export default function PromptGeneratorPage() {
   const [copied, setCopied] = useState<boolean>(false);
   const [showCompiled, setShowCompiled] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState<boolean>(false);
 
   // Prompt Config Modal state
   const [isPromptConfigOpen, setIsPromptConfigOpen] = useState<boolean>(false);
@@ -308,31 +309,17 @@ export default function PromptGeneratorPage() {
     setError(null);
   };
 
-  // Clear workspace variables and output, reverting prompts to default files
-  const handleResetWorkspace = async () => {
-    localStorage.removeItem("prompt_generator_system_prompt");
-    localStorage.removeItem("prompt_generator_prompt_template");
-    
-    try {
-      const res = await fetch("/api/prompt-config");
-      const data = await res.json();
-      if (res.ok) {
-        setSystemPrompt(data.systemPrompt || "");
-        setPromptTemplate(data.promptTemplate || "");
-        setVariables(data.variables || []);
-        
-        const clearedInputs: Record<string, string> = {};
-        data.variables.forEach((v: string) => {
-          if (v !== "visual_references" && v !== "cast") {
-            clearedInputs[v] = "";
-          }
-        });
-        setInputs(clearedInputs);
+  // Clear active inputs and session outputs, keeping custom prompts intact
+  const handleClearSession = () => {
+    const clearedInputs: Record<string, string> = {};
+    variables.forEach((v: string) => {
+      if (v !== "visual_references" && v !== "cast") {
+        clearedInputs[v] = "";
       }
-    } catch (err: any) {
-      console.error("Failed to load original config", err);
-    }
-
+    });
+    // also clear core idea explicitly
+    clearedInputs["idea"] = "";
+    setInputs(clearedInputs);
     setUploadedImages([]);
     setGenerationResult("");
     setFilledPrompt("");
@@ -663,12 +650,12 @@ export default function PromptGeneratorPage() {
             Configure Prompts
           </button>
           <button
-            onClick={handleResetWorkspace}
+            onClick={() => setIsClearConfirmOpen(true)}
             className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-[#F4F4F2] text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer"
-            title="Reset Workspace to defaults"
-            id="reset-btn"
+            title="Clear all active inputs, uploaded files, and generation results"
+            id="clear-session-btn"
           >
-            Reset Workspace
+            Clear Session
           </button>
           <div className="hidden md:flex flex-col text-right">
             <span className="text-[9px] text-[#888884] font-mono uppercase tracking-wider">Session Local Time</span>
@@ -1548,6 +1535,67 @@ export default function PromptGeneratorPage() {
                   className="px-5 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border border-[#1A1A1A]"
                 >
                   Apply Engine Overrides
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Clear Session Confirmation Modal */}
+      {isClearConfirmOpen && (
+        <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="clear-confirm-modal">
+          <div className="bg-white border border-[#D1D1CF] w-full max-w-md flex flex-col justify-between shadow-2xl relative">
+            
+            {/* Modal Header */}
+            <div className="h-14 border-b border-[#D1D1CF] px-6 flex items-center justify-between bg-[#F4F4F2]">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-red-600" />
+                <h3 className="text-xs font-black uppercase tracking-wider font-sans text-red-600">
+                  Confirm Clear Session
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsClearConfirmOpen(false)}
+                className="text-stone-500 hover:text-[#1A1A1A] font-mono font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+              >
+                [ESC] CLOSE
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 bg-[#F4F4F2]/30 flex flex-col gap-4 text-xs leading-relaxed text-[#555]">
+              <p>
+                Are you sure you want to clear your active session? This action will:
+              </p>
+              <ul className="list-disc pl-5 flex flex-col gap-1.5 font-mono text-[10px] text-[#1A1A1A] uppercase">
+                <li>Clear all input values & parameters</li>
+                <li>Remove all uploaded visual reference assets</li>
+                <li>Erase current generation result and reasoning trace</li>
+              </ul>
+              <div className="bg-white border border-[#D1D1CF] p-3 text-[10px] text-amber-800 leading-normal border-l-4 border-l-amber-500">
+                <span className="font-bold uppercase tracking-wider font-mono">Note:</span> Your customized System Prompts, Prompt Templates, and presets will remain completely intact.
+              </div>
+            </div>
+
+            {/* Modal Footer Controls */}
+            <div className="h-16 border-t border-[#D1D1CF] px-6 flex items-center justify-end bg-[#F4F4F2]">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsClearConfirmOpen(false)}
+                  className="px-4 py-2 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all bg-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    handleClearSession();
+                    setIsClearConfirmOpen(false);
+                  }}
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border border-red-600"
+                >
+                  Clear Active Session
                 </button>
               </div>
             </div>
