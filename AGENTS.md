@@ -103,7 +103,12 @@ The workspace reads dynamic template specifications from the currently configure
 - The generator automatically maps these reference files internally. Uploaded files represent a sequence of images mapped explicitly in order to label annotations (e.g. `@image1` mapped to "Character Name", `@image2` to "Setting Background").
 - In the generation route, these are combined with variables as `inlineData` parts alongside the compiled instructions.
 
-### Rule D: Plain-Text Formatting Enforcement
+### Rule E: Real-time Streaming & Reasoning Traces (SSE Architecture)
+- **Streaming Output**: The workspace utilizes high-performance text streaming via Server-Sent Events (SSE). The server-side proxy `/app/api/generate/route.ts` streams chunks using the modern `generateContentStream` method.
+- **Client-Side Buffer Reassembly**: The client in `/app/page.tsx` implements custom chunk buffer parsing to split incoming line streams securely, gracefully resolving any fragmented or unterminated JSON data packets before parsing.
+- **Reasoning Trace Dynamic Separation**: For models that support reasoning/thinking, the stream separates thinking/thought blocks dynamically from the main output. The UI displays these in a dedicated **Engine Reasoning Trace** console box so that reasoning flows and generation text stream concurrently but remain visually separated.
+
+### Rule F: Plain-Text Formatting Enforcement
 - The system instructions in `/prompts/system_prompt.txt` strictly mandate that the model output MUST be formatted as **pure, standard plain text** with zero Markdown symbols (no asterisks, hash signs, markdown tables, bold wraps, etc.).
 - The UI renders the output inside a serif paragraph element designed for plain text. If you modify formatting requirements, ensure you modify both `system_prompt.txt` and the rendering logic in `app/page.tsx` synchronously.
 
