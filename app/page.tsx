@@ -533,46 +533,57 @@ export default function PromptGeneratorPage() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let done = false;
+      let buffer = "";
+
+      const parseLine = (line: string) => {
+        const trimmedLine = line.trim();
+        if (trimmedLine.startsWith("data: ")) {
+          const jsonStr = trimmedLine.slice(6).trim();
+          if (jsonStr) {
+            try {
+              const data = JSON.parse(jsonStr);
+              if (data.error) {
+                throw new Error(data.error);
+              }
+              if (data.filledPrompt) {
+                activeFilledPrompt = data.filledPrompt;
+                setFilledPrompt(data.filledPrompt);
+              }
+              if (data.thought) {
+                accumulatedThought += data.thought;
+                setThinkingResult(accumulatedThought);
+                setIsThinking(true);
+              }
+              if (data.text) {
+                accumulatedText += data.text;
+                setGenerationResult(accumulatedText);
+                setIsThinking(false);
+              }
+            } catch (e: any) {
+              console.error("Error parsing stream line:", e, line);
+            }
+          }
+        }
+      };
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         if (value) {
-          const chunkStr = decoder.decode(value, { stream: !done });
-          const lines = chunkStr.split("\n");
+          buffer += decoder.decode(value, { stream: !done });
+          const lines = buffer.split("\n");
+          // Store the last element back in the buffer since it could be a partial line
+          buffer = lines.pop() || "";
+          
           for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const jsonStr = line.slice(6).trim();
-              if (jsonStr) {
-                try {
-                  const data = JSON.parse(jsonStr);
-                  if (data.error) {
-                    throw new Error(data.error);
-                  }
-                  if (data.filledPrompt) {
-                    activeFilledPrompt = data.filledPrompt;
-                    setFilledPrompt(data.filledPrompt);
-                  }
-                  if (data.thought) {
-                    accumulatedThought += data.thought;
-                    setThinkingResult(accumulatedThought);
-                    setIsThinking(true);
-                  }
-                  if (data.text) {
-                    accumulatedText += data.text;
-                    setGenerationResult(accumulatedText);
-                    setIsThinking(false);
-                  }
-                } catch (e: any) {
-                  if (e.message && e.message.includes("Unexpected end of JSON")) {
-                    continue;
-                  }
-                  console.error("Error parsing stream line:", e, line);
-                }
-              }
-            }
+            parseLine(line);
           }
         }
+      }
+
+      // Process any remaining data in the buffer after stream completes
+      if (buffer) {
+        parseLine(buffer);
       }
 
       const endTime = performance.now();
