@@ -930,7 +930,7 @@ export default function PromptGeneratorPage() {
                 </div>
               ) : generationResult || thinkingResult ? (
                 <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="flex-1 overflow-y-auto pr-1 text-sm leading-relaxed text-[#1A1A1A] font-serif whitespace-pre-wrap max-h-[360px] custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto pr-1 text-sm leading-relaxed text-[#1A1A1A] font-serif whitespace-pre-wrap custom-scrollbar">
                     {generationResult || (
                       <span className="italic text-[#888884] text-xs font-sans">
                         Reasoning trace active. Waiting for generation output...
