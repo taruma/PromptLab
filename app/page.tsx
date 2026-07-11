@@ -61,13 +61,7 @@ export default function PromptGeneratorPage() {
   const [showCompiled, setShowCompiled] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState<boolean>(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("prompt_generator_history_open");
-      return saved !== null ? saved === "true" : true;
-    }
-    return true;
-  });
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(true);
 
   const toggleHistory = () => {
     setIsHistoryOpen(prev => {
@@ -84,20 +78,8 @@ export default function PromptGeneratorPage() {
   const [presets, setPresets] = useState<Array<{ id: string; name: string; systemPrompt: string; promptTemplate: string }>>([]);
   const [customPresets, setCustomPresets] = useState<Array<{ id: string; name: string; systemPrompt: string; promptTemplate: string }>>([]);
   const [newPresetName, setNewPresetName] = useState<string>("");
-  const [isSystemPresetsOpen, setIsSystemPresetsOpen] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("prompt_generator_sys_presets_open");
-      return saved !== null ? saved === "true" : true;
-    }
-    return true;
-  });
-  const [isCustomPresetsOpen, setIsCustomPresetsOpen] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("prompt_generator_custom_presets_open");
-      return saved !== null ? saved === "true" : true;
-    }
-    return true;
-  });
+  const [isSystemPresetsOpen, setIsSystemPresetsOpen] = useState<boolean>(true);
+  const [isCustomPresetsOpen, setIsCustomPresetsOpen] = useState<boolean>(true);
   
   // Engine Controls states
   const [selectedModel, setSelectedModel] = useState<string>("gemini-3.5-flash");
@@ -195,13 +177,16 @@ export default function PromptGeneratorPage() {
     }
     loadConfig();
 
-    // Load local storage engine configs on mount
+    // Load local storage engine configs & UI collapsible preferences on mount
     try {
       const savedModel = localStorage.getItem("prompt_generator_selected_model");
       const savedThinking = localStorage.getItem("prompt_generator_thinking_level");
       const savedTemp = localStorage.getItem("prompt_generator_temperature");
       const savedMaxTokens = localStorage.getItem("prompt_generator_max_tokens");
       const savedApiKey = localStorage.getItem("prompt_generator_custom_api_key");
+      const savedHistoryOpen = localStorage.getItem("prompt_generator_history_open");
+      const savedSysPresetsOpen = localStorage.getItem("prompt_generator_sys_presets_open");
+      const savedCustomPresetsOpen = localStorage.getItem("prompt_generator_custom_presets_open");
 
       setTimeout(() => {
         if (savedModel) {
@@ -225,9 +210,18 @@ export default function PromptGeneratorPage() {
           setCustomApiKey(savedApiKey);
           setTempCustomApiKey(savedApiKey);
         }
+        if (savedHistoryOpen !== null) {
+          setIsHistoryOpen(savedHistoryOpen === "true");
+        }
+        if (savedSysPresetsOpen !== null) {
+          setIsSystemPresetsOpen(savedSysPresetsOpen === "true");
+        }
+        if (savedCustomPresetsOpen !== null) {
+          setIsCustomPresetsOpen(savedCustomPresetsOpen === "true");
+        }
       }, 0);
     } catch (e) {
-      console.error("Failed to parse engine configurations on mount", e);
+      console.error("Failed to parse configurations on mount", e);
     }
 
     // Load local storage history safely on mount (client-side only)
