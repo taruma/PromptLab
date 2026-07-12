@@ -1,6 +1,6 @@
 {
-  "name": "ai-studio-applet",
-  "version": "0.1.0",
+  "name": "promptlab",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
