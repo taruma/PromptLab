@@ -86,6 +86,7 @@ export default function PromptGeneratorPage() {
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState<boolean>(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(true);
   const [isLabManualOpen, setIsLabManualOpen] = useState<boolean>(true);
+  const [storageWarningMessage, setStorageWarningMessage] = useState<string | null>(null);
 
   const toggleHistory = () => {
     setIsHistoryOpen(prev => {
@@ -339,9 +340,27 @@ export default function PromptGeneratorPage() {
   // Save uploaded images to localStorage whenever they change
   useEffect(() => {
     if (isConfigLoaded) {
-      localStorage.setItem("prompt_generator_uploaded_images", JSON.stringify(uploadedImages));
+      try {
+        localStorage.setItem("prompt_generator_uploaded_images", JSON.stringify(uploadedImages));
+        if (storageWarningMessage !== null) {
+          setTimeout(() => {
+            setStorageWarningMessage(null);
+          }, 0);
+        }
+      } catch (err: any) {
+        if (err.name === "QuotaExceededError" || err.code === 22 || err.name === "NS_ERROR_DOM_QUOTA_REACHED") {
+          console.error("Local storage quota exceeded:", err);
+          setTimeout(() => {
+            setStorageWarningMessage(
+              "Browser storage limit reached. Your uploaded images are active and fully operational for this session, but they are too large to save in your browser's local cache."
+            );
+          }, 0);
+        } else {
+          console.error("Failed to save images to local storage:", err);
+        }
+      }
     }
-  }, [uploadedImages, isConfigLoaded]);
+  }, [uploadedImages, isConfigLoaded, storageWarningMessage]);
 
   // Save active generation results to localStorage whenever they change
   useEffect(() => {
@@ -490,12 +509,56 @@ export default function PromptGeneratorPage() {
     cleanUrlParam();
   };
 
-  // Helper: converts file to Base64
-  const fileToBase64 = (file: File): Promise<string> => {
+  // Helper: converts file to Base64 and compresses to JPEG via HTML Canvas
+  const compressImageToJpeg = (file: File, quality = 0.9): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
+      reader.onload = () => {
+        const rawBase64 = reader.result as string;
+        
+        // If the file is extremely small (< 40KB) or not a common image, bypass canvas processing
+        if (file.size < 40960 && (file.type === "image/jpeg" || file.type === "image/png")) {
+          resolve(rawBase64);
+          return;
+        }
+
+        const img = new window.Image();
+        img.src = rawBase64;
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            // Maintain exact original resolution
+            const width = img.naturalWidth || img.width || 800;
+            const height = img.naturalHeight || img.height || 600;
+            
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              resolve(rawBase64);
+              return;
+            }
+
+            // Fill background with white to handle alpha transparency of PNGs elegantly
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Compress to JPEG format with specified quality level
+            const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+            resolve(compressedDataUrl);
+          } catch (err) {
+            console.warn("Canvas compression failed, falling back to raw Base64:", err);
+            resolve(rawBase64);
+          }
+        };
+        img.onerror = (err) => {
+          console.warn("Image onload failed, falling back to raw Base64:", err);
+          resolve(rawBase64);
+        };
+      };
       reader.onerror = (err) => reject(err);
     });
   };
@@ -510,7 +573,7 @@ export default function PromptGeneratorPage() {
     for (let i = 0; i < validImages.length; i++) {
       const file = validImages[i];
       try {
-        const base64 = await fileToBase64(file);
+        const base64 = await compressImageToJpeg(file, 0.9);
         // Suggest a nice default label based on filename or numbering
         const rawName = file.name.split(".")[0];
         const cleanLabel = rawName
@@ -521,7 +584,7 @@ export default function PromptGeneratorPage() {
           id: `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`,
           label: cleanLabel,
           base64: base64,
-          mimeType: file.type,
+          mimeType: "image/jpeg",
         });
       } catch (err) {
         console.error("Error loading file: ", file.name, err);
@@ -1106,8 +1169,23 @@ export default function PromptGeneratorPage() {
             </div>
 
             <p className="text-[11px] text-[#888884] font-medium tracking-tight -mt-1 leading-normal">
-              Upload images to serve as reference models. The system will name-map each asset (e.g. @image1) and inject references cleanly into your templates.
+              Upload images to serve as reference models. The system will name-map each asset (e.g. @image1) and inject references cleanly into your templates. All files are automatically compressed to high-quality (90%) JPEG format to conserve browser local storage.
             </p>
+
+            {storageWarningMessage && (
+              <div className="bg-[#FFFBEB] border border-[#F59E0B] p-3 flex justify-between items-start text-[10px] text-[#B45309] font-mono leading-relaxed rounded-none" id="storage-quota-warning">
+                <div className="flex gap-2">
+                  <span className="font-bold">⚠️ NOTE:</span>
+                  <span>{storageWarningMessage}</span>
+                </div>
+                <button 
+                  onClick={() => setStorageWarningMessage(null)}
+                  className="font-bold hover:text-[#78350F] px-1 ml-2 shrink-0 cursor-pointer"
+                >
+                  [X]
+                </button>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-1">
               {/* Drag and Drop Uploader */}
