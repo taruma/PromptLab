@@ -38,6 +38,26 @@ interface HistoryItem {
   filledPrompt: string;
 }
 
+// Helper: converts typical GitHub blob URLs to raw URLs
+const getRawUrl = (url: string): string => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "github.com") {
+      const parts = parsed.pathname.split("/");
+      // E.g. /username/repo/blob/branch/path/to/file.json
+      if (parts[3] === "blob") {
+        parts.splice(3, 1); // remove "blob"
+        parsed.hostname = "raw.githubusercontent.com";
+        parsed.pathname = parts.join("/");
+        return parsed.toString();
+      }
+    }
+    return url;
+  } catch (e) {
+    return url;
+  }
+};
+
 export default function PromptGeneratorPage() {
   // Config loaded from backend or local storage
   const [systemPrompt, setSystemPrompt] = useState<string>("");
@@ -103,6 +123,20 @@ export default function PromptGeneratorPage() {
   // Operational Telemetry states
   const [lastLatency, setLastLatency] = useState<number>(0);
   
+  // URL Preset Import states
+  const [urlPresetData, setUrlPresetData] = useState<{
+    name: string;
+    systemPrompt: string;
+    promptTemplate: string;
+    url: string;
+  } | null>(null);
+  const [isUrlImportConfirmOpen, setIsUrlImportConfirmOpen] = useState<boolean>(false);
+  const [urlImportPending, setUrlImportPending] = useState<boolean>(false);
+  const [urlImportError, setUrlImportError] = useState<string | null>(null);
+  const [urlImportSuccessMsg, setUrlImportSuccessMsg] = useState<string | null>(null);
+  const [preserveIdeaOnUrlImport, setPreserveIdeaOnUrlImport] = useState<boolean>(true);
+  const [clearSessionOnUrlImport, setClearSessionOnUrlImport] = useState<boolean>(false);
+
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
@@ -245,6 +279,8 @@ export default function PromptGeneratorPage() {
         setIsPromptConfigOpen(false);
         setIsEngineConfigOpen(false);
         setIsClearConfirmOpen(false);
+        setIsUrlImportConfirmOpen(false);
+        setUrlPresetData(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -252,6 +288,127 @@ export default function PromptGeneratorPage() {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
+
+  // Helper: cleans the URL params
+  const cleanUrlParam = () => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("presetUrl");
+      url.searchParams.delete("configUrl");
+      url.searchParams.delete("preset");
+      url.searchParams.delete("config");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    }
+  };
+
+  // Fetch preset from URL query parameter if present
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const urlParam = params.get("presetUrl") || params.get("configUrl") || params.get("preset") || params.get("config");
+
+    if (urlParam) {
+      let targetUrl = decodeURIComponent(urlParam);
+      targetUrl = getRawUrl(targetUrl);
+
+      async function fetchPresetFromUrl() {
+        setUrlImportPending(true);
+        setUrlImportError(null);
+        try {
+          const res = await fetch(targetUrl);
+          if (!res.ok) {
+            throw new Error(`Server returned status ${res.status}`);
+          }
+          const data = await res.json();
+          
+          if (data.systemPrompt !== undefined && data.promptTemplate !== undefined) {
+            setUrlPresetData({
+              name: data.name || "Imported URL Preset",
+              systemPrompt: data.systemPrompt,
+              promptTemplate: data.promptTemplate,
+              url: targetUrl
+            });
+            setIsUrlImportConfirmOpen(true);
+          } else {
+            throw new Error("Invalid preset format. The JSON must contain 'systemPrompt' and 'promptTemplate' fields.");
+          }
+        } catch (err: any) {
+          console.error("Failed to fetch preset from URL:", err);
+          setUrlImportError(`Failed to load preset from URL: ${err.message}. Ensure the link is valid and the server supports CORS.`);
+          cleanUrlParam();
+        } finally {
+          setUrlImportPending(false);
+        }
+      }
+
+      // Small timeout to let initial state/config load complete
+      setTimeout(() => {
+        fetchPresetFromUrl();
+      }, 500);
+    }
+  }, []);
+
+  const handleApplyUrlPreset = () => {
+    if (!urlPresetData) return;
+
+    setSystemPrompt(urlPresetData.systemPrompt);
+    setPromptTemplate(urlPresetData.promptTemplate);
+    const vars = extractVariables(urlPresetData.promptTemplate);
+    setVariables(vars);
+
+    localStorage.setItem("prompt_generator_system_prompt", urlPresetData.systemPrompt);
+    localStorage.setItem("prompt_generator_prompt_template", urlPresetData.promptTemplate);
+
+    setInputs(prev => {
+      const updatedInputs: Record<string, string> = {};
+      if (preserveIdeaOnUrlImport && prev["idea"]) {
+        updatedInputs["idea"] = prev["idea"];
+      }
+
+      if (!clearSessionOnUrlImport) {
+        vars.forEach(v => {
+          if (v !== "visual_references" && v !== "cast" && v !== "idea") {
+            if (prev[v] !== undefined) {
+              updatedInputs[v] = prev[v];
+            } else {
+              updatedInputs[v] = "";
+            }
+          }
+        });
+      } else {
+        vars.forEach(v => {
+          if (v !== "visual_references" && v !== "cast" && v !== "idea") {
+            updatedInputs[v] = "";
+          }
+        });
+      }
+      return updatedInputs;
+    });
+
+    if (clearSessionOnUrlImport) {
+      setUploadedImages([]);
+      setGenerationResult("");
+      setFilledPrompt("");
+      setThinkingResult("");
+      setIsThinking(false);
+    }
+
+    setUrlImportSuccessMsg(`Successfully imported and compiled: "${urlPresetData.name}"`);
+    setTimeout(() => {
+      setUrlImportSuccessMsg(null);
+    }, 4000);
+
+    setIsUrlImportConfirmOpen(false);
+    setUrlPresetData(null);
+    cleanUrlParam();
+  };
+
+  const handleCancelUrlPreset = () => {
+    setIsUrlImportConfirmOpen(false);
+    setUrlPresetData(null);
+    cleanUrlParam();
+  };
 
   // Helper: converts file to Base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -1790,6 +1947,160 @@ export default function PromptGeneratorPage() {
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* URL Preset Import Confirmation Modal */}
+      {isUrlImportConfirmOpen && urlPresetData && (
+        <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="url-import-confirm-modal">
+          <div className="bg-white border border-[#D1D1CF] w-full max-w-xl flex flex-col justify-between shadow-2xl relative">
+            
+            {/* Modal Header */}
+            <div className="h-14 border-b border-[#D1D1CF] px-6 flex items-center justify-between bg-[#F4F4F2]">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                <h3 className="text-xs font-black uppercase tracking-wider font-sans text-[#1A1A1A]">
+                  Preset URL Import Detected
+                </h3>
+              </div>
+              <button
+                onClick={handleCancelUrlPreset}
+                className="text-stone-500 hover:text-[#1A1A1A] font-mono font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+              >
+                [ESC] CLOSE
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 bg-[#F4F4F2]/30 flex flex-col gap-5 text-xs leading-relaxed text-[#555]">
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] uppercase tracking-wider font-bold text-[#888884] font-mono">Preset Name:</span>
+                <span className="text-sm font-black uppercase tracking-tight text-[#1A1A1A]">
+                  {urlPresetData.name}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] uppercase tracking-wider font-bold text-[#888884] font-mono">Source URL:</span>
+                <div className="font-mono text-[9px] bg-white border border-[#D1D1CF] p-2.5 text-[#1A1A1A] break-all max-h-20 overflow-y-auto">
+                  {urlPresetData.url}
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 p-3.5 text-[10px] text-amber-900 leading-normal border-l-4 border-l-amber-500">
+                <span className="font-bold uppercase tracking-wider font-mono">Warning:</span> Loading this URL preset will replace your currently configured System Prompt and Prompt Template.
+              </div>
+
+              {/* Integration Options */}
+              <div className="flex flex-col gap-3 pt-2 border-t border-[#D1D1CF]/60">
+                <h4 className="text-[10px] font-black uppercase tracking-wider text-[#1A1A1A]">
+                  Import Options
+                </h4>
+
+                <div className="flex flex-col gap-2.5">
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={preserveIdeaOnUrlImport}
+                      onChange={(e) => setPreserveIdeaOnUrlImport(e.target.checked)}
+                      className="mt-0.5 accent-[#1A1A1A] w-3.5 h-3.5 cursor-pointer"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-bold text-[#1A1A1A] uppercase">Preserve Core Idea</span>
+                      <span className="text-[9px] text-[#888884] leading-normal font-mono uppercase">Keep your current &quot;Main Objective / Idea&quot; text</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={clearSessionOnUrlImport}
+                      onChange={(e) => setClearSessionOnUrlImport(e.target.checked)}
+                      className="mt-0.5 accent-[#1A1A1A] w-3.5 h-3.5 cursor-pointer"
+                    />
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-bold text-[#1A1A1A] uppercase">Reset Active Session</span>
+                      <span className="text-[9px] text-[#888884] leading-normal font-mono uppercase">Clear all other active variables, uploaded assets, and outputs</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer Controls */}
+            <div className="h-16 border-t border-[#D1D1CF] px-6 flex items-center justify-end bg-[#F4F4F2]">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleCancelUrlPreset}
+                  className="px-4 py-2 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all bg-white"
+                >
+                  Cancel / Ignore
+                </button>
+                <button
+                  onClick={handleApplyUrlPreset}
+                  className="px-5 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border border-[#1A1A1A]"
+                >
+                  Import & Apply Preset
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* URL Preset Import Loading Indicator */}
+      {urlImportPending && (
+        <div className="fixed inset-0 bg-[#1a1a1a]/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-[#D1D1CF] p-6 shadow-xl flex items-center gap-3">
+            <RefreshCw className="w-4 h-4 animate-spin text-[#888884]" />
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#1A1A1A]">
+              Fetching Remote Preset...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* URL Import Error Dialog */}
+      {urlImportError && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md bg-white border border-red-200 shadow-2xl p-4 flex flex-col gap-2 animate-fade-in" id="url-import-error-toast">
+          <div className="flex items-center justify-between border-b border-red-100 pb-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-red-600 flex items-center gap-1.5 font-sans">
+              [!] Import Failed
+            </span>
+            <button 
+              onClick={() => setUrlImportError(null)}
+              className="text-stone-400 hover:text-[#1A1A1A] font-mono text-[9px] font-bold uppercase"
+            >
+              [Dismiss]
+            </button>
+          </div>
+          <p className="text-[11px] text-[#555] leading-relaxed">
+            {urlImportError}
+          </p>
+          <p className="text-[9px] text-[#888884] font-mono uppercase">
+            Check the URL query parameters or server configuration
+          </p>
+        </div>
+      )}
+
+      {/* URL Import Success Toast */}
+      {urlImportSuccessMsg && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md bg-white border border-emerald-200 shadow-2xl p-4 flex flex-col gap-1.5 animate-fade-in" id="url-import-success-toast">
+          <div className="flex items-center justify-between border-b border-emerald-100 pb-1.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 flex items-center gap-1.5 font-sans">
+              [✓] Preset Applied
+            </span>
+            <button 
+              onClick={() => setUrlImportSuccessMsg(null)}
+              className="text-stone-400 hover:text-[#1A1A1A] font-mono text-[9px] font-bold uppercase"
+            >
+              [Dismiss]
+            </button>
+          </div>
+          <p className="text-[11px] text-[#1A1A1A] font-medium leading-relaxed">
+            {urlImportSuccessMsg}
+          </p>
         </div>
       )}
     </div>
