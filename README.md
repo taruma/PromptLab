@@ -20,11 +20,13 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 ## Features
 
 - **Dynamic Template Variables** — Add `{{ placeholders }}` to your prompt template and form fields appear automatically. No hardcoding needed.
-- **Visual Reference Uploads** — Drag and drop images to serve as casting or scene references. Each asset is auto-mapped (e.g., `@image1`) and injected into your prompt.
-- **Custom Presets** — Save your own system instructions and templates. Import and export them as JSON files.
+- **Visual Reference Uploads** — Drag and drop images to serve as casting or scene references. Each asset is auto-mapped (e.g., `@image1`) and injected into your prompt. Images are automatically compressed to high-quality JPEG to conserve storage.
+- **Image Storage with IndexedDB** — Uploaded images are stored in your browser's IndexedDB, avoiding localStorage quota limits. You can upload larger files without worrying about storage caps.
+- **Custom Presets** — Save your own system instructions and templates. Import and export them as JSON files. Share presets via URL query parameters.
 - **Engine Controls** — Switch between Gemini models (3.5 Flash, 3.1 Flash Lite, 3.1 Pro), adjust temperature, reasoning effort, and max output tokens.
 - **Custom API Key** — Bring your own Gemini API key to use personal quotas or premium models.
 - **Session History** — Past generations are saved locally in your browser for easy recall.
+- **Lab Manual & Quick-Start Guide** — A built-in 4-step walkthrough helps new users get oriented and productive immediately.
 
 ---
 
@@ -52,8 +54,8 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/taruma/promptlab.git
-cd promptlab
+git clone https://github.com/taruma/PromptLab.git
+cd PromptLab
 npm install
 ```
 
@@ -86,6 +88,16 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 5. **Review the output**, tweak your template, and generate again — iterate until your prompt design feels right
 6. **Browse past generations** in the history panel; click any entry to restore it
 
+### Sharing Presets via URL
+
+You can share a preset configuration by hosting a JSON file (e.g., on GitHub) and appending its raw URL as a query parameter:
+
+```
+https://promptlab.taruma.my.id/?presetUrl=https://raw.githubusercontent.com/user/repo/main/my-preset.json
+```
+
+Supported parameters: `?presetUrl=`, `?configUrl=`, `?preset=`, or `?config=`. Opening such a link will show an import confirmation dialog.
+
 ---
 
 ## Environment Variables
@@ -98,7 +110,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Tech Stack
 
-Built with [Next.js](https://nextjs.org/) 15, [Tailwind CSS](https://tailwindcss.com/) v4, [TypeScript](https://www.typescriptlang.org/), and the [Google GenAI SDK](https://www.npmjs.com/package/@google/genai).
+Built with [Next.js](https://nextjs.org/) 15, [Tailwind CSS](https://tailwindcss.com/) v4, and the [Google GenAI SDK](https://www.npmjs.com/package/@google/genai). Image persistence uses IndexedDB to avoid browser storage limits.
 
 ---
 
