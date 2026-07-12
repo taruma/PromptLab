@@ -1116,7 +1116,10 @@ export default function PromptGeneratorPage() {
       if (accumulatedText) {
         const historyImages = await Promise.all(
           uploadedImages.map(async (img, idx) => {
-            const imgId = img.id || `hist-img-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
+            // Decouple from the active session's image ID.
+            // This ensures that deleting the active session image card or overwriting it
+            // will never break the historic reference in IndexedDB.
+            const imgId = `hist-img-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
             try {
               await saveStoredImage(imgId, img.base64);
             } catch (dbErr) {
