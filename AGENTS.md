@@ -40,9 +40,13 @@ Key differentiators:
 │   ├── prompt_template.txt          # Original default prompt template fallback
 │   ├── system_prompt.txt            # Original default system instructions fallback
 │   └── /presets
-│       ├── creative_scriptwriter.json # Pre-packaged Creative Writer template
-│       ├── technical_spec_writer.json # Pre-packaged Technical Summarizer template
-│       └── marketing_copywriter.json # Pre-packaged conversion copywriting template
+│       ├── ai_casting_screenwriter.json  # AI Casting & Screenplay preset
+│       ├── ai_director_storyboard.json   # AI Director & Storyboard preset
+│       └── vfx_worldbuilder.json         # VFX & Speculative Worldbuilder preset
+├── /public
+│   ├── logo_promptlab.png           # Application logo
+│   ├── favicon.ico                  # Site favicon
+│   └── favicon-*.png                # Various favicon sizes
 ├── /lib
 │   └── utils.ts                     # UI utility functions (class merging)
 ├── /hooks

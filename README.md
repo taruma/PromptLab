@@ -52,8 +52,8 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/taruma/PromptX.git
-cd PromptX
+git clone https://github.com/taruma/promptlab.git
+cd promptlab
 npm install
 ```
 
