@@ -861,7 +861,6 @@ export default function PromptGeneratorPage() {
     setTempThinkingLevel("MEDIUM");
     setTempTemperature(1.0);
     setTempMaxTokens("");
-    setTempCustomApiKey("");
   };
 
   // Open the configuration modal
