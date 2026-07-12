@@ -34,9 +34,74 @@ interface HistoryItem {
   id: string;
   timestamp: string;
   variables: Record<string, string>;
-  images: { label: string; base64: string; mimeType: string }[];
+  images: { id?: string; label: string; base64: string; mimeType: string }[];
   output: string;
   filledPrompt: string;
+}
+
+// --- IndexedDB Configuration & Helper functions ---
+const DB_NAME = "promptlab_db";
+const DB_VERSION = 1;
+const STORE_NAME = "images";
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined" || !window.indexedDB) {
+      reject(new Error("IndexedDB is not supported in this environment."));
+      return;
+    }
+    const request = window.indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+    };
+  });
+}
+
+function getStoredImage(id: string): Promise<string | null> {
+  return openDB().then((db) => {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readonly");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(id);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        if (request.result) {
+          resolve(request.result.base64);
+        } else {
+          resolve(null);
+        }
+      };
+    });
+  });
+}
+
+function saveStoredImage(id: string, base64: string): Promise<void> {
+  return openDB().then((db) => {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put({ id, base64 });
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  });
+}
+
+function deleteStoredImage(id: string): Promise<void> {
+  return openDB().then((db) => {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(id);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  });
 }
 
 // Helper: converts typical GitHub blob URLs to raw URLs
@@ -228,14 +293,39 @@ export default function PromptGeneratorPage() {
             setInputs(initialInputs);
           }
 
-          // Load uploaded images from local storage
+          // Load uploaded images from local storage & IndexedDB
           try {
             const savedImages = localStorage.getItem("prompt_generator_uploaded_images");
             if (savedImages) {
-              setUploadedImages(JSON.parse(savedImages));
+              const parsedImages = JSON.parse(savedImages) as UploadedImage[];
+              const resolvedImages = await Promise.all(
+                parsedImages.map(async (img) => {
+                  if (img.base64) {
+                    // Backward compatibility: base64 exists in localStorage. Migrate to IndexedDB.
+                    try {
+                      await saveStoredImage(img.id, img.base64);
+                    } catch (err) {
+                      console.error("Failed to migrate existing localStorage image to IndexedDB:", err);
+                    }
+                    return img;
+                  } else {
+                    // Fetch from IndexedDB
+                    try {
+                      const dbBase64 = await getStoredImage(img.id);
+                      if (dbBase64) {
+                        return { ...img, base64: dbBase64 };
+                      }
+                    } catch (err) {
+                      console.error(`Failed to load image ${img.id} from IndexedDB:`, err);
+                    }
+                    return img;
+                  }
+                })
+              );
+              setUploadedImages(resolvedImages);
             }
           } catch (e) {
-            console.error("Failed to parse saved images", e);
+            console.error("Failed to parse/load saved images", e);
           }
 
           // Load previous generation outputs from local storage
@@ -337,11 +427,12 @@ export default function PromptGeneratorPage() {
     }
   }, [inputs, isConfigLoaded]);
 
-  // Save uploaded images to localStorage whenever they change
+  // Save uploaded images to localStorage whenever they change (stripping base64 content to conserve space)
   useEffect(() => {
     if (isConfigLoaded) {
       try {
-        localStorage.setItem("prompt_generator_uploaded_images", JSON.stringify(uploadedImages));
+        const strippedImages = uploadedImages.map(({ base64, ...rest }) => rest);
+        localStorage.setItem("prompt_generator_uploaded_images", JSON.stringify(strippedImages));
         if (storageWarningMessage !== null) {
           setTimeout(() => {
             setStorageWarningMessage(null);
@@ -580,8 +671,15 @@ export default function PromptGeneratorPage() {
           .replace(/[_-]/g, " ")
           .replace(/\b\w/g, c => c.toUpperCase());
 
+        const imgId = `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
+        try {
+          await saveStoredImage(imgId, base64);
+        } catch (dbErr) {
+          console.error("Failed to save image to IndexedDB:", dbErr);
+        }
+
         newUploaded.push({
-          id: `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`,
+          id: imgId,
           label: cleanLabel,
           base64: base64,
           mimeType: "image/jpeg",
@@ -634,10 +732,15 @@ export default function PromptGeneratorPage() {
   // Delete uploaded image
   const handleDeleteImage = (id: string) => {
     setUploadedImages(prev => prev.filter(img => img.id !== id));
+    try {
+      deleteStoredImage(id);
+    } catch (err) {
+      console.error("Failed to delete image from IndexedDB:", err);
+    }
   };
 
   // Load a historic generation back into the editor
-  const handleLoadHistoryItem = (item: HistoryItem) => {
+  const handleLoadHistoryItem = async (item: HistoryItem) => {
     // Merge inputs
     const updatedInputs = { ...inputs };
     Object.keys(item.variables).forEach(k => {
@@ -645,13 +748,47 @@ export default function PromptGeneratorPage() {
     });
     setInputs(updatedInputs);
 
-    // Load images with new local IDs
-    const loadedImages: UploadedImage[] = item.images.map((img, i) => ({
-      id: `history-${Date.now()}-${i}`,
-      label: img.label,
-      base64: img.base64,
-      mimeType: img.mimeType,
-    }));
+    // Load images and resolve base64 from IndexedDB (or migrate if they are embedded in the item)
+    const loadedImages: UploadedImage[] = await Promise.all(
+      item.images.map(async (img, i) => {
+        const newImgId = `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
+        let base64 = img.base64;
+
+        if (!base64 && img.id) {
+          try {
+            const dbBase64 = await getStoredImage(img.id);
+            if (dbBase64) {
+              base64 = dbBase64;
+            }
+          } catch (err) {
+            console.error("Failed to load image from IndexedDB:", err);
+          }
+        } else if (base64) {
+          // Backward compatibility: migrate to IndexedDB
+          try {
+            await saveStoredImage(newImgId, base64);
+          } catch (err) {
+            console.error("Failed to migrate legacy image to IndexedDB:", err);
+          }
+        }
+
+        // Save to IndexedDB under the new active session ID
+        if (base64 && !img.base64) {
+          try {
+            await saveStoredImage(newImgId, base64);
+          } catch (err) {
+            console.error("Failed to persist loaded image to IndexedDB:", err);
+          }
+        }
+
+        return {
+          id: newImgId,
+          label: img.label,
+          base64: base64 || "",
+          mimeType: img.mimeType,
+        };
+      })
+    );
     
     setUploadedImages(loadedImages);
     setGenerationResult(item.output);
@@ -672,6 +809,16 @@ export default function PromptGeneratorPage() {
     // also clear core idea explicitly
     clearedInputs["idea"] = "";
     setInputs(clearedInputs);
+
+    // Delete current images from IndexedDB to avoid storage clutter
+    uploadedImages.forEach(img => {
+      try {
+        deleteStoredImage(img.id);
+      } catch (err) {
+        console.error("Failed to clean up image on session clear:", err);
+      }
+    });
+
     setUploadedImages([]);
     setGenerationResult("");
     setFilledPrompt("");
@@ -838,6 +985,18 @@ export default function PromptGeneratorPage() {
   // Delete a specific history card
   const handleDeleteHistoryItem = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const itemToDelete = history.find(item => item.id === id);
+    if (itemToDelete && itemToDelete.images) {
+      itemToDelete.images.forEach(img => {
+        if (img.id) {
+          try {
+            deleteStoredImage(img.id);
+          } catch (err) {
+            console.error("Failed to delete history image from IndexedDB:", err);
+          }
+        }
+      });
+    }
     const updated = history.filter(item => item.id !== id);
     setHistory(updated);
     localStorage.setItem("prompt_generator_history", JSON.stringify(updated));
@@ -956,6 +1115,23 @@ export default function PromptGeneratorPage() {
 
       // Save this outline to history list if we have text
       if (accumulatedText) {
+        const historyImages = await Promise.all(
+          uploadedImages.map(async (img, idx) => {
+            const imgId = img.id || `hist-img-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
+            try {
+              await saveStoredImage(imgId, img.base64);
+            } catch (dbErr) {
+              console.error("Failed to save history image to IndexedDB:", dbErr);
+            }
+            return {
+              id: imgId,
+              label: img.label,
+              base64: "", // Strip to conserve localStorage space
+              mimeType: img.mimeType,
+            };
+          })
+        );
+
         const newHistoryItem: HistoryItem = {
           id: `gen-${Date.now()}`,
           timestamp: new Date().toLocaleString("en-US", {
@@ -965,11 +1141,7 @@ export default function PromptGeneratorPage() {
             minute: "2-digit",
           }),
           variables: { ...inputs },
-          images: uploadedImages.map(img => ({
-            label: img.label,
-            base64: img.base64,
-            mimeType: img.mimeType,
-          })),
+          images: historyImages,
           output: accumulatedText,
           filledPrompt: activeFilledPrompt || filledPrompt,
         };
