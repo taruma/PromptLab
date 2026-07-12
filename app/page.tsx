@@ -63,6 +63,7 @@ export default function PromptGeneratorPage() {
   const [systemPrompt, setSystemPrompt] = useState<string>("");
   const [promptTemplate, setPromptTemplate] = useState<string>("");
   const [variables, setVariables] = useState<string[]>([]);
+  const [isConfigLoaded, setIsConfigLoaded] = useState<boolean>(false);
 
   // User input states
   const [inputs, setInputs] = useState<Record<string, string>>({});
@@ -176,33 +177,75 @@ export default function PromptGeneratorPage() {
           const savedSystemPrompt = localStorage.getItem("prompt_generator_system_prompt");
           const savedPromptTemplate = localStorage.getItem("prompt_generator_prompt_template");
 
-          if (savedSystemPrompt !== null && savedPromptTemplate !== null) {
-            setSystemPrompt(savedSystemPrompt);
-            setPromptTemplate(savedPromptTemplate);
-            const vars = extractVariables(savedPromptTemplate);
-            setVariables(vars);
+          let activeSystemPrompt = "";
+          let activePromptTemplate = "";
+          let activeVars: string[] = [];
 
-            const initialInputs: Record<string, string> = {};
-            vars.forEach((v: string) => {
-              if (v !== "visual_references" && v !== "cast") {
-                initialInputs[v] = "";
-              }
-            });
-            setInputs(initialInputs);
+          if (savedSystemPrompt !== null && savedPromptTemplate !== null) {
+            activeSystemPrompt = savedSystemPrompt;
+            activePromptTemplate = savedPromptTemplate;
+            activeVars = extractVariables(savedPromptTemplate);
           } else {
-            setSystemPrompt(data.systemPrompt || "");
-            setPromptTemplate(data.promptTemplate || "");
-            setVariables(data.variables || []);
-            
-            // Pre-populate input values with empty strings
-            const initialInputs: Record<string, string> = {};
-            data.variables.forEach((v: string) => {
-              if (v !== "visual_references" && v !== "cast") {
-                initialInputs[v] = "";
-              }
-            });
+            activeSystemPrompt = data.systemPrompt || "";
+            activePromptTemplate = data.promptTemplate || "";
+            activeVars = data.variables || [];
+          }
+
+          setSystemPrompt(activeSystemPrompt);
+          setPromptTemplate(activePromptTemplate);
+          setVariables(activeVars);
+
+          const initialInputs: Record<string, string> = {};
+          activeVars.forEach((v: string) => {
+            if (v !== "visual_references" && v !== "cast") {
+              initialInputs[v] = "";
+            }
+          });
+
+          // Load active inputs from local storage
+          try {
+            const savedInputs = localStorage.getItem("prompt_generator_active_inputs");
+            if (savedInputs) {
+              const parsedInputs = JSON.parse(savedInputs);
+              const mergedInputs = { ...initialInputs, ...parsedInputs };
+              setInputs(mergedInputs);
+            } else {
+              setInputs(initialInputs);
+            }
+          } catch (e) {
+            console.error("Failed to parse saved inputs", e);
             setInputs(initialInputs);
           }
+
+          // Load uploaded images from local storage
+          try {
+            const savedImages = localStorage.getItem("prompt_generator_uploaded_images");
+            if (savedImages) {
+              setUploadedImages(JSON.parse(savedImages));
+            }
+          } catch (e) {
+            console.error("Failed to parse saved images", e);
+          }
+
+          // Load previous generation outputs from local storage
+          try {
+            const savedGenResult = localStorage.getItem("prompt_generator_generation_result");
+            if (savedGenResult) {
+              setGenerationResult(savedGenResult);
+            }
+            const savedThinkingResult = localStorage.getItem("prompt_generator_thinking_result");
+            if (savedThinkingResult) {
+              setThinkingResult(savedThinkingResult);
+            }
+            const savedFilledPrompt = localStorage.getItem("prompt_generator_filled_prompt");
+            if (savedFilledPrompt) {
+              setFilledPrompt(savedFilledPrompt);
+            }
+          } catch (e) {
+            console.error("Failed to parse saved output states", e);
+          }
+
+          setIsConfigLoaded(true);
         } else {
           setError("Failed to load prompt files: " + data.error);
         }
@@ -271,6 +314,29 @@ export default function PromptGeneratorPage() {
       console.error("Failed to parse generation history", e);
     }
   }, []);
+
+  // Save active inputs to localStorage whenever they change
+  useEffect(() => {
+    if (isConfigLoaded) {
+      localStorage.setItem("prompt_generator_active_inputs", JSON.stringify(inputs));
+    }
+  }, [inputs, isConfigLoaded]);
+
+  // Save uploaded images to localStorage whenever they change
+  useEffect(() => {
+    if (isConfigLoaded) {
+      localStorage.setItem("prompt_generator_uploaded_images", JSON.stringify(uploadedImages));
+    }
+  }, [uploadedImages, isConfigLoaded]);
+
+  // Save active generation results to localStorage whenever they change
+  useEffect(() => {
+    if (isConfigLoaded) {
+      localStorage.setItem("prompt_generator_generation_result", generationResult);
+      localStorage.setItem("prompt_generator_thinking_result", thinkingResult);
+      localStorage.setItem("prompt_generator_filled_prompt", filledPrompt);
+    }
+  }, [generationResult, thinkingResult, filledPrompt, isConfigLoaded]);
 
   // Handle escape key to close open modals
   useEffect(() => {
