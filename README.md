@@ -1,4 +1,5 @@
 <div align="center">
+<img src="public/logo_promptlab.png" alt="PromptLab Logo" width="120" height="120" />
 
 # PromptLab
 
