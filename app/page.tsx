@@ -179,6 +179,7 @@ export default function PromptGeneratorPage() {
   const [newPresetName, setNewPresetName] = useState<string>("");
   const [isSystemPresetsOpen, setIsSystemPresetsOpen] = useState<boolean>(true);
   const [isCustomPresetsOpen, setIsCustomPresetsOpen] = useState<boolean>(true);
+  const [activeEditingPresetId, setActiveEditingPresetId] = useState<string | null>(null);
   
   // Engine Controls states
   const [selectedModel, setSelectedModel] = useState<string>("gemini-3.5-flash");
@@ -888,6 +889,19 @@ export default function PromptGeneratorPage() {
   const handleOpenPromptConfig = () => {
     setTempSystemPrompt(systemPrompt);
     setTempPromptTemplate(promptTemplate);
+    
+    // Check if current prompts match an existing custom preset
+    const matchingCustom = customPresets.find(
+      p => p.systemPrompt === systemPrompt && p.promptTemplate === promptTemplate
+    );
+    if (matchingCustom) {
+      setActiveEditingPresetId(matchingCustom.id);
+      setNewPresetName(matchingCustom.name);
+    } else {
+      setActiveEditingPresetId(null);
+      setNewPresetName("");
+    }
+    
     setIsPromptConfigOpen(true);
   };
 
@@ -959,8 +973,9 @@ export default function PromptGeneratorPage() {
       alert("Please enter a name for your custom preset.");
       return;
     }
+    const newId = `custom-preset-${Date.now()}`;
     const newPreset = {
-      id: `custom-preset-${Date.now()}`,
+      id: newId,
       name: newPresetName.trim(),
       systemPrompt: tempSystemPrompt,
       promptTemplate: tempPromptTemplate
@@ -968,7 +983,29 @@ export default function PromptGeneratorPage() {
     const updated = [...customPresets, newPreset];
     setCustomPresets(updated);
     localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(updated));
-    setNewPresetName("");
+    setActiveEditingPresetId(newId);
+  };
+
+  // Update an existing custom preset in local storage
+  const handleUpdateCustomPreset = () => {
+    if (!activeEditingPresetId) return;
+    if (!newPresetName.trim()) {
+      alert("Please enter a name for your custom preset.");
+      return;
+    }
+    const updated = customPresets.map(p => {
+      if (p.id === activeEditingPresetId) {
+        return {
+          ...p,
+          name: newPresetName.trim(),
+          systemPrompt: tempSystemPrompt,
+          promptTemplate: tempPromptTemplate
+        };
+      }
+      return p;
+    });
+    setCustomPresets(updated);
+    localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(updated));
   };
 
   // Delete a specific custom preset from local storage
@@ -977,6 +1014,10 @@ export default function PromptGeneratorPage() {
     const updated = customPresets.filter(p => p.id !== id);
     setCustomPresets(updated);
     localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(updated));
+    if (activeEditingPresetId === id) {
+      setActiveEditingPresetId(null);
+      setNewPresetName("");
+    }
   };
 
   // Save the custom configuration to local state and local storage
@@ -1786,13 +1827,15 @@ export default function PromptGeneratorPage() {
                     {isSystemPresetsOpen && (
                       <div className="flex flex-col gap-1.5 transition-all">
                         {presets.map((preset) => {
-                          const isActive = tempSystemPrompt === preset.systemPrompt && tempPromptTemplate === preset.promptTemplate;
+                          const isActive = !activeEditingPresetId && tempSystemPrompt === preset.systemPrompt && tempPromptTemplate === preset.promptTemplate;
                           return (
                             <button
                               key={preset.id}
                               onClick={() => {
                                 setTempSystemPrompt(preset.systemPrompt);
                                 setTempPromptTemplate(preset.promptTemplate);
+                                setActiveEditingPresetId(null);
+                                setNewPresetName("");
                               }}
                               className={`w-full text-left px-3 py-2 border text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex flex-col gap-0.5 ${
                                 isActive 
@@ -1815,9 +1858,23 @@ export default function PromptGeneratorPage() {
 
                   {/* Save current as custom preset */}
                   <div className="flex flex-col gap-2">
-                    <h4 className="text-[10px] font-black uppercase tracking-wider text-[#1A1A1A]">
-                      Save Current As Preset
-                    </h4>
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-[10px] font-black uppercase tracking-wider text-[#1A1A1A]">
+                        {activeEditingPresetId ? "Preset Workspace" : "Save Current As Preset"}
+                      </h4>
+                      {activeEditingPresetId && (
+                        <button
+                          onClick={() => {
+                            setActiveEditingPresetId(null);
+                            setNewPresetName("");
+                          }}
+                          className="text-[9px] font-mono font-bold text-red-500 hover:text-red-700 uppercase cursor-pointer"
+                          title="Deselect loaded preset to start a new workspace"
+                        >
+                          [Deselect]
+                        </button>
+                      )}
+                    </div>
                     <div className="flex flex-col gap-1.5">
                       <label htmlFor="new-preset-name" className="sr-only">New Preset Name</label>
                       <input
@@ -1828,13 +1885,32 @@ export default function PromptGeneratorPage() {
                         placeholder="Preset name (e.g. Scriptwriter)"
                         className="w-full bg-white border border-[#D1D1CF] p-2 text-[10px] outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A]"
                       />
-                      <button
-                        onClick={handleSaveCustomPreset}
-                        className="w-full py-2 bg-[#1A1A1A] text-white hover:bg-[#333] border border-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
-                        Save Preset
-                      </button>
+                      {activeEditingPresetId ? (
+                        <div className="flex flex-col gap-1.5">
+                          <button
+                            onClick={handleUpdateCustomPreset}
+                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Check className="w-3.5 h-3.5 shrink-0" />
+                            Update Preset
+                          </button>
+                          <button
+                            onClick={handleSaveCustomPreset}
+                            className="w-full py-1.5 bg-white hover:bg-[#F4F4F2] text-[#1A1A1A] border border-[#D1D1CF] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
+                            Save As New Preset
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={handleSaveCustomPreset}
+                          className="w-full py-2 bg-[#1A1A1A] text-white hover:bg-[#333] border border-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
+                          Save Preset
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1858,7 +1934,7 @@ export default function PromptGeneratorPage() {
                     {isCustomPresetsOpen && (
                       <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-0.5 transition-all">
                         {customPresets.map((preset) => {
-                          const isActive = tempSystemPrompt === preset.systemPrompt && tempPromptTemplate === preset.promptTemplate;
+                          const isActive = activeEditingPresetId === preset.id || (!activeEditingPresetId && tempSystemPrompt === preset.systemPrompt && tempPromptTemplate === preset.promptTemplate);
                           return (
                             <div 
                               key={preset.id}
@@ -1872,6 +1948,8 @@ export default function PromptGeneratorPage() {
                                 onClick={() => {
                                   setTempSystemPrompt(preset.systemPrompt);
                                   setTempPromptTemplate(preset.promptTemplate);
+                                  setActiveEditingPresetId(preset.id);
+                                  setNewPresetName(preset.name);
                                 }}
                                 className="flex-1 text-left px-3 py-2 cursor-pointer truncate"
                               >
