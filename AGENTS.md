@@ -159,7 +159,8 @@ The workspace reads dynamic template specifications from the currently configure
 - **Error Handling**: Failed fetches show a dismissible error toast with troubleshooting guidance.
 
 ### Rule J: Custom User Presets (localStorage)
-- **CRUD Operations**: Users can save, load, and delete custom presets entirely client-side via localStorage key `prompt_generator_custom_presets`.
+- **CRUD Operations & Preset Updates**: Users can save, load, delete, and update custom presets entirely client-side via localStorage key `prompt_generator_custom_presets`.
+- **Active Preset State Tracking**: The system tracks the loaded custom preset via `activeEditingPresetId`. When a preset is actively loaded, the sidebar UI dynamically transitions the save flow into a dual-mode control panel offering both "Update Preset" (overwrites the selected preset) and "Save As New Preset" (creates a cloned preset), alongside a clear "[Deselect]" button to start a new workspace.
 - **Separation from System Presets**: Custom presets (user-created) are stored in localStorage and managed independently from filesystem presets (loaded via `/api/prompt-config`). Both appear in the "Configure Prompts" modal sidebar.
 - **Import/Export**: The Configure Prompts modal supports JSON file import and export of the current system prompt + prompt template configuration.
 - **Collapsible Sections**: System Presets, Custom Presets, and Lab Manual sidebar sections persist their open/closed state in localStorage.
