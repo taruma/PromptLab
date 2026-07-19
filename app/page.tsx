@@ -20,7 +20,8 @@ import {
   Info,
   Download,
   ChevronDown,
-  BookOpen
+  BookOpen,
+  Search
 } from "lucide-react";
 
 interface UploadedImage {
@@ -181,6 +182,10 @@ export default function PromptGeneratorPage() {
   const [isCustomPresetsOpen, setIsCustomPresetsOpen] = useState<boolean>(true);
   const [isDiskDropdownOpen, setIsDiskDropdownOpen] = useState<boolean>(false);
   const [activeEditingPresetId, setActiveEditingPresetId] = useState<string | null>(null);
+  
+  // Preset Search & Filter tabs
+  const [presetSearch, setPresetSearch] = useState<string>("");
+  const [activePresetTab, setActivePresetTab] = useState<"all" | "system" | "custom">("all");
   
   // Engine Controls states
   const [selectedModel, setSelectedModel] = useState<string>("gemini-3.5-flash");
@@ -1877,51 +1882,184 @@ export default function PromptGeneratorPage() {
 
                   <hr className="border-[#D1D1CF]" />
 
-                  {/* System Presets */}
-                  <div>
-                    <button 
-                      onClick={() => {
-                        const newVal = !isSystemPresetsOpen;
-                        setIsSystemPresetsOpen(newVal);
-                        localStorage.setItem("prompt_generator_sys_presets_open", String(newVal));
-                      }}
-                      className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
-                    >
-                      <span>System Presets</span>
-                      <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isSystemPresetsOpen ? "rotate-180" : ""}`} />
-                    </button>
+                  {/* Preset Search & Filter */}
+                  <div className="flex flex-col gap-2">
+                    <div className="relative flex items-center">
+                      <Search className="w-3.5 h-3.5 text-[#888884] absolute left-2.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Search presets..."
+                        value={presetSearch}
+                        onChange={(e) => setPresetSearch(e.target.value)}
+                        className="w-full bg-[#F4F4F2] border border-[#D1D1CF] pl-8 pr-2.5 py-1.5 text-[10px] uppercase font-bold tracking-wider outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A]"
+                      />
+                    </div>
                     
-                    {isSystemPresetsOpen && (
-                      <div className="flex flex-col gap-1.5 transition-all">
-                        {presets.map((preset) => {
-                          const isActive = !activeEditingPresetId && tempSystemPrompt === preset.systemPrompt && tempPromptTemplate === preset.promptTemplate;
-                          return (
-                            <button
-                              key={preset.id}
-                              onClick={() => {
-                                setTempSystemPrompt(preset.systemPrompt);
-                                setTempPromptTemplate(preset.promptTemplate);
-                                setActiveEditingPresetId(null);
-                                setNewPresetName("");
-                              }}
-                              className={`w-full text-left px-3 py-2 border text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex flex-col gap-0.5 ${
-                                isActive 
-                                  ? "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
-                                  : "bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white"
-                              }`}
-                            >
-                              <span className="truncate">{preset.name}</span>
-                            </button>
-                          );
-                        })}
-                        {presets.length === 0 && (
-                          <div className="text-[9px] text-[#888884] font-mono italic p-2 border border-[#D1D1CF] bg-[#F4F4F2] uppercase text-center">
-                            No Presets Found
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <div className="grid grid-cols-3 border border-[#D1D1CF] bg-[#F4F4F2] p-0.5">
+                      <button
+                        onClick={() => setActivePresetTab("all")}
+                        className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
+                          activePresetTab === "all" 
+                            ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
+                            : "text-[#888884] hover:text-[#1A1A1A]"
+                        }`}
+                      >
+                        All ({presets.length + customPresets.length})
+                      </button>
+                      <button
+                        onClick={() => setActivePresetTab("system")}
+                        className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
+                          activePresetTab === "system" 
+                            ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
+                            : "text-[#888884] hover:text-[#1A1A1A]"
+                        }`}
+                      >
+                        Sys ({presets.length})
+                      </button>
+                      <button
+                        onClick={() => setActivePresetTab("custom")}
+                        className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
+                          activePresetTab === "custom" 
+                            ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
+                            : "text-[#888884] hover:text-[#1A1A1A]"
+                        }`}
+                      >
+                        User ({customPresets.length})
+                      </button>
+                    </div>
                   </div>
+
+                  <hr className="border-[#D1D1CF]" />
+
+                  {/* System Presets */}
+                  {(activePresetTab === "all" || activePresetTab === "system") && (
+                    <div>
+                      <button 
+                        onClick={() => {
+                          const newVal = !isSystemPresetsOpen;
+                          setIsSystemPresetsOpen(newVal);
+                          localStorage.setItem("prompt_generator_sys_presets_open", String(newVal));
+                        }}
+                        className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>System Presets</span>
+                          {presetSearch && (
+                            <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5 font-mono font-bold">
+                              {presets.filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase())).length}/{presets.length}
+                            </span>
+                          )}
+                        </div>
+                        <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isSystemPresetsOpen ? "rotate-180" : ""}`} />
+                      </button>
+                      
+                      {isSystemPresetsOpen && (
+                        <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-0.5 transition-all">
+                          {presets
+                            .filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase()))
+                            .map((preset) => {
+                              const isActive = !activeEditingPresetId && tempSystemPrompt === preset.systemPrompt && tempPromptTemplate === preset.promptTemplate;
+                              return (
+                                <button
+                                  key={preset.id}
+                                  onClick={() => {
+                                    setTempSystemPrompt(preset.systemPrompt);
+                                    setTempPromptTemplate(preset.promptTemplate);
+                                    setActiveEditingPresetId(null);
+                                    setNewPresetName("");
+                                  }}
+                                  className={`w-full text-left px-3 py-2 border text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex flex-col gap-0.5 ${
+                                    isActive 
+                                      ? "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
+                                      : "bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white"
+                                  }`}
+                                >
+                                  <span className="truncate">{preset.name}</span>
+                                </button>
+                              );
+                            })}
+                          {presets.filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase())).length === 0 && (
+                            <div className="text-[9px] text-[#888884] font-mono italic p-2 border border-[#D1D1CF] bg-[#F4F4F2] uppercase text-center">
+                              No Matches Found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Custom Presets */}
+                  {(activePresetTab === "all" || activePresetTab === "custom") && (
+                    <div>
+                      <button 
+                        onClick={() => {
+                          const newVal = !isCustomPresetsOpen;
+                          setIsCustomPresetsOpen(newVal);
+                          localStorage.setItem("prompt_generator_custom_presets_open", String(newVal));
+                        }}
+                        className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>Your Presets</span>
+                          <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5 font-mono">
+                            {presetSearch 
+                              ? `${customPresets.filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase())).length}/${customPresets.length}` 
+                              : customPresets.length
+                            }
+                          </span>
+                        </div>
+                        <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isCustomPresetsOpen ? "rotate-180" : ""}`} />
+                      </button>
+                      
+                      {isCustomPresetsOpen && (
+                        <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-0.5 transition-all">
+                          {customPresets
+                            .filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase()))
+                            .map((preset) => {
+                              const isActive = activeEditingPresetId === preset.id || (!activeEditingPresetId && tempSystemPrompt === preset.systemPrompt && tempPromptTemplate === preset.promptTemplate);
+                              return (
+                                <div 
+                                  key={preset.id}
+                                  className={`w-full border flex items-center justify-between transition-all text-[10px] font-bold uppercase tracking-wider ${
+                                    isActive 
+                                      ? "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
+                                      : "bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
+                                  }`}
+                                >
+                                  <button
+                                    onClick={() => {
+                                      setTempSystemPrompt(preset.systemPrompt);
+                                      setTempPromptTemplate(preset.promptTemplate);
+                                      setActiveEditingPresetId(preset.id);
+                                      setNewPresetName(preset.name);
+                                    }}
+                                    className="flex-1 text-left px-3 py-2 cursor-pointer truncate"
+                                  >
+                                    {preset.name}
+                                  </button>
+                                  <button
+                                    onClick={(e) => handleDeleteCustomPreset(preset.id, e)}
+                                    className={`p-2 transition-all cursor-pointer border-l hover:text-red-500 ${
+                                      isActive ? "border-[#333] hover:bg-[#333]" : "border-[#D1D1CF] hover:bg-white"
+                                    }`}
+                                    title="Delete preset"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          {customPresets.filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase())).length === 0 && (
+                            <div className="text-[9px] text-[#888884] font-mono italic p-2 border border-[#D1D1CF] bg-[#F4F4F2] uppercase text-center">
+                              No Matches Found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <hr className="border-[#D1D1CF]" />
 
                   {/* Save current as custom preset */}
                   <div className="flex flex-col gap-2">
@@ -1979,68 +2117,6 @@ export default function PromptGeneratorPage() {
                         </button>
                       )}
                     </div>
-                  </div>
-
-                  {/* Custom Presets */}
-                  <div>
-                    <button 
-                      onClick={() => {
-                        const newVal = !isCustomPresetsOpen;
-                        setIsCustomPresetsOpen(newVal);
-                        localStorage.setItem("prompt_generator_custom_presets_open", String(newVal));
-                      }}
-                      className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Your Presets</span>
-                        <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5 font-mono">{customPresets.length}</span>
-                      </div>
-                      <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isCustomPresetsOpen ? "rotate-180" : ""}`} />
-                    </button>
-                    
-                    {isCustomPresetsOpen && (
-                      <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-0.5 transition-all">
-                        {customPresets.map((preset) => {
-                          const isActive = activeEditingPresetId === preset.id || (!activeEditingPresetId && tempSystemPrompt === preset.systemPrompt && tempPromptTemplate === preset.promptTemplate);
-                          return (
-                            <div 
-                              key={preset.id}
-                              className={`w-full border flex items-center justify-between transition-all text-[10px] font-bold uppercase tracking-wider ${
-                                isActive 
-                                  ? "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
-                                  : "bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
-                              }`}
-                            >
-                              <button
-                                onClick={() => {
-                                  setTempSystemPrompt(preset.systemPrompt);
-                                  setTempPromptTemplate(preset.promptTemplate);
-                                  setActiveEditingPresetId(preset.id);
-                                  setNewPresetName(preset.name);
-                                }}
-                                className="flex-1 text-left px-3 py-2 cursor-pointer truncate"
-                              >
-                                {preset.name}
-                              </button>
-                              <button
-                                onClick={(e) => handleDeleteCustomPreset(preset.id, e)}
-                                className={`p-2 transition-all cursor-pointer border-l hover:text-red-500 ${
-                                  isActive ? "border-[#333] hover:bg-[#333]" : "border-[#D1D1CF] hover:bg-white"
-                                }`}
-                                title="Delete preset"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          );
-                        })}
-                        {customPresets.length === 0 && (
-                          <div className="text-[9px] text-[#888884] font-mono italic p-2 border border-[#D1D1CF] bg-[#F4F4F2] uppercase text-center">
-                            No Custom Presets
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
 
               </div>
