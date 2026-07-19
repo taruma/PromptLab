@@ -179,6 +179,7 @@ export default function PromptGeneratorPage() {
   const [newPresetName, setNewPresetName] = useState<string>("");
   const [isSystemPresetsOpen, setIsSystemPresetsOpen] = useState<boolean>(true);
   const [isCustomPresetsOpen, setIsCustomPresetsOpen] = useState<boolean>(true);
+  const [isDiskDropdownOpen, setIsDiskDropdownOpen] = useState<boolean>(false);
   const [activeEditingPresetId, setActiveEditingPresetId] = useState<string | null>(null);
   
   // Engine Controls states
@@ -1807,9 +1808,75 @@ export default function PromptGeneratorPage() {
             <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-[#F4F4F2]/50">
               
               {/* Left Sidebar: Presets & Disk Management */}
-              <div className="w-full md:w-64 border-r border-[#D1D1CF] bg-white p-5 flex flex-col justify-between shrink-0 overflow-y-auto">
-                <div className="flex flex-col gap-5">
+              <div className="w-full md:w-64 border-r border-[#D1D1CF] bg-white p-5 flex flex-col gap-5 shrink-0 overflow-y-auto">
                   
+                  {/* Workspace Actions Dropdown */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsDiskDropdownOpen(!isDiskDropdownOpen)}
+                      className="w-full px-3 py-2 bg-[#F4F4F2] hover:bg-[#EAEAE8] text-[#1A1A1A] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-between gap-1.5"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <FolderOpen className="w-3.5 h-3.5 shrink-0" />
+                        Config Options
+                      </span>
+                      <ChevronDown className={`w-3 h-3 text-[#888884] transition-transform duration-200 ${isDiskDropdownOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    
+                    {isDiskDropdownOpen && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-10" 
+                          onClick={() => setIsDiskDropdownOpen(false)} 
+                        />
+                        <div className="absolute left-0 right-0 mt-1 bg-white border border-[#1A1A1A] shadow-lg z-20 flex flex-col">
+                          {/* Hidden Input */}
+                          <input 
+                            type="file" 
+                            ref={jsonInputRef} 
+                            onChange={(e) => {
+                              handleImportJSON(e);
+                              setIsDiskDropdownOpen(false);
+                            }} 
+                            accept=".json" 
+                            className="hidden" 
+                          />
+                          <button
+                            onClick={() => jsonInputRef.current?.click()}
+                            className="w-full px-4 py-2.5 hover:bg-[#F4F4F2] text-left text-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-2 border-b border-[#D1D1CF]"
+                          >
+                            <FolderOpen className="w-3.5 h-3.5 shrink-0 text-[#888884]" />
+                            Import JSON
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              handleExportJSON();
+                              setIsDiskDropdownOpen(false);
+                            }}
+                            className="w-full px-4 py-2.5 hover:bg-[#F4F4F2] text-left text-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-2 border-b border-[#D1D1CF]"
+                          >
+                            <Download className="w-3.5 h-3.5 shrink-0 text-[#888884]" />
+                            Export JSON
+                          </button>
+                          
+                          <button
+                            onClick={() => {
+                              handleRestoreDefaultPrompts();
+                              setIsDiskDropdownOpen(false);
+                            }}
+                            className="w-full px-4 py-2.5 hover:bg-red-50 text-red-700 text-left text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-2"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                            Reset to TXT Files
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <hr className="border-[#D1D1CF]" />
+
                   {/* System Presets */}
                   <div>
                     <button 
@@ -1976,58 +2043,6 @@ export default function PromptGeneratorPage() {
                     )}
                   </div>
 
-                  <hr className="border-[#D1D1CF]" />
-
-                  {/* Import / Export header */}
-                  <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-3">
-                      Import / Export Config
-                    </h4>
-                    
-                    <div className="flex flex-col gap-2">
-                      {/* Hidden Input */}
-                      <input 
-                        type="file" 
-                        ref={jsonInputRef} 
-                        onChange={handleImportJSON} 
-                        accept=".json" 
-                        className="hidden" 
-                      />
-                      
-                      <button
-                        onClick={() => jsonInputRef.current?.click()}
-                        className="w-full py-2 bg-white hover:bg-[#F4F4F2] text-[#1A1A1A] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
-                      >
-                        <FolderOpen className="w-3.5 h-3.5 shrink-0" />
-                        Open JSON Config
-                      </button>
-
-                      <button
-                        onClick={handleExportJSON}
-                        className="w-full py-2 bg-white hover:bg-[#F4F4F2] text-[#1A1A1A] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2"
-                      >
-                        <Download className="w-3.5 h-3.5 shrink-0" />
-                        Save JSON Config
-                      </button>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Bottom of sidebar: Restore to files */}
-                <div className="pt-5 border-t border-[#D1D1CF] mt-5">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2.5">
-                    Original Template files
-                  </h4>
-                  <button
-                    onClick={handleRestoreDefaultPrompts}
-                    className="w-full py-2 bg-red-50/50 hover:bg-red-50 text-red-700 border border-red-200 hover:border-red-400 text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                    title="Load original prompts from .txt templates"
-                  >
-                    <RefreshCw className="w-3 h-3 shrink-0" />
-                    Reset to TXT Files
-                  </button>
-                </div>
               </div>
 
               {/* Right Editors Space */}
