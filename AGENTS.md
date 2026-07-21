@@ -22,7 +22,8 @@ Key differentiators:
 - **Styling**: Tailwind CSS v4 using modern `@tailwindcss/postcss` and native configuration. Includes `@tailwindcss/typography` and `tw-animate-css` plugins.
 - **Animation Support**: The `motion` package is in the dependency tree but is not currently utilized in any UI components.
 - **Icons**: `lucide-react` for simple, expressive visual indicators.
-- **AI Integration**: `@google/genai` TypeScript SDK (server-side only via App Router API paths).
+- **AI Integration**: `@google/genai` TypeScript SDK (v2.4.0, server-side only via App Router API paths).
+- **Analytics**: `@vercel/analytics` integrated in the root layout for Vercel deployment observability.
 - **Utility Libraries**: `clsx` + `tailwind-merge` (via `lib/utils.ts` `cn()` helper), `class-variance-authority`, `@hookform/resolvers`.
 - **Client-Side Storage**: **IndexedDB** (`promptlab_db` → `images` object store) for image blob persistence, avoiding browser localStorage quota constraints.
 - **Image Processing**: HTML Canvas API for automatic JPEG compression (90% quality) with transparency flattening on uploaded images.
@@ -53,6 +54,8 @@ Key differentiators:
 │   ├── favicon-*.png                # Various favicon sizes
 │   ├── android-chrome-*.png         # Android Chrome web app icons
 │   └── apple-touch-icon.png         # Apple touch icon
+├── /components
+│   └── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed)
 ├── /lib
 │   └── utils.ts                     # UI utility functions (class merging via cn())
 ├── /hooks
@@ -130,6 +133,7 @@ The workspace reads dynamic template specifications from the currently configure
 - **Streaming Output**: The workspace utilizes high-performance text streaming via Server-Sent Events (SSE). The server-side proxy `/app/api/generate/route.ts` streams chunks using the modern `generateContentStream` method.
 - **Client-Side Buffer Reassembly**: The client in `/app/page.tsx` implements custom chunk buffer parsing to split incoming line streams securely, gracefully resolving any fragmented or unterminated JSON data packets before parsing.
 - **Reasoning Trace Dynamic Separation**: For models that support reasoning/thinking, the stream separates thinking/thought blocks dynamically from the main output. The UI displays these in a dedicated **Engine Reasoning Trace** console box so that reasoning flows and generation text stream concurrently but remain visually separated.
+- **Character Count Display**: When a generation result is present, a live character count badge (`{N} CHARS`) is displayed next to the "Generation Result" header in the output panel, providing immediate feedback on output length.
 
 ### Rule F: Plain-Text Formatting Enforcement
 - The system instructions in `/prompts/system_prompt.txt` strictly mandate that the model output MUST be formatted as **pure, standard plain text** with zero Markdown symbols (no asterisks, hash signs, markdown tables, bold wraps, etc.).
@@ -161,9 +165,34 @@ The workspace reads dynamic template specifications from the currently configure
 ### Rule J: Custom User Presets (localStorage)
 - **CRUD Operations & Preset Updates**: Users can save, load, delete, and update custom presets entirely client-side via localStorage key `prompt_generator_custom_presets`.
 - **Active Preset State Tracking**: The system tracks the loaded custom preset via `activeEditingPresetId`. When a preset is actively loaded, the sidebar UI dynamically transitions the save flow into a dual-mode control panel offering both "Update Preset" (overwrites the selected preset) and "Save As New Preset" (creates a cloned preset), alongside a clear "[Deselect]" button to start a new workspace.
+- **Loaded vs. Edited State Detection**: The system distinguishes between "loaded" (preset matches the editor content) and "edited" (editor content has diverged from the loaded preset). Visual badges (`[ACTIVE]` in emerald, `[EDITED]` pulsing in amber) appear on preset items and the save button dynamically changes its styling and label to reflect the state.
+- **Discard Confirmation**: Closing the Configure Prompts modal with unsaved changes triggers a confirmation dialog warning about irreversible data loss. Pressing ESC while editing no longer silently discards — it first checks for modifications and prompts the user.
+- **Workspace Actions Dropdown**: A "Config Options" dropdown in the sidebar consolidates Import JSON, Export JSON, and Reset to TXT Files actions into a single compact menu, freeing sidebar space.
+- **Preset Search & Tab Filtering**: Presets can be searched by name and filtered via a three-tab toggle (All / Sys / User) with count badges, making navigation efficient even with many presets.
 - **Separation from System Presets**: Custom presets (user-created) are stored in localStorage and managed independently from filesystem presets (loaded via `/api/prompt-config`). Both appear in the "Configure Prompts" modal sidebar.
 - **Import/Export**: The Configure Prompts modal supports JSON file import and export of the current system prompt + prompt template configuration.
 - **Collapsible Sections**: System Presets, Custom Presets, and Lab Manual sidebar sections persist their open/closed state in localStorage.
+
+### Rule K: Asset Library Sidebar
+- **Persistent Image Library**: A slide-out sidebar (`components/AssetLibrarySidebar.tsx`) enables users to upload, browse, search, rename, delete, and reuse images across workspaces.
+- **IndexedDB Storage**: Asset images are stored in IndexedDB (`promptlab_db` / `images` store) with metadata (label, mimeType, createdAt) persisted in localStorage under `promptlab_asset_library_images`.
+- **Search & Sort**: Library images can be searched by label name and sorted by name or date, with a toggle between list and grid views.
+- **Cross-Workspace Reuse**: Images from the library can be added to the active workspace via `onAddImageToWorkspace` callback, creating a `@imageN` reference with the library label.
+- **Library Cleanup**: Deleting a library image removes both the IndexedDB blob and its localStorage metadata entry. Upload deduplication prevents duplicate images with matching base64 content.
+
+### Rule L: Diff Visualization & Preset Compare
+- **Client-Side LCS Diff Engine**: A custom Longest Common Subsequence diff algorithm (`computeLineDiff`) generates line-by-line change data (added, removed, unchanged) with line number tracking. A companion `alignDiffLines` function pairs up added/removed lines for split-view display.
+- **Preset Compare Modal**: When browsing presets, a `GitCompare` button opens a full-screen modal showing the differences between the current editor content and the selected preset's configuration.
+- **Unified vs. Split View**: The compare modal supports both unified (inline) and split (side-by-side) views with color-coded additions (green) and deletions (red).
+- **"Changes Only" Filter**: A Git-style context-window filter (`--show-only-changes`) collapses unchanged regions to 3-line context blocks with `<skipped N lines>` markers, toggleable to full file view.
+- **Tab Switching**: Separate tabs for comparing "System Instructions" vs. "Prompt Template," with add/delete line counts displayed per tab.
+- **Apply & Load**: The "Apply & Load Preset" button imports the selected preset's content into the editor, automatically setting `activeEditingPresetId` for custom presets or `loadedPresetId` for system presets.
+
+### Rule M: History Management
+- **Session History Persistence**: Generation results are automatically archived to localStorage (`prompt_generator_history`), preserving the generated text, active variable states, and image references for future recall.
+- **History Recall**: Clicking a history card restores the full workspace state (prompt templates, variables, image references — loading blobs from IndexedDB) and populates the output panel with the archived generation result.
+- **Clear History with Confirmation**: A "Clear All History" button triggers a confirmation modal warning that the operation deletes all saved history items and permanently purges their associated images from IndexedDB. This is irreversible.
+- **Decoupled Image IDs**: History images are stored under unique generated IDs (`hist-img-{timestamp}-{idx}-{random}`) independent of active session image IDs, ensuring that deleting or modifying active images never breaks historical references.
 
 ---
 
@@ -186,12 +215,3 @@ npm run start
 npm run clean
 ```
 
----
-
-## 7. Future Upgrades Checklist (When requested by user)
-1. **Adding New Prompt Templates**: If users ask to switch templates, consider adding an API route to swap or select different text templates stored in `/prompts/`.
-2. **Rich Text Formatting Adjustments**: If the user explicitly asks to render markdown outputs (e.g. bold titles, checklists), you must:
-   - Adjust `prompts/system_prompt.txt` to allow standard Markdown tags.
-   - Install `react-markdown` via `install_applet_package` and integrate it into `app/page.tsx` inside a `.markdown-body` wrapper, as specified in standard guidelines.
-3. **Firestore Integration**: If the user requests persistence across devices or multi-user access:
-   - Follow standard Firestore procedures using the `firebase-integration` skill to sync workspace variables and local history securely to Cloud Firestore.

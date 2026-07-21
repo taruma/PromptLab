@@ -25,7 +25,10 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 - **Custom Presets** — Save your own system instructions and templates. Import and export them as JSON files. Share presets via URL query parameters.
 - **Engine Controls** — Switch between Gemini models (3.5 Flash, 3.1 Flash Lite, 3.1 Pro), adjust temperature, reasoning effort, and max output tokens.
 - **Custom API Key** — Bring your own Gemini API key to use personal quotas or premium models.
-- **Session History** — Past generations are saved locally in your browser for easy recall.
+- **Session History** — Past generations are saved locally in your browser for easy recall. Clear history with a single action.
+- **Asset Library** — A persistent image library sidebar. Upload, browse, search, rename, and reuse images across workspaces without re-uploading.
+- **Preset Compare & Diff Viewer** — Side-by-side diff between your current config and any saved preset. Git-style add/remove highlighting before you load.
+- **Preset Search & Filtering** — Search presets by name and filter with All / System / User tab toggles for quick navigation.
 - **Lab Manual & Quick-Start Guide** — A built-in 4-step walkthrough helps new users get oriented and productive immediately.
 
 ---
@@ -110,7 +113,7 @@ Supported parameters: `?presetUrl=`, `?configUrl=`, `?preset=`, or `?config=`. O
 
 ## Tech Stack
 
-Built with [Next.js](https://nextjs.org/) 15, [Tailwind CSS](https://tailwindcss.com/) v4, and the [Google GenAI SDK](https://www.npmjs.com/package/@google/genai). Image persistence uses IndexedDB to avoid browser storage limits.
+Built with [Next.js](https://nextjs.org/) 15, [Tailwind CSS](https://tailwindcss.com/) v4, [Vercel Analytics](https://vercel.com/analytics), and the [Google GenAI SDK](https://www.npmjs.com/package/@google/genai). Image persistence uses IndexedDB to avoid browser storage limits.
 
 ---
 
