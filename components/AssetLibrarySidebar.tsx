@@ -441,7 +441,7 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
             </div>
           ) : (
             <>
-              {viewMode === "grid" ? (
+               {viewMode === "grid" ? (
                 <div className="grid grid-cols-2 gap-4" id="library-assets-grid">
                   {sortedAndFilteredImages.map((img) => {
                     const isAdded = addedFeedbackIds[img.id];
@@ -469,6 +469,11 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
                           </button>
                         </div>
 
+                        {/* Centered ID Caption */}
+                        <div className="text-center font-mono text-[7px] text-[#888884] select-all tracking-tighter leading-tight break-all">
+                          ID: {img.id}
+                        </div>
+
                         {/* Inline Label editing */}
                         <div className="flex flex-col gap-1">
                           <span className="text-[8px] font-mono text-[#888884] uppercase tracking-wider">Asset Label:</span>
@@ -485,7 +490,7 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
                         {/* Trigger Button: Add to Workspace */}
                         <button
                           onClick={() => handleAddToWorkspace(img)}
-                          className={`w-full py-1.5 border text-[9px] uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                          className={`w-full py-1.5 border text-[9px] uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-1 cursor-pointer mt-1 ${
                             isAdded
                               ? "bg-emerald-500 border-emerald-500 text-white"
                               : "bg-white border-[#D1D1CF] text-[#1A1A1A] hover:border-[#1A1A1A] hover:bg-[#F4F4F2]"

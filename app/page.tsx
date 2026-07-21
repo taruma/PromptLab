@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 
 import AssetLibrarySidebar from "../components/AssetLibrarySidebar";
+import VisualAssetCard from "../components/VisualAssetCard";
 import {
   openDB,
   getStoredImage,
@@ -1412,7 +1413,7 @@ export default function PromptGeneratorPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 mt-1">
               {/* Drag and Drop Uploader */}
               <div
                 onDragEnter={handleDrag}
@@ -1443,42 +1444,13 @@ export default function PromptGeneratorPage() {
 
               {/* Active Asset Cards */}
               {uploadedImages.map((img, index) => (
-                <div 
+                <VisualAssetCard
                   key={img.id}
-                  className="bg-white border border-[#D1D1CF] p-2.5 flex flex-col gap-2 group relative transition-all hover:border-[#1A1A1A]"
-                >
-                  <div className="aspect-square bg-[#EAEAE8] relative overflow-hidden flex items-center justify-center">
-                    <img 
-                      src={img.base64} 
-                      alt={img.label}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-1 left-1 bg-[#1A1A1A] text-white text-[8px] font-mono font-bold px-1 py-0.2">
-                      @image{index + 1}
-                    </div>
-                    {/* Floating delete asset */}
-                    <button
-                      onClick={() => handleDeleteImage(img.id)}
-                      className="absolute top-1 right-1 bg-white border border-[#D1D1CF] hover:border-red-600 hover:text-red-600 text-stone-500 p-1 transition-all cursor-pointer"
-                      title="Delete asset link"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                  
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[8px] font-mono text-[#888884] uppercase tracking-wider">Map To Name:</span>
-                    <label htmlFor={`img-label-${img.id}`} className="sr-only">Map To Name</label>
-                    <input
-                      id={`img-label-${img.id}`}
-                      type="text"
-                      value={img.label}
-                      onChange={(e) => handleUpdateLabel(img.id, e.target.value)}
-                      placeholder={`Cast member ${index + 1}`}
-                      className="text-[11px] font-bold underline bg-transparent outline-none w-full text-[#1A1A1A] focus:text-stone-900 focus:no-underline border-b border-transparent focus:border-[#1A1A1A]"
-                    />
-                  </div>
-                </div>
+                  img={img}
+                  index={index}
+                  onUpdateLabel={handleUpdateLabel}
+                  onDeleteImage={handleDeleteImage}
+                />
               ))}
             </div>
           </section>
