@@ -46,6 +46,7 @@ export default function EngineControlsModal({
   const [showNewKey, setShowNewKey] = useState<boolean>(false);
   const [addKeyError, setAddKeyError] = useState<string>("");
   const [isVaultCollapsed, setIsVaultCollapsed] = useState<boolean>(true);
+  const [isAdvancedCollapsed, setIsAdvancedCollapsed] = useState<boolean>(true);
 
   const [prevIsOpen, setPrevIsOpen] = useState<boolean>(isOpen);
 
@@ -58,6 +59,7 @@ export default function EngineControlsModal({
       setTempMaxTokens(maxTokens);
       setTempCustomApiKey(customApiKey);
       setIsVaultCollapsed(true);
+      setIsAdvancedCollapsed(true);
 
       // Load keys vault from localStorage
       try {
@@ -450,56 +452,85 @@ export default function EngineControlsModal({
                 </div>
               </div>
 
-              <hr className="border-[#D1D1CF]" />
-
-              {/* Temperature Slider */}
-              <div className="flex flex-col gap-2.5">
-                <div className="flex justify-between items-baseline">
+              <div className="border border-[#D1D1CF] p-4 bg-white flex flex-col gap-3">
+                <div 
+                  onClick={() => setIsAdvancedCollapsed(!isAdvancedCollapsed)}
+                  className="flex justify-between items-center cursor-pointer select-none group"
+                >
                   <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#1A1A1A]">
-                    Temperature (Creativity)
+                    Advanced Hyperparameters
                   </h4>
-                  <span className="text-xs font-mono font-bold bg-[#EAEAE8] border border-[#D1D1CF] px-2 py-0.5">
-                    {tempTemperature.toFixed(2)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-mono text-[#888884] group-hover:text-[#1A1A1A] font-bold uppercase transition-colors">
+                      {isAdvancedCollapsed ? "[EXPAND]" : "[COLLAPSE]"}
+                    </span>
+                    {isAdvancedCollapsed ? (
+                      <ChevronDown className="w-3.5 h-3.5 text-[#888884] group-hover:text-[#1A1A1A] transition-colors" />
+                    ) : (
+                      <ChevronUp className="w-3.5 h-3.5 text-[#888884] group-hover:text-[#1A1A1A] transition-colors" />
+                    )}
+                  </div>
                 </div>
-                <p className="text-[10px] text-[#888884] leading-normal">
-                  Higher values mean more random, highly creative results. Lower values restrict the output to be deterministic and literal.
-                </p>
-                <div className="flex items-center gap-3 mt-1.5">
-                  <span className="text-[9px] font-mono uppercase text-[#888884]">Stark</span>
-                  <input
-                    type="range"
-                    min="0.0"
-                    max="2.0"
-                    step="0.1"
-                    value={tempTemperature}
-                    onChange={(e) => setTempTemperature(Number(e.target.value))}
-                    className="flex-1 accent-[#1A1A1A] cursor-pointer h-1.5 bg-[#D1D1CF] rounded-none outline-none"
-                  />
-                  <span className="text-[9px] font-mono uppercase text-[#888884]">Wild</span>
-                </div>
-              </div>
 
-              <hr className="border-[#D1D1CF]" />
+                {!isAdvancedCollapsed && (
+                  <div className="flex flex-col gap-4 pt-1">
+                    <p className="text-[10px] text-[#888884] leading-normal">
+                      Fine-tune generation response creativity (Temperature) and length limits. Restoring defaults is always available.
+                    </p>
 
-              {/* Max Tokens input */}
-              <div className="flex flex-col gap-2.5">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#1A1A1A]">
-                  Max Output Tokens Limit
-                </h4>
-                <p className="text-[10px] text-[#888884] leading-normal">
-                  Specifies the absolute threshold for total tokens. Set blank to utilize natural auto-truncation guidelines.
-                </p>
-                <label htmlFor="temp-max-tokens" className="sr-only">Max Output Tokens</label>
-                <input
-                  id="temp-max-tokens"
-                  type="text"
-                  pattern="[0-9]*"
-                  value={tempMaxTokens}
-                  onChange={(e) => setTempMaxTokens(e.target.value.replace(/\D/g, ""))}
-                  placeholder="e.g. 2048 (leave blank for default auto)"
-                  className="bg-white border border-[#D1D1CF] p-3 text-xs font-mono outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A] mt-1"
-                />
+                    <hr className="border-[#D1D1CF]" />
+
+                    {/* Temperature Slider */}
+                    <div className="flex flex-col gap-2.5">
+                      <div className="flex justify-between items-baseline">
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#1A1A1A]">
+                          Temperature (Creativity)
+                        </h4>
+                        <span className="text-xs font-mono font-bold bg-[#EAEAE8] border border-[#D1D1CF] px-2 py-0.5">
+                          {tempTemperature.toFixed(2)}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-[#888884] leading-normal">
+                        Higher values mean more random, highly creative results. Lower values restrict the output to be deterministic and literal.
+                      </p>
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <span className="text-[9px] font-mono uppercase text-[#888884]">Stark</span>
+                        <input
+                          type="range"
+                          min="0.0"
+                          max="2.0"
+                          step="0.1"
+                          value={tempTemperature}
+                          onChange={(e) => setTempTemperature(Number(e.target.value))}
+                          className="flex-1 accent-[#1A1A1A] cursor-pointer h-1.5 bg-[#D1D1CF] rounded-none outline-none"
+                        />
+                        <span className="text-[9px] font-mono uppercase text-[#888884]">Wild</span>
+                      </div>
+                    </div>
+
+                    <hr className="border-[#D1D1CF]" />
+
+                    {/* Max Tokens input */}
+                    <div className="flex flex-col gap-2.5">
+                      <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#1A1A1A]">
+                        Max Output Tokens Limit
+                      </h4>
+                      <p className="text-[10px] text-[#888884] leading-normal">
+                        Specifies the absolute threshold for total tokens. Set blank to utilize natural auto-truncation guidelines.
+                      </p>
+                      <label htmlFor="temp-max-tokens" className="sr-only">Max Output Tokens</label>
+                      <input
+                        id="temp-max-tokens"
+                        type="text"
+                        pattern="[0-9]*"
+                        value={tempMaxTokens}
+                        onChange={(e) => setTempMaxTokens(e.target.value.replace(/\D/g, ""))}
+                        placeholder="e.g. 2048 (leave blank for default auto)"
+                        className="bg-white border border-[#D1D1CF] p-3 text-xs font-mono outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A] mt-1"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
