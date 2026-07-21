@@ -329,8 +329,8 @@ export default function HistoryViewerModal({
                     <span className="text-[8px] font-mono font-black uppercase tracking-wider text-[#888884]">
                       Active History Spec Slot: {selectedItem.id}
                     </span>
-                    <h2 className="text-base font-black uppercase text-[#1A1A1A] tracking-tight leading-tight">
-                      {selectedItem.name || selectedItem.variables["idea"] || "Untitled Outline"}
+                    <h2 className="text-base font-black uppercase text-[#1A1A1A] tracking-tight leading-tight break-words">
+                      {selectedItem.name || (selectedItem.variables["idea"] ? (selectedItem.variables["idea"].length > 100 ? selectedItem.variables["idea"].slice(0, 100) + "..." : selectedItem.variables["idea"]) : "Untitled Outline")}
                     </h2>
                     <span className="text-[10px] text-[#888884] font-mono uppercase block pt-0.5">
                       Synthesized on {selectedItem.timestamp}
