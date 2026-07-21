@@ -332,9 +332,35 @@ export default function PromptGeneratorPage() {
         if (savedMaxTokens) {
           setMaxTokens(savedMaxTokens);
         }
-        if (savedApiKey) {
-          setCustomApiKey(savedApiKey);
+
+        // Migrate or load custom API keys from vault
+        const savedKeysStr = localStorage.getItem("prompt_generator_custom_api_keys");
+        const savedActiveId = localStorage.getItem("prompt_generator_active_api_key_id") || "";
+        let keysList: { id: string; label: string; key: string }[] = [];
+        if (savedKeysStr) {
+          try {
+            keysList = JSON.parse(savedKeysStr);
+          } catch (e) {
+            keysList = [];
+          }
         }
+
+        if (savedApiKey && savedApiKey.trim() && keysList.length === 0) {
+          const defaultId = "key-" + Date.now();
+          keysList = [{ id: defaultId, label: "Default Key", key: savedApiKey }];
+          localStorage.setItem("prompt_generator_custom_api_keys", JSON.stringify(keysList));
+          localStorage.setItem("prompt_generator_active_api_key_id", defaultId);
+          localStorage.removeItem("prompt_generator_custom_api_key");
+          setCustomApiKey(savedApiKey);
+        } else {
+          const activeKeyObj = keysList.find(k => k.id === savedActiveId);
+          if (activeKeyObj) {
+            setCustomApiKey(activeKeyObj.key);
+          } else {
+            setCustomApiKey("");
+          }
+        }
+
         if (savedHistoryOpen !== null) {
           setIsHistoryOpen(savedHistoryOpen === "true");
         }
