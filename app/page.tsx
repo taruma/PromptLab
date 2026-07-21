@@ -22,7 +22,8 @@ import {
   ChevronDown,
   BookOpen,
   Search,
-  GitCompare
+  GitCompare,
+  AlertTriangle
 } from "lucide-react";
 
 interface UploadedImage {
@@ -313,6 +314,8 @@ export default function PromptGeneratorPage() {
   const [isCustomPresetsOpen, setIsCustomPresetsOpen] = useState<boolean>(true);
   const [isDiskDropdownOpen, setIsDiskDropdownOpen] = useState<boolean>(false);
   const [activeEditingPresetId, setActiveEditingPresetId] = useState<string | null>(null);
+  const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState<boolean>(false);
+  const [loadedPresetId, setLoadedPresetId] = useState<string | null>(null);
   
   // Preset Search & Filter tabs
   const [presetSearch, setPresetSearch] = useState<string>("");
@@ -612,24 +615,34 @@ export default function PromptGeneratorPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setIsPromptConfigOpen(false);
-        setIsEngineConfigOpen(false);
-        setIsClearConfirmOpen(false);
-        setIsHistoryClearConfirmOpen(false);
-        setIsUrlImportConfirmOpen(false);
-        setIsCompareOpen(false);
-        setUrlPresetData(null);
+        if (isDiscardConfirmOpen) {
+          setIsDiscardConfirmOpen(false);
+        } else if (isPromptConfigOpen) {
+          const isModified = tempSystemPrompt !== systemPrompt || tempPromptTemplate !== promptTemplate;
+          if (isModified) {
+            setIsDiscardConfirmOpen(true);
+          } else {
+            setIsPromptConfigOpen(false);
+          }
+        } else {
+          setIsEngineConfigOpen(false);
+          setIsClearConfirmOpen(false);
+          setIsHistoryClearConfirmOpen(false);
+          setIsUrlImportConfirmOpen(false);
+          setIsCompareOpen(false);
+          setUrlPresetData(null);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [isPromptConfigOpen, isDiscardConfirmOpen, tempSystemPrompt, tempPromptTemplate, systemPrompt, promptTemplate]);
 
   // Prevent body scrolling when any major modal is open
   useEffect(() => {
-    const isAnyModalOpen = isPromptConfigOpen || isEngineConfigOpen || isCompareOpen || isClearConfirmOpen || isHistoryClearConfirmOpen || isUrlImportConfirmOpen;
+    const isAnyModalOpen = isPromptConfigOpen || isEngineConfigOpen || isCompareOpen || isClearConfirmOpen || isHistoryClearConfirmOpen || isUrlImportConfirmOpen || isDiscardConfirmOpen;
     if (isAnyModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -638,7 +651,7 @@ export default function PromptGeneratorPage() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isPromptConfigOpen, isEngineConfigOpen, isCompareOpen, isClearConfirmOpen, isHistoryClearConfirmOpen, isUrlImportConfirmOpen]);
+  }, [isPromptConfigOpen, isEngineConfigOpen, isCompareOpen, isClearConfirmOpen, isHistoryClearConfirmOpen, isUrlImportConfirmOpen, isDiscardConfirmOpen]);
 
   // Helper: cleans the URL params
   const cleanUrlParam = () => {
@@ -1048,16 +1061,26 @@ export default function PromptGeneratorPage() {
     setTempSystemPrompt(systemPrompt);
     setTempPromptTemplate(promptTemplate);
     
-    // Check if current prompts match an existing custom preset
+    // Check if current prompts match any existing custom preset or system preset
     const matchingCustom = customPresets.find(
       p => p.systemPrompt === systemPrompt && p.promptTemplate === promptTemplate
     );
+    const matchingSys = presets.find(
+      p => p.systemPrompt === systemPrompt && p.promptTemplate === promptTemplate
+    );
+
     if (matchingCustom) {
       setActiveEditingPresetId(matchingCustom.id);
       setNewPresetName(matchingCustom.name);
+      setLoadedPresetId(matchingCustom.id);
+    } else if (matchingSys) {
+      setActiveEditingPresetId(null);
+      setNewPresetName("");
+      setLoadedPresetId(matchingSys.id);
     } else {
       setActiveEditingPresetId(null);
       setNewPresetName("");
+      setLoadedPresetId(null);
     }
     
     setIsPromptConfigOpen(true);
@@ -1199,6 +1222,26 @@ export default function PromptGeneratorPage() {
     localStorage.setItem("prompt_generator_system_prompt", tempSystemPrompt);
     localStorage.setItem("prompt_generator_prompt_template", tempPromptTemplate);
     setIsPromptConfigOpen(false);
+  };
+
+  // Check if current editor values differ from active workspace
+  const isWorkspaceModified = tempSystemPrompt !== systemPrompt || tempPromptTemplate !== promptTemplate;
+
+  // Check if current editor values differ from originally loaded preset values
+  const isPresetModified = () => {
+    if (!loadedPresetId) return false;
+    const preset = presets.find(p => p.id === loadedPresetId) || customPresets.find(p => p.id === loadedPresetId);
+    if (!preset) return false;
+    return tempSystemPrompt !== preset.systemPrompt || tempPromptTemplate !== preset.promptTemplate;
+  };
+
+  // Close the prompt configuration modal safely checking for changes
+  const handleClosePromptConfig = () => {
+    if (isWorkspaceModified) {
+      setIsDiscardConfirmOpen(true);
+    } else {
+      setIsPromptConfigOpen(false);
+    }
   };
 
   // Delete a specific history card
@@ -1961,7 +2004,7 @@ export default function PromptGeneratorPage() {
                 </h3>
               </div>
               <button
-                onClick={() => setIsPromptConfigOpen(false)}
+                onClick={handleClosePromptConfig}
                 className="text-stone-500 hover:text-[#1A1A1A] font-mono font-bold text-[10px] uppercase tracking-wider cursor-pointer"
               >
                 [ESC] CLOSE
@@ -2117,13 +2160,16 @@ export default function PromptGeneratorPage() {
                           {presets
                             .filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase()))
                             .map((preset) => {
-                              const isActive = !activeEditingPresetId && tempSystemPrompt === preset.systemPrompt && tempPromptTemplate === preset.promptTemplate;
+                              const isLoaded = loadedPresetId === preset.id;
+                              const isModified = isLoaded && (tempSystemPrompt !== preset.systemPrompt || tempPromptTemplate !== preset.promptTemplate);
                               return (
                                 <div 
                                   key={preset.id}
                                   className={`w-full border flex items-center justify-between transition-all text-[10px] font-bold uppercase tracking-wider ${
-                                    isActive 
-                                      ? "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
+                                    isLoaded 
+                                      ? isModified
+                                        ? "bg-amber-50 border-amber-500 text-amber-900 shadow-xs"
+                                        : "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
                                       : "bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
                                   }`}
                                 >
@@ -2133,10 +2179,21 @@ export default function PromptGeneratorPage() {
                                       setTempPromptTemplate(preset.promptTemplate);
                                       setActiveEditingPresetId(null);
                                       setNewPresetName("");
+                                      setLoadedPresetId(preset.id);
                                     }}
-                                    className="flex-1 text-left px-3 py-2 cursor-pointer truncate"
+                                    className="flex-1 text-left px-3 py-2 cursor-pointer truncate flex items-center gap-1.5 justify-between"
                                   >
-                                    {preset.name}
+                                    <span className="truncate">{preset.name}</span>
+                                    {isModified && (
+                                      <span className="text-[8px] bg-amber-200 text-amber-800 px-1 py-0.5 rounded-none font-mono font-bold shrink-0 animate-pulse">
+                                        [EDITED]
+                                      </span>
+                                    )}
+                                    {isLoaded && !isModified && (
+                                      <span className="text-[8px] bg-emerald-700 text-white px-1 py-0.5 rounded-none font-mono font-bold shrink-0">
+                                        [ACTIVE]
+                                      </span>
+                                    )}
                                   </button>
                                   <button
                                     onClick={(e) => {
@@ -2146,7 +2203,7 @@ export default function PromptGeneratorPage() {
                                       setCompareTab("system");
                                     }}
                                     className={`p-2 transition-all cursor-pointer border-l ${
-                                      isActive ? "border-[#333] hover:bg-[#333] text-amber-400" : "border-[#D1D1CF] hover:bg-white text-[#888884] hover:text-[#1A1A1A]"
+                                      isLoaded ? isModified ? "border-amber-500/30 hover:bg-amber-100 text-amber-700" : "border-[#333] hover:bg-[#333] text-amber-400" : "border-[#D1D1CF] hover:bg-white text-[#888884] hover:text-[#1A1A1A]"
                                     }`}
                                     title="Compare differences with active workspace"
                                   >
@@ -2193,13 +2250,16 @@ export default function PromptGeneratorPage() {
                           {customPresets
                             .filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase()))
                             .map((preset) => {
-                              const isActive = activeEditingPresetId === preset.id || (!activeEditingPresetId && tempSystemPrompt === preset.systemPrompt && tempPromptTemplate === preset.promptTemplate);
+                              const isLoaded = loadedPresetId === preset.id;
+                              const isModified = isLoaded && (tempSystemPrompt !== preset.systemPrompt || tempPromptTemplate !== preset.promptTemplate);
                               return (
                                 <div 
                                   key={preset.id}
                                   className={`w-full border flex items-center justify-between transition-all text-[10px] font-bold uppercase tracking-wider ${
-                                    isActive 
-                                      ? "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
+                                    isLoaded 
+                                      ? isModified
+                                        ? "bg-amber-50 border-amber-500 text-amber-900 shadow-xs"
+                                        : "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
                                       : "bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
                                   }`}
                                 >
@@ -2209,10 +2269,21 @@ export default function PromptGeneratorPage() {
                                       setTempPromptTemplate(preset.promptTemplate);
                                       setActiveEditingPresetId(preset.id);
                                       setNewPresetName(preset.name);
+                                      setLoadedPresetId(preset.id);
                                     }}
-                                    className="flex-1 text-left px-3 py-2 cursor-pointer truncate"
+                                    className="flex-1 text-left px-3 py-2 cursor-pointer truncate flex items-center gap-1.5 justify-between"
                                   >
-                                    {preset.name}
+                                    <span className="truncate">{preset.name}</span>
+                                    {isModified && (
+                                      <span className="text-[8px] bg-amber-200 text-amber-800 px-1 py-0.5 rounded-none font-mono font-bold shrink-0 animate-pulse">
+                                        [EDITED]
+                                      </span>
+                                    )}
+                                    {isLoaded && !isModified && (
+                                      <span className="text-[8px] bg-emerald-700 text-white px-1 py-0.5 rounded-none font-mono font-bold shrink-0">
+                                        [ACTIVE]
+                                      </span>
+                                    )}
                                   </button>
                                   <button
                                     onClick={(e) => {
@@ -2222,7 +2293,7 @@ export default function PromptGeneratorPage() {
                                       setCompareTab("system");
                                     }}
                                     className={`p-2 transition-all cursor-pointer border-l ${
-                                      isActive ? "border-[#333] hover:bg-[#333] text-amber-400" : "border-[#D1D1CF] hover:bg-white text-[#888884] hover:text-[#1A1A1A]"
+                                      isLoaded ? isModified ? "border-amber-500/30 hover:bg-amber-100 text-amber-700" : "border-[#333] hover:bg-[#333] text-amber-400" : "border-[#D1D1CF] hover:bg-white text-[#888884] hover:text-[#1A1A1A]"
                                     }`}
                                     title="Compare differences with active workspace"
                                   >
@@ -2231,7 +2302,7 @@ export default function PromptGeneratorPage() {
                                   <button
                                     onClick={(e) => handleDeleteCustomPreset(preset.id, e)}
                                     className={`p-2 transition-all cursor-pointer border-l hover:text-red-500 ${
-                                      isActive ? "border-[#333] hover:bg-[#333]" : "border-[#D1D1CF] hover:bg-white"
+                                      isLoaded ? isModified ? "border-amber-500/30 hover:bg-amber-100" : "border-[#333] hover:bg-[#333]" : "border-[#D1D1CF] hover:bg-white"
                                     }`}
                                     title="Delete preset"
                                   >
@@ -2263,6 +2334,7 @@ export default function PromptGeneratorPage() {
                           onClick={() => {
                             setActiveEditingPresetId(null);
                             setNewPresetName("");
+                            setLoadedPresetId(null);
                           }}
                           className="text-[9px] font-mono font-bold text-red-500 hover:text-red-700 uppercase cursor-pointer"
                           title="Deselect loaded preset to start a new workspace"
@@ -2283,12 +2355,21 @@ export default function PromptGeneratorPage() {
                       />
                       {activeEditingPresetId ? (
                         <div className="flex flex-col gap-1.5">
+                          {isPresetModified() && (
+                            <p className="text-[8px] text-amber-700 font-mono font-black uppercase leading-tight tracking-wider animate-pulse flex items-center gap-1">
+                              <span>● PRESET HAS UNSAVED CHANGES</span>
+                            </p>
+                          )}
                           <button
                             onClick={handleUpdateCustomPreset}
-                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                            className={`w-full py-2 text-white text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 border ${
+                              isPresetModified()
+                                ? "bg-amber-600 hover:bg-amber-700 border-amber-600 shadow-sm animate-pulse"
+                                : "bg-emerald-600 hover:bg-emerald-700 border-emerald-600"
+                            }`}
                           >
                             <Check className="w-3.5 h-3.5 shrink-0" />
-                            Update Preset
+                            Update Loaded Preset
                           </button>
                           <button
                             onClick={handleSaveCustomPreset}
@@ -2299,13 +2380,20 @@ export default function PromptGeneratorPage() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          onClick={handleSaveCustomPreset}
-                          className="w-full py-2 bg-[#1A1A1A] text-white hover:bg-[#333] border border-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                        >
-                          <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
-                          Save Preset
-                        </button>
+                        <div className="flex flex-col gap-1.5">
+                          {!activeEditingPresetId && isPresetModified() && (
+                            <p className="text-[8px] text-amber-700 font-mono font-black uppercase leading-tight tracking-wider flex items-center gap-1">
+                              <span>● MODIFIED SYSTEM PRESET (SAVE NEW)</span>
+                            </p>
+                          )}
+                          <button
+                            onClick={handleSaveCustomPreset}
+                            className="w-full py-2 bg-[#1A1A1A] text-white hover:bg-[#333] border border-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500 shrink-0" />
+                            Save Preset
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -2388,7 +2476,7 @@ export default function PromptGeneratorPage() {
             <div className="h-16 border-t border-[#D1D1CF] px-6 flex items-center justify-end bg-[#F4F4F2] shrink-0">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setIsPromptConfigOpen(false)}
+                  onClick={handleClosePromptConfig}
                   className="px-4 py-2 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all"
                 >
                   Cancel
@@ -2940,7 +3028,65 @@ export default function PromptGeneratorPage() {
             Check the URL query parameters or server configuration
           </p>
         </div>
-      )}      {/* Preset Compare Modal */}
+      )}
+
+      {/* Unsaved Changes Discard Confirmation Modal */}
+      {isDiscardConfirmOpen && (
+        <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" id="discard-confirm-modal">
+          <div className="bg-white border border-[#D1D1CF] w-full max-w-md flex flex-col justify-between shadow-2xl relative rounded-none animate-scale-up">
+            
+            {/* Modal Header */}
+            <div className="h-14 border-b border-[#D1D1CF] px-6 flex items-center justify-between bg-[#F4F4F2]">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 animate-pulse" />
+                <h3 className="text-xs font-black uppercase tracking-wider font-sans text-amber-700">
+                  Unsaved Changes Detected
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsDiscardConfirmOpen(false)}
+                className="text-stone-500 hover:text-[#1A1A1A] font-mono font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+              >
+                [ESC] CLOSE
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 bg-[#F4F4F2]/30 flex flex-col gap-4 text-xs leading-relaxed text-[#555]">
+              <p className="font-medium text-[#1A1A1A]">
+                You have edited your prompt configurations (System Instructions or Prompt Template) inside the editor. Closing now will discard these modifications completely.
+              </p>
+              <div className="bg-amber-50 border border-amber-200 p-3 text-[10px] text-amber-800 leading-normal border-l-4 border-l-amber-500 font-mono uppercase font-black tracking-wider leading-snug">
+                <span>⚠️ DISCARD IS COMPLETELY IRREVERSIBLE.</span>
+              </div>
+            </div>
+
+            {/* Modal Footer Controls */}
+            <div className="h-16 border-t border-[#D1D1CF] px-6 flex items-center justify-end bg-[#F4F4F2]">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsDiscardConfirmOpen(false)}
+                  className="px-4 py-2 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all bg-white text-[#1A1A1A]"
+                >
+                  Keep Editing
+                </button>
+                <button
+                  onClick={() => {
+                    setIsDiscardConfirmOpen(false);
+                    setIsPromptConfigOpen(false);
+                  }}
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border border-amber-600"
+                >
+                  Discard Changes
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Preset Compare Modal */}
       {isCompareOpen && comparePreset && (() => {
         const oldText = compareTab === "system" ? tempSystemPrompt : tempPromptTemplate;
         const newText = compareTab === "system" ? comparePreset.systemPrompt : comparePreset.promptTemplate;
