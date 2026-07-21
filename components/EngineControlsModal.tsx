@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, Info, EyeOff, Eye, RefreshCw, Trash2, KeyRound, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Info, EyeOff, Eye, RefreshCw, Trash2, KeyRound, ChevronDown, ChevronUp, Calendar, Database } from "lucide-react";
 
 interface EngineControlsModalProps {
   isOpen: boolean;
@@ -17,6 +17,93 @@ interface EngineControlsModalProps {
   customApiKey: string;
   setCustomApiKey: (key: string) => void;
 }
+
+interface ModelOption {
+  id: string;
+  name: string;
+  isNew?: boolean;
+  subtitle: string;
+  cutoff: string;
+  release: string;
+}
+
+const LATEST_MODELS: ModelOption[] = [
+  {
+    id: "gemini-flash-latest",
+    name: "Gemini Flash Latest",
+    isNew: true,
+    subtitle: "✦ gemini-3.6-flash",
+    cutoff: "Mar 2026",
+    release: "Jul 21, 2026",
+  },
+  {
+    id: "gemini-flash-lite-latest",
+    name: "Gemini Flash-Lite Latest",
+    isNew: true,
+    subtitle: "✦ gemini-3.5-flash-lite",
+    cutoff: "Mar 2026",
+    release: "Jul 21, 2026",
+  },
+  {
+    id: "gemini-pro-latest",
+    name: "Gemini Pro Latest",
+    isNew: false,
+    subtitle: "✦ gemini-3.1-pro-preview",
+    cutoff: "Jan 2025",
+    release: "Feb 12, 2026",
+  },
+];
+
+const SPECIFIC_MODELS: ModelOption[] = [
+  {
+    id: "gemini-3.6-flash",
+    name: "Gemini 3.6 Flash",
+    isNew: true,
+    subtitle: "gemini-3.6-flash",
+    cutoff: "Mar 2026",
+    release: "Jul 21, 2026",
+  },
+  {
+    id: "gemini-3.5-flash-lite",
+    name: "Gemini 3.5 Flash Lite",
+    isNew: true,
+    subtitle: "gemini-3.5-flash-lite",
+    cutoff: "Mar 2026",
+    release: "Jul 21, 2026",
+  },
+  {
+    id: "gemini-3.5-flash",
+    name: "Gemini 3.5 Flash",
+    isNew: false,
+    subtitle: "gemini-3.5-flash",
+    cutoff: "Jan 2025",
+    release: "May 20, 2026",
+  },
+  {
+    id: "gemini-3.1-pro-preview",
+    name: "Gemini 3.1 Pro Preview",
+    isNew: false,
+    subtitle: "gemini-3.1-pro-preview",
+    cutoff: "Jan 2025",
+    release: "Feb 12, 2026",
+  },
+  {
+    id: "gemini-3.1-flash-lite",
+    name: "Gemini 3.1 Flash Lite",
+    isNew: false,
+    subtitle: "gemini-3.1-flash-lite",
+    cutoff: "Jan 2025",
+    release: "May 7, 2026",
+  },
+  {
+    id: "gemini-3-flash-preview",
+    name: "Gemini 3 Flash Preview",
+    isNew: false,
+    subtitle: "gemini-3-flash-preview",
+    cutoff: "Jan 2025",
+    release: "Dec 17, 2025",
+  },
+];
 
 export default function EngineControlsModal({
   isOpen,
@@ -47,6 +134,7 @@ export default function EngineControlsModal({
   const [addKeyError, setAddKeyError] = useState<string>("");
   const [isVaultCollapsed, setIsVaultCollapsed] = useState<boolean>(true);
   const [isAdvancedCollapsed, setIsAdvancedCollapsed] = useState<boolean>(true);
+  const [isSpecificModelsCollapsed, setIsSpecificModelsCollapsed] = useState<boolean>(true);
 
   const [prevIsOpen, setPrevIsOpen] = useState<boolean>(isOpen);
 
@@ -60,6 +148,8 @@ export default function EngineControlsModal({
       setTempCustomApiKey(customApiKey);
       setIsVaultCollapsed(true);
       setIsAdvancedCollapsed(true);
+      const isSpecificActive = SPECIFIC_MODELS.some((m) => m.id === selectedModel);
+      setIsSpecificModelsCollapsed(!isSpecificActive);
 
       // Load keys vault from localStorage
       try {
@@ -100,7 +190,7 @@ export default function EngineControlsModal({
   };
 
   const handleResetEngineDefaults = () => {
-    setTempModel("gemini-3.5-flash");
+    setTempModel("gemini-flash-latest");
     setTempThinkingLevel("MEDIUM");
     setTempTemperature(1.0);
     setTempMaxTokens("");
@@ -132,13 +222,13 @@ export default function EngineControlsModal({
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-[#F4F4F2]/30">
           
           {/* Alert Warning for Paid Models */}
-          {tempModel === "gemini-3.1-pro-preview" && !tempCustomApiKey && (
+          {tempModel.includes("pro") && !tempCustomApiKey && (
             <div className="bg-amber-50 border border-amber-200 p-3.5 text-[10px] leading-relaxed flex items-start gap-2.5">
               <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
               <div className="flex flex-col gap-1 text-amber-800">
                 <span className="font-bold uppercase tracking-wider text-[9px] font-mono">Premium Engine Selected:</span>
                 <p>
-                  The <code className="font-mono bg-amber-100 px-1 font-bold">gemini-3.1-pro-preview</code> model requires a paid API key. Make sure your key is configured in the <strong>Settings &gt; Secrets</strong> panel or provided below in the custom key field.
+                  The <code className="font-mono bg-amber-100 px-1 font-bold">{tempModel}</code> model requires a paid API key. Make sure your key is configured in the <strong>Settings &gt; Secrets</strong> panel or provided below in the custom key field.
                 </p>
               </div>
             </div>
@@ -349,70 +439,135 @@ export default function EngineControlsModal({
               <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#1A1A1A]">
                 Select Generation Model
               </h4>
-              <div className="flex flex-col gap-3">
-                {/* Model Option 1 */}
+              
+              {/* Primary Latest Alias Models */}
+              <div className="flex flex-col gap-2">
+                {LATEST_MODELS.map((model) => {
+                  const isSelected = tempModel === model.id;
+                  return (
+                    <button
+                      key={model.id}
+                      type="button"
+                      onClick={() => {
+                        setTempModel(model.id);
+                        if (model.id.includes("pro") && tempThinkingLevel === "MINIMAL") {
+                          setTempThinkingLevel("HIGH");
+                        }
+                      }}
+                      className={`w-full text-left py-2.5 px-3.5 border transition-all cursor-pointer rounded-none flex flex-col gap-1.5 ${
+                        isSelected
+                          ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                          : "bg-white text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
+                      }`}
+                    >
+                      {/* Row 1: Title & Badge */}
+                      <div className="flex items-center gap-2 w-full">
+                        {model.isNew && (
+                          <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-emerald-500 text-white leading-tight shrink-0">
+                            NEW
+                          </span>
+                        )}
+                        <span className="font-black uppercase tracking-wider font-mono text-xs">
+                          {model.name}
+                        </span>
+                      </div>
+
+                      {/* Row 2: Subtitle & Metadata */}
+                      <div className="flex justify-between items-center w-full gap-2 text-[9.5px] font-mono">
+                        <span className={isSelected ? "text-stone-300 font-medium" : "text-[#888884]"}>
+                          {model.subtitle}
+                        </span>
+                        <div className={`flex items-center gap-2 shrink-0 ${isSelected ? "text-stone-300" : "opacity-80 text-[#888884]"}`}>
+                          <span className="flex items-center gap-1" title={`Knowledge Cutoff: ${model.cutoff}`}>
+                            <Database className="w-2.5 h-2.5 shrink-0" />
+                            <span>{model.cutoff}</span>
+                          </span>
+                          <span className="opacity-40">•</span>
+                          <span className="flex items-center gap-1" title={`Release Date: ${model.release}`}>
+                            <Calendar className="w-2.5 h-2.5 shrink-0" />
+                            <span>{model.release}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Collapsible Specific / Legacy Models */}
+              <div className="pt-2 border-t border-[#D1D1CF]/60 flex flex-col gap-2">
                 <button
-                  onClick={() => {
-                    setTempModel("gemini-3.5-flash");
-                  }}
-                  className={`w-full text-left p-4 border text-xs transition-all cursor-pointer flex flex-col gap-1.5 rounded-none ${
-                    tempModel === "gemini-3.5-flash"
-                      ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
-                      : "bg-white text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
-                  }`}
+                  type="button"
+                  onClick={() => setIsSpecificModelsCollapsed(!isSpecificModelsCollapsed)}
+                  className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#888884] hover:text-[#1A1A1A] py-1 cursor-pointer transition-colors"
                 >
-                  <div className="flex justify-between items-baseline w-full">
-                    <span className="font-black uppercase tracking-wider font-mono">Gemini 3.5 Flash</span>
-                    <span className="text-[8px] font-mono opacity-65 font-bold uppercase">Standard / Free</span>
+                  <span>Specific Model Versions ({SPECIFIC_MODELS.length})</span>
+                  <div className="flex items-center gap-1">
+                    <span className="font-mono text-[9px]">
+                      {isSpecificModelsCollapsed ? "[EXPAND]" : "[COLLAPSE]"}
+                    </span>
+                    {isSpecificModelsCollapsed ? (
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    ) : (
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    )}
                   </div>
-                  <p className={`text-[10px] leading-normal ${tempModel === "gemini-3.5-flash" ? "text-stone-300" : "text-[#888884]"}`}>
-                    Best general-purpose model. Fast performance and balanced creativity for standard scriptwriting and copy structuring.
-                  </p>
                 </button>
 
-                {/* Model Option 2 */}
-                <button
-                  onClick={() => {
-                    setTempModel("gemini-3.1-flash-lite");
-                  }}
-                  className={`w-full text-left p-4 border text-xs transition-all cursor-pointer flex flex-col gap-1.5 rounded-none ${
-                    tempModel === "gemini-3.1-flash-lite"
-                      ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
-                      : "bg-white text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
-                  }`}
-                >
-                  <div className="flex justify-between items-baseline w-full">
-                    <span className="font-black uppercase tracking-wider font-mono">Gemini 3.1 Flash Lite</span>
-                    <span className="text-[8px] font-mono opacity-65 font-bold uppercase">Fast / Free</span>
-                  </div>
-                  <p className={`text-[10px] leading-normal ${tempModel === "gemini-3.1-flash-lite" ? "text-stone-300" : "text-[#888884]"}`}>
-                    Low latency engine. Perfect for rapid prototyping, instant synthesis iterations, and low-complexity tasks.
-                  </p>
-                </button>
+                {!isSpecificModelsCollapsed && (
+                  <div className="flex flex-col gap-2 pt-1">
+                    {SPECIFIC_MODELS.map((model) => {
+                      const isSelected = tempModel === model.id;
+                      return (
+                        <button
+                          key={model.id}
+                          type="button"
+                          onClick={() => {
+                            setTempModel(model.id);
+                            if (model.id.includes("pro") && tempThinkingLevel === "MINIMAL") {
+                              setTempThinkingLevel("HIGH");
+                            }
+                          }}
+                          className={`w-full text-left py-2.5 px-3.5 border transition-all cursor-pointer rounded-none flex flex-col gap-1.5 ${
+                            isSelected
+                              ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                              : "bg-white text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
+                          }`}
+                        >
+                          {/* Row 1: Title & Badge */}
+                          <div className="flex items-center gap-2 w-full">
+                            {model.isNew && (
+                              <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-emerald-500 text-white leading-tight shrink-0">
+                                NEW
+                              </span>
+                            )}
+                            <span className="font-black uppercase tracking-wider font-mono text-xs">
+                              {model.name}
+                            </span>
+                          </div>
 
-                {/* Model Option 3 */}
-                <button
-                  onClick={() => {
-                    setTempModel("gemini-3.1-pro-preview");
-                    // Pro model does not support MINIMAL thinking level
-                    if (tempThinkingLevel === "MINIMAL") {
-                      setTempThinkingLevel("HIGH");
-                    }
-                  }}
-                  className={`w-full text-left p-4 border text-xs transition-all cursor-pointer flex flex-col gap-1.5 rounded-none ${
-                    tempModel === "gemini-3.1-pro-preview"
-                      ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
-                      : "bg-white text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
-                  }`}
-                >
-                  <div className="flex justify-between items-baseline w-full">
-                    <span className="font-black uppercase tracking-wider font-mono">Gemini 3.1 Pro</span>
-                    <span className="text-[8px] font-mono opacity-65 font-bold uppercase text-amber-500">Advanced / Paid</span>
+                          {/* Row 2: Subtitle & Metadata */}
+                          <div className="flex justify-between items-center w-full gap-2 text-[9.5px] font-mono">
+                            <span className={isSelected ? "text-stone-300 font-medium" : "text-[#888884]"}>
+                              {model.subtitle}
+                            </span>
+                            <div className={`flex items-center gap-2 shrink-0 ${isSelected ? "text-stone-300" : "opacity-80 text-[#888884]"}`}>
+                              <span className="flex items-center gap-1" title={`Knowledge Cutoff: ${model.cutoff}`}>
+                                <Database className="w-2.5 h-2.5 shrink-0" />
+                                <span>{model.cutoff}</span>
+                              </span>
+                              <span className="opacity-40">•</span>
+                              <span className="flex items-center gap-1" title={`Release Date: ${model.release}`}>
+                                <Calendar className="w-2.5 h-2.5 shrink-0" />
+                                <span>{model.release}</span>
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <p className={`text-[10px] leading-normal ${tempModel === "gemini-3.1-pro-preview" ? "text-stone-300" : "text-[#888884]"}`}>
-                    Complex text tasks and deep reasoning. Exceptional at intricate code specifications, deep creative plots, and detailed scripts.
-                  </p>
-                </button>
+                )}
               </div>
             </div>
 
@@ -430,7 +585,7 @@ export default function EngineControlsModal({
                 <div className="grid grid-cols-4 gap-1.5 mt-1">
                   {["HIGH", "MEDIUM", "LOW", "MINIMAL"].map((lvl) => {
                     const isSelected = tempThinkingLevel === lvl;
-                    const isDisabled = lvl === "MINIMAL" && tempModel === "gemini-3.1-pro-preview";
+                    const isDisabled = lvl === "MINIMAL" && tempModel.includes("pro");
                     return (
                       <button
                         key={lvl}
