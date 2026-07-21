@@ -61,6 +61,7 @@ interface HistoryItem {
   filledPrompt: string;
   promptTemplate?: string;
   systemPrompt?: string;
+  presetLabel?: string;
   name?: string;
   model?: string;
   thinkingLevel?: string;
@@ -1265,6 +1266,13 @@ export default function PromptGeneratorPage() {
           }
         });
 
+        const matchingPreset = customPresets.find(
+          p => p.systemPrompt === systemPrompt && p.promptTemplate === promptTemplate
+        ) || presets.find(
+          p => p.systemPrompt === systemPrompt && p.promptTemplate === promptTemplate
+        );
+        const activePresetLabel = matchingPreset ? matchingPreset.name : undefined;
+
         const newHistoryItem: HistoryItem = {
           id: `gen-${Date.now()}`,
           timestamp: new Date().toLocaleString("en-US", {
@@ -1279,6 +1287,7 @@ export default function PromptGeneratorPage() {
           filledPrompt: activeFilledPrompt || filledPrompt,
           promptTemplate: promptTemplate,
           systemPrompt: systemPrompt,
+          presetLabel: activePresetLabel,
           model: selectedModel,
           thinkingLevel: thinkingLevel,
           temperature: temperature,
@@ -1736,6 +1745,20 @@ export default function PromptGeneratorPage() {
                             <h4 className="text-[11px] font-bold uppercase text-[#1A1A1A] truncate tracking-tight pr-2">
                               {snippet}
                             </h4>
+                            {(item.model || item.presetLabel) && (
+                              <div className="flex items-center gap-1.5 mt-1 font-mono text-[8px] text-[#888884]">
+                                {item.model && (
+                                  <span className="border border-[#D1D1CF] bg-white text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase">
+                                    {item.model.replace("gemini-", "")}
+                                  </span>
+                                )}
+                                {item.presetLabel && (
+                                  <span className="border border-[#D1D1CF] bg-[#EAEAE8] text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold truncate max-w-[120px]">
+                                    {item.presetLabel}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <button
                             onClick={(e) => handleDeleteHistoryItem(item.id, e)}
