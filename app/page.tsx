@@ -399,12 +399,77 @@ export default function PromptGeneratorPage() {
       console.error("Failed to parse configurations on mount", e);
     }
 
-    // Load local storage history safely on mount (client-side only)
+    // Load local storage history safely on mount (client-side only) and sanitize dead parameters
     try {
       const savedHistory = localStorage.getItem("prompt_generator_history");
       if (savedHistory) {
         setTimeout(() => {
-          setHistory(JSON.parse(savedHistory));
+          const parsedHistory: HistoryItem[] = JSON.parse(savedHistory);
+          let wasModified = false;
+
+          const cleanedHistory = parsedHistory.map((item) => {
+            if (!item.variables) return item;
+
+            const entries = Object.entries(item.variables);
+            let validVarSet: Set<string> | null = null;
+
+            if (item.promptTemplate) {
+              const matches = Array.from(item.promptTemplate.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g));
+              validVarSet = new Set([...matches.map((m) => m[1]), "idea"]);
+            }
+
+            const cleanVars: Record<string, string> = {};
+            let itemChanged = false;
+
+            entries.forEach(([key, val]) => {
+              if (key === "visual_references" || key === "cast") {
+                itemChanged = true;
+                return;
+              }
+              if (key === "idea") {
+                cleanVars[key] = val;
+                return;
+              }
+
+              if (validVarSet) {
+                if (validVarSet.has(key)) {
+                  cleanVars[key] = val;
+                } else {
+                  itemChanged = true;
+                }
+              } else if (item.filledPrompt) {
+                const filledText = item.filledPrompt;
+                const isKeyMentioned = filledText.includes(`{{ ${key} }}`) || filledText.includes(`{{${key}}}`);
+                const isValPresent = val && val.trim() !== "" && val.trim().toLowerCase() !== "up to you" && filledText.includes(val);
+                const cleanKey = key.replace(/[_-]/g, " ");
+                const isKeyInFilled = cleanKey.length > 2 && filledText.toLowerCase().includes(cleanKey.toLowerCase());
+
+                if (isKeyMentioned || isValPresent || isKeyInFilled) {
+                  cleanVars[key] = val;
+                } else {
+                  itemChanged = true;
+                }
+              } else {
+                cleanVars[key] = val;
+              }
+            });
+
+            if (itemChanged) {
+              wasModified = true;
+              return { ...item, variables: cleanVars };
+            }
+            return item;
+          });
+
+          if (wasModified) {
+            try {
+              localStorage.setItem("prompt_generator_history", JSON.stringify(cleanedHistory));
+            } catch (err) {
+              console.error("Failed to save cleaned history back to localStorage", err);
+            }
+          }
+
+          setHistory(cleanedHistory);
         }, 0);
       }
     } catch (e) {
