@@ -59,6 +59,8 @@ interface HistoryItem {
   images: { id?: string; label: string; base64: string; mimeType: string }[];
   output: string;
   filledPrompt: string;
+  promptTemplate?: string;
+  systemPrompt?: string;
   name?: string;
   model?: string;
   thinkingLevel?: string;
@@ -245,7 +247,14 @@ export default function PromptGeneratorPage() {
             const savedInputs = localStorage.getItem("prompt_generator_active_inputs");
             if (savedInputs) {
               const parsedInputs = JSON.parse(savedInputs);
-              const mergedInputs = { ...initialInputs, ...parsedInputs };
+              const validVarSet = new Set([...activeVars, "idea"]);
+              const cleanedSavedInputs: Record<string, string> = {};
+              Object.keys(parsedInputs).forEach((k) => {
+                if (validVarSet.has(k)) {
+                  cleanedSavedInputs[k] = parsedInputs[k];
+                }
+              });
+              const mergedInputs = { ...initialInputs, ...cleanedSavedInputs };
               setInputs(mergedInputs);
             } else {
               setInputs(initialInputs);
@@ -719,10 +728,24 @@ export default function PromptGeneratorPage() {
 
   // Load a historic generation back into the editor
   const handleLoadHistoryItem = async (item: HistoryItem) => {
-    // Merge inputs
-    const updatedInputs = { ...inputs };
+    // Restore system prompt & prompt template if saved in history item
+    if (item.promptTemplate) {
+      setPromptTemplate(item.promptTemplate);
+      localStorage.setItem("prompt_generator_prompt_template", item.promptTemplate);
+      const vars = extractVariables(item.promptTemplate);
+      setVariables(vars);
+    }
+    if (item.systemPrompt) {
+      setSystemPrompt(item.systemPrompt);
+      localStorage.setItem("prompt_generator_system_prompt", item.systemPrompt);
+    }
+
+    // Set inputs cleanly from history item variables
+    const updatedInputs: Record<string, string> = {};
     Object.keys(item.variables).forEach(k => {
-      updatedInputs[k] = item.variables[k];
+      if (k !== "visual_references" && k !== "cast") {
+        updatedInputs[k] = item.variables[k];
+      }
     });
     setInputs(updatedInputs);
 
@@ -978,12 +1001,15 @@ export default function PromptGeneratorPage() {
     const vars = extractVariables(tempPromptTemplate);
     setVariables(vars);
 
-    // Merge previous inputs to preserve already typed entries
+    // Retain previous inputs for active template variables and idea, purge dead keys
     setInputs(prev => {
-      const updated = { ...prev };
+      const updated: Record<string, string> = {};
+      if (prev["idea"] !== undefined) {
+        updated["idea"] = prev["idea"];
+      }
       vars.forEach(v => {
-        if (v !== "visual_references" && v !== "cast" && updated[v] === undefined) {
-          updated[v] = "";
+        if (v !== "visual_references" && v !== "cast") {
+          updated[v] = prev[v] !== undefined ? prev[v] : "";
         }
       });
       return updated;
@@ -1184,6 +1210,17 @@ export default function PromptGeneratorPage() {
           })
         );
 
+        const activeTemplateVars = new Set(extractVariables(promptTemplate));
+        const cleanHistoryVariables: Record<string, string> = {};
+        if (inputs["idea"] !== undefined) {
+          cleanHistoryVariables["idea"] = inputs["idea"];
+        }
+        Object.keys(inputs).forEach(k => {
+          if (activeTemplateVars.has(k)) {
+            cleanHistoryVariables[k] = inputs[k];
+          }
+        });
+
         const newHistoryItem: HistoryItem = {
           id: `gen-${Date.now()}`,
           timestamp: new Date().toLocaleString("en-US", {
@@ -1192,10 +1229,12 @@ export default function PromptGeneratorPage() {
             hour: "2-digit",
             minute: "2-digit",
           }),
-          variables: { ...inputs },
+          variables: cleanHistoryVariables,
           images: historyImages,
           output: accumulatedText,
           filledPrompt: activeFilledPrompt || filledPrompt,
+          promptTemplate: promptTemplate,
+          systemPrompt: systemPrompt,
           model: selectedModel,
           thinkingLevel: thinkingLevel,
           temperature: temperature,

@@ -23,6 +23,8 @@ interface HistoryItem {
   images: { id?: string; label: string; base64: string; mimeType: string }[];
   output: string;
   filledPrompt: string;
+  promptTemplate?: string;
+  systemPrompt?: string;
   name?: string;
   model?: string;
   thinkingLevel?: string;
@@ -187,12 +189,47 @@ export default function HistoryViewerModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Custom parameters excluding special placeholders
-  const customParams = selectedItem
-    ? Object.entries(selectedItem.variables).filter(
-        ([key]) => key !== "idea" && key !== "visual_references" && key !== "cast"
-      )
-    : [];
+  // Custom parameters excluding special placeholders & unreferenced dead variables
+  const getCustomParams = (item: HistoryItem | null): [string, string][] => {
+    if (!item) return [];
+
+    const entries = Object.entries(item.variables).filter(
+      ([key]) => key !== "idea" && key !== "visual_references" && key !== "cast"
+    );
+
+    // If item has a saved promptTemplate, strictly match variables against that template
+    if (item.promptTemplate) {
+      const matches = Array.from(item.promptTemplate.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g));
+      const templateVars = new Set(matches.map((m) => m[1]));
+      return entries.filter(([key]) => templateVars.has(key));
+    }
+
+    // Fallback for legacy history items without saved promptTemplate:
+    // Filter out dead variables whose keys/values were never substituted or present in filledPrompt
+    if (item.filledPrompt) {
+      const filledText = item.filledPrompt;
+      return entries.filter(([key, val]) => {
+        if (filledText.includes(`{{ ${key} }}`) || filledText.includes(`{{${key}}}`)) return true;
+
+        // If value is non-empty, check if value exists in filledPrompt
+        if (val && val.trim() !== "" && val.trim().toLowerCase() !== "up to you") {
+          return filledText.includes(val);
+        }
+
+        // If key name is mentioned in filledPrompt
+        const cleanKey = key.replace(/[_-]/g, " ");
+        if (cleanKey.length > 2 && filledText.toLowerCase().includes(cleanKey.toLowerCase())) {
+          return true;
+        }
+
+        return false;
+      });
+    }
+
+    return entries;
+  };
+
+  const customParams = getCustomParams(selectedItem);
 
   return (
     <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" id="history-viewer-modal-backdrop">
