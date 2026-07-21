@@ -1817,9 +1817,16 @@ export default function PromptGeneratorPage() {
           {/* Section: Generation Result */}
           <section className="flex-1 flex flex-col min-h-[420px]" id="output-panel">
             <div className="flex justify-between items-end mb-4">
-              <h2 className="text-[10px] uppercase tracking-[0.20em] text-[#888884] font-bold">
-                Generation Result
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-[10px] uppercase tracking-[0.20em] text-[#888884] font-bold">
+                  Generation Result
+                </h2>
+                {generationResult && (
+                  <span className="text-[8px] font-mono text-[#888884] bg-white border border-[#D1D1CF] px-1.5 py-0.5 font-bold" id="char-counter">
+                    {generationResult.length} CHARS
+                  </span>
+                )}
+              </div>
               
               {generationResult && (
                 <button
