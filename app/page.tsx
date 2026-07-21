@@ -26,6 +26,8 @@ import {
   AlertTriangle
 } from "lucide-react";
 
+import AssetLibrarySidebar from "../components/AssetLibrarySidebar";
+
 interface UploadedImage {
   id: string;
   label: string;
@@ -263,6 +265,7 @@ export default function PromptGeneratorPage() {
   const [promptTemplate, setPromptTemplate] = useState<string>("");
   const [variables, setVariables] = useState<string[]>([]);
   const [isConfigLoaded, setIsConfigLoaded] = useState<boolean>(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState<boolean>(false);
 
   // User input states
   const [inputs, setInputs] = useState<Record<string, string>>({});
@@ -625,6 +628,7 @@ export default function PromptGeneratorPage() {
             setIsPromptConfigOpen(false);
           }
         } else {
+          setIsLibraryOpen(false);
           setIsEngineConfigOpen(false);
           setIsClearConfirmOpen(false);
           setIsHistoryClearConfirmOpen(false);
@@ -642,7 +646,7 @@ export default function PromptGeneratorPage() {
 
   // Prevent body scrolling when any major modal is open
   useEffect(() => {
-    const isAnyModalOpen = isPromptConfigOpen || isEngineConfigOpen || isCompareOpen || isClearConfirmOpen || isHistoryClearConfirmOpen || isUrlImportConfirmOpen || isDiscardConfirmOpen;
+    const isAnyModalOpen = isPromptConfigOpen || isEngineConfigOpen || isCompareOpen || isClearConfirmOpen || isHistoryClearConfirmOpen || isUrlImportConfirmOpen || isDiscardConfirmOpen || isLibraryOpen;
     if (isAnyModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -651,7 +655,7 @@ export default function PromptGeneratorPage() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isPromptConfigOpen, isEngineConfigOpen, isCompareOpen, isClearConfirmOpen, isHistoryClearConfirmOpen, isUrlImportConfirmOpen, isDiscardConfirmOpen]);
+  }, [isPromptConfigOpen, isEngineConfigOpen, isCompareOpen, isClearConfirmOpen, isHistoryClearConfirmOpen, isUrlImportConfirmOpen, isDiscardConfirmOpen, isLibraryOpen]);
 
   // Helper: cleans the URL params
   const cleanUrlParam = () => {
@@ -901,6 +905,25 @@ export default function PromptGeneratorPage() {
     setUploadedImages(prev => 
       prev.map(img => img.id === id ? { ...img, label: value } : img)
     );
+  };
+
+  // Add image from library to workspace active session
+  const handleAddImageFromLibrary = async (label: string, base64: string) => {
+    const imgId = `${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    try {
+      await saveStoredImage(imgId, base64);
+    } catch (dbErr) {
+      console.error("Failed to save image from library to IndexedDB:", dbErr);
+    }
+    setUploadedImages(prev => [
+      ...prev,
+      {
+        id: imgId,
+        label,
+        base64,
+        mimeType: "image/jpeg",
+      }
+    ]);
   };
 
   // Delete uploaded image
@@ -1453,6 +1476,15 @@ export default function PromptGeneratorPage() {
         
         <div className="flex items-center gap-3 md:gap-4">
           <button
+            onClick={() => setIsLibraryOpen(true)}
+            className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 bg-white"
+            title="Open Asset Library & Casting Bank"
+            id="open-library-header-btn"
+          >
+            <FolderOpen className="w-3.5 h-3.5 text-[#1A1A1A] shrink-0" />
+            Asset Library
+          </button>
+          <button
             onClick={handleOpenEngineConfig}
             className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 bg-white"
             title="Configure Engine Model & Parameters"
@@ -1596,13 +1628,24 @@ export default function PromptGeneratorPage() {
 
           {/* Section: Visual Reference Assets */}
           <section className="flex flex-col gap-3" id="images-reference-section">
-            <div className="flex justify-between items-end">
+            <div className="flex justify-between items-center">
               <h2 className="text-[10px] uppercase tracking-[0.20em] text-[#888884] font-bold">
                 Visual Assets & Casting Maps
               </h2>
-              <span className="text-[9px] font-mono text-[#888884]">
-                {"{{ visual_references }}"}
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLibraryOpen(true)}
+                  className="px-2 py-0.5 border border-[#D1D1CF] hover:border-[#1A1A1A] bg-white text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 text-[#1A1A1A]"
+                  id="browse-library-btn"
+                >
+                  <FolderOpen className="w-3 h-3 text-[#1a1a1a]" />
+                  Browse Library
+                </button>
+                <span className="text-[9px] font-mono text-[#888884]">
+                  {"{{ visual_references }}"}
+                </span>
+              </div>
             </div>
 
             <p className="text-[11px] text-[#888884] font-medium tracking-tight -mt-1 leading-normal">
@@ -3542,6 +3585,12 @@ export default function PromptGeneratorPage() {
           </p>
         </div>
       )}
+
+      <AssetLibrarySidebar 
+        isOpen={isLibraryOpen}
+        onClose={() => setIsLibraryOpen(false)}
+        onAddImageToWorkspace={handleAddImageFromLibrary}
+      />
     </div>
   );
 }
