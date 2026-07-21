@@ -116,6 +116,12 @@ export default function PromptGeneratorPage() {
     });
   };
 
+  const truncateText = (text: string, maxLength: number = 80) => {
+    if (!text) return "";
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + "...";
+  };
+
   // Prompt Config Modal state
   const [isPromptConfigOpen, setIsPromptConfigOpen] = useState<boolean>(false);
   const [tempSystemPrompt, setTempSystemPrompt] = useState<string>("");
@@ -2464,7 +2470,7 @@ export default function PromptGeneratorPage() {
             {/* Modal Content */}
             <div className="p-6 bg-[#F4F4F2]/30 flex flex-col gap-4 text-xs leading-relaxed text-[#555]">
               <p>
-                Are you sure you want to load the workspace preset <strong className="text-[#1A1A1A] uppercase">“{pendingLoadItem.name || pendingLoadItem.variables["idea"] || "Untitled Outline"}”</strong>? 
+                Are you sure you want to load the workspace preset <strong className="text-[#1A1A1A] uppercase">“{truncateText(pendingLoadItem.name || pendingLoadItem.variables["idea"] || "Untitled Outline", 100)}”</strong>? 
               </p>
               <p className="text-[#1A1A1A] font-bold">
                 This action will overwrite your current active session, including:
@@ -2530,7 +2536,7 @@ export default function PromptGeneratorPage() {
               {/* Modal Content */}
               <div className="p-6 bg-[#F4F4F2]/30 flex flex-col gap-4 text-xs leading-relaxed text-[#555]">
                 <p>
-                  Are you sure you want to delete the history slot <strong className="text-[#1A1A1A] uppercase">“{itemToDelete?.name || itemToDelete?.variables["idea"] || "Untitled Outline"}”</strong>?
+                  Are you sure you want to delete the history slot <strong className="text-[#1A1A1A] uppercase">“{truncateText(itemToDelete?.name || itemToDelete?.variables["idea"] || "Untitled Outline", 100)}”</strong>?
                 </p>
                 <div className="bg-red-50 border border-red-200 p-3.5 text-[10px] text-red-800 leading-normal border-l-4 border-l-red-500 font-mono uppercase tracking-wider font-black leading-snug">
                   <span>⚠️ Warning: This will permanently delete this generation record and all its associated image assets from IndexedDB. This operation is completely irreversible.</span>
