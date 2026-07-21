@@ -1324,7 +1324,7 @@ export default function PromptGeneratorPage() {
               value={inputs["idea"] || ""}
               onChange={(e) => setInputs(prev => ({ ...prev, idea: e.target.value }))}
               placeholder="Describe the core creative scene requirements, conflict, or central idea here..."
-              className="w-full bg-white border border-[#D1D1CF] p-4 text-sm leading-relaxed outline-none focus:border-[#1A1A1A] transition-all resize-y min-h-[120px] rounded-none font-sans text-[#1A1A1A] placeholder-stone-400"
+              className="w-full bg-white border border-[#D1D1CF] p-4 text-sm leading-relaxed outline-none focus:border-[#1A1A1A] transition-colors resize-y min-h-[120px] rounded-none font-sans text-[#1A1A1A] placeholder-stone-400"
             />
           </section>
 
