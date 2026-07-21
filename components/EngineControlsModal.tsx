@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, Info, EyeOff, Eye, RefreshCw, Trash2, KeyRound } from "lucide-react";
+import { Sparkles, Info, EyeOff, Eye, RefreshCw, Trash2, KeyRound, ChevronDown, ChevronUp } from "lucide-react";
 
 interface EngineControlsModalProps {
   isOpen: boolean;
@@ -45,6 +45,7 @@ export default function EngineControlsModal({
   const [newKeyValue, setNewKeyValue] = useState<string>("");
   const [showNewKey, setShowNewKey] = useState<boolean>(false);
   const [addKeyError, setAddKeyError] = useState<string>("");
+  const [isVaultCollapsed, setIsVaultCollapsed] = useState<boolean>(true);
 
   const [prevIsOpen, setPrevIsOpen] = useState<boolean>(isOpen);
 
@@ -56,6 +57,7 @@ export default function EngineControlsModal({
       setTempTemperature(temperature);
       setTempMaxTokens(maxTokens);
       setTempCustomApiKey(customApiKey);
+      setIsVaultCollapsed(true);
 
       // Load keys vault from localStorage
       try {
@@ -142,7 +144,10 @@ export default function EngineControlsModal({
 
           {/* Custom API Key Override Field */}
           <div className="bg-white border border-[#D1D1CF] p-4 flex flex-col gap-3">
-            <div className="flex justify-between items-center">
+            <div 
+              onClick={() => setIsVaultCollapsed(!isVaultCollapsed)}
+              className="flex justify-between items-center cursor-pointer select-none group"
+            >
               <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#1A1A1A] flex items-center gap-1.5">
                 <span>API Key Vault (Local Overrides)</span>
                 {tempCustomApiKey ? (
@@ -155,171 +160,183 @@ export default function EngineControlsModal({
                   </span>
                 )}
               </h4>
-              <span className="text-[9px] font-mono text-[#888884] font-bold uppercase">
-                Stored locally in browser
-              </span>
-            </div>
-            <p className="text-[10px] text-[#888884] leading-normal">
-              Manage and select from multiple developer Gemini API Keys. This is secure, stores keys only in your browser localStorage, and allows you to swap identities or quotas on the fly.
-            </p>
-
-            {/* Active Key Selector */}
-            <div className="flex flex-col gap-1.5 mt-1">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-stone-500 font-mono">Select Active Key Override</span>
-              <select
-                value={localActiveKeyId}
-                onChange={(e) => {
-                  const selectedId = e.target.value;
-                  setLocalActiveKeyId(selectedId);
-                  const selectedKey = localKeys.find(k => k.id === selectedId);
-                  setTempCustomApiKey(selectedKey ? selectedKey.key : "");
-                }}
-                className="w-full bg-[#F4F4F2]/50 border border-[#D1D1CF] p-2.5 text-xs font-mono outline-none focus:border-[#1A1A1A] rounded-none text-[#1A1A1A] cursor-pointer"
-              >
-                <option value="">None (Use Server Default Key)</option>
-                {localKeys.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.label} ({k.key.length > 8 ? `••••${k.key.slice(-4)}` : "invalid key"})
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-mono text-[#888884] group-hover:text-[#1A1A1A] font-bold uppercase transition-colors">
+                  {isVaultCollapsed ? "[EXPAND]" : "[COLLAPSE]"}
+                </span>
+                {isVaultCollapsed ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-[#888884] group-hover:text-[#1A1A1A] transition-colors" />
+                ) : (
+                  <ChevronUp className="w-3.5 h-3.5 text-[#888884] group-hover:text-[#1A1A1A] transition-colors" />
+                )}
+              </div>
             </div>
 
-            {/* Saved Keys List */}
-            {localKeys.length > 0 && (
-              <div className="flex flex-col gap-1.5 mt-1">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-stone-500 font-mono">Saved Keys Vault</span>
-                <div className="border border-[#D1D1CF] bg-[#FAF9F6] divide-y divide-[#D1D1CF] max-h-[140px] overflow-y-auto custom-scrollbar">
-                  {localKeys.map((k) => {
-                    const isActive = localActiveKeyId === k.id;
-                    const maskedValue = k.key.length > 8 
-                      ? `${k.key.slice(0, 4)}••••${k.key.slice(-4)}` 
-                      : "••••••••";
-                    
-                    return (
-                      <div key={k.id} className="flex items-center justify-between p-2.5 hover:bg-white transition-colors">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-xs font-bold text-[#1A1A1A] font-sans flex items-center gap-2">
-                            {k.label}
-                            {isActive && (
-                              <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[8px] font-black uppercase tracking-wider px-1 py-0.5 scale-90">
-                                ACTIVE
+            {!isVaultCollapsed && (
+              <>
+                <p className="text-[10px] text-[#888884] leading-normal">
+                  Manage and select from multiple developer Gemini API Keys. This is secure, stores keys only in your browser localStorage, and allows you to swap identities or quotas on the fly.
+                </p>
+
+                {/* Active Key Selector */}
+                <div className="flex flex-col gap-1.5 mt-1">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-stone-500 font-mono">Select Active Key Override</span>
+                  <select
+                    value={localActiveKeyId}
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
+                      setLocalActiveKeyId(selectedId);
+                      const selectedKey = localKeys.find(k => k.id === selectedId);
+                      setTempCustomApiKey(selectedKey ? selectedKey.key : "");
+                    }}
+                    className="w-full bg-[#F4F4F2]/50 border border-[#D1D1CF] p-2.5 text-xs font-mono outline-none focus:border-[#1A1A1A] rounded-none text-[#1A1A1A] cursor-pointer"
+                  >
+                    <option value="">None (Use Server Default Key)</option>
+                    {localKeys.map((k) => (
+                      <option key={k.id} value={k.id}>
+                        {k.label} ({k.key.length > 8 ? `••••${k.key.slice(-4)}` : "invalid key"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Saved Keys List */}
+                {localKeys.length > 0 && (
+                  <div className="flex flex-col gap-1.5 mt-1">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-stone-500 font-mono">Saved Keys Vault</span>
+                    <div className="border border-[#D1D1CF] bg-[#FAF9F6] divide-y divide-[#D1D1CF] max-h-[140px] overflow-y-auto custom-scrollbar">
+                      {localKeys.map((k) => {
+                        const isActive = localActiveKeyId === k.id;
+                        const maskedValue = k.key.length > 8 
+                          ? `${k.key.slice(0, 4)}••••${k.key.slice(-4)}` 
+                          : "••••••••";
+                        
+                        return (
+                          <div key={k.id} className="flex items-center justify-between p-2.5 hover:bg-white transition-colors">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-bold text-[#1A1A1A] font-sans flex items-center gap-2">
+                                {k.label}
+                                {isActive && (
+                                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[8px] font-black uppercase tracking-wider px-1 py-0.5 scale-90">
+                                    ACTIVE
+                                  </span>
+                                )}
                               </span>
-                            )}
-                          </span>
-                          <span className="text-[9px] font-mono text-stone-500">{maskedValue}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {!isActive && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLocalActiveKeyId(k.id);
-                                setTempCustomApiKey(k.key);
-                              }}
-                              className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white bg-[#FAF9F6] text-[#1A1A1A] cursor-pointer"
-                            >
-                              Select
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = localKeys.filter(item => item.id !== k.id);
-                              setLocalKeys(updated);
-                              if (localActiveKeyId === k.id) {
-                                setLocalActiveKeyId("");
-                                setTempCustomApiKey("");
-                              }
-                            }}
-                            className="p-1 text-stone-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 cursor-pointer"
-                            title="Delete key"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Form to Add New Key */}
-            <div className="border border-[#D1D1CF] p-3 bg-[#FAF9F6]/40 flex flex-col gap-2.5 mt-1">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-[#1A1A1A] font-mono flex items-center gap-1.5">
-                <KeyRound size={11} className="text-stone-500" /> Add New Key to Vault
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[8px] font-bold uppercase tracking-wider text-stone-500 font-mono">Key Label / Description</span>
-                  <input
-                    type="text"
-                    value={newKeyLabel}
-                    onChange={(e) => setNewKeyLabel(e.target.value)}
-                    placeholder="e.g. My Sandbox Key"
-                    className="w-full bg-white border border-[#D1D1CF] p-2 text-xs font-sans outline-none focus:border-[#1A1A1A] rounded-none text-[#1A1A1A]"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-[8px] font-bold uppercase tracking-wider text-stone-500 font-mono">API Key Value</span>
-                  <div className="relative">
-                    <input
-                      type={showNewKey ? "text" : "password"}
-                      value={newKeyValue}
-                      onChange={(e) => setNewKeyValue(e.target.value)}
-                      placeholder="AIzaSy..."
-                      className="w-full bg-white border border-[#D1D1CF] p-2 pr-8 text-xs font-mono outline-none focus:border-[#1A1A1A] rounded-none text-[#1A1A1A]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewKey(!showNewKey)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-[#1A1A1A] p-0.5 cursor-pointer"
-                    >
-                      {showNewKey ? <EyeOff size={12} /> : <Eye size={12} />}
-                    </button>
+                              <span className="text-[9px] font-mono text-stone-500">{maskedValue}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {!isActive && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setLocalActiveKeyId(k.id);
+                                    setTempCustomApiKey(k.key);
+                                  }}
+                                  className="px-2 py-1 text-[9px] font-bold uppercase tracking-wider border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white bg-[#FAF9F6] text-[#1A1A1A] cursor-pointer"
+                                >
+                                  Select
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = localKeys.filter(item => item.id !== k.id);
+                                  setLocalKeys(updated);
+                                  if (localActiveKeyId === k.id) {
+                                    setLocalActiveKeyId("");
+                                    setTempCustomApiKey("");
+                                  }
+                                }}
+                                className="p-1 text-stone-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 cursor-pointer"
+                                title="Delete key"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              </div>
-              
-              {addKeyError && (
-                <span className="text-[9px] text-red-600 font-mono leading-none">[!] {addKeyError}</span>
-              )}
+                )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (!newKeyLabel.trim()) {
-                    setAddKeyError("Please provide a label for the API key.");
-                    return;
-                  }
-                  if (!newKeyValue.trim()) {
-                    setAddKeyError("Please provide an API key value.");
-                    return;
-                  }
+                {/* Form to Add New Key */}
+                <div className="border border-[#D1D1CF] p-3 bg-[#FAF9F6]/40 flex flex-col gap-2.5 mt-1">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#1A1A1A] font-mono flex items-center gap-1.5">
+                    <KeyRound size={11} className="text-stone-500" /> Add New Key to Vault
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[8px] font-bold uppercase tracking-wider text-stone-500 font-mono">Key Label / Description</span>
+                      <input
+                        type="text"
+                        value={newKeyLabel}
+                        onChange={(e) => setNewKeyLabel(e.target.value)}
+                        placeholder="e.g. My Sandbox Key"
+                        className="w-full bg-white border border-[#D1D1CF] p-2 text-xs font-sans outline-none focus:border-[#1A1A1A] rounded-none text-[#1A1A1A]"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[8px] font-bold uppercase tracking-wider text-stone-500 font-mono">API Key Value</span>
+                      <div className="relative">
+                        <input
+                          type={showNewKey ? "text" : "password"}
+                          value={newKeyValue}
+                          onChange={(e) => setNewKeyValue(e.target.value)}
+                          placeholder="AIzaSy..."
+                          className="w-full bg-white border border-[#D1D1CF] p-2 pr-8 text-xs font-mono outline-none focus:border-[#1A1A1A] rounded-none text-[#1A1A1A]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewKey(!showNewKey)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-[#1A1A1A] p-0.5 cursor-pointer"
+                        >
+                          {showNewKey ? <EyeOff size={12} /> : <Eye size={12} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                   
-                  const newId = "key-" + Date.now();
-                  const newKeyObj = {
-                    id: newId,
-                    label: newKeyLabel.trim(),
-                    key: newKeyValue.trim()
-                  };
-                  
-                  const updatedKeys = [...localKeys, newKeyObj];
-                  setLocalKeys(updatedKeys);
-                  setLocalActiveKeyId(newId);
-                  setTempCustomApiKey(newKeyValue.trim());
-                  
-                  // Reset form fields
-                  setNewKeyLabel("");
-                  setNewKeyValue("");
-                  setAddKeyError("");
-                }}
-                className="w-full py-1.5 bg-[#1A1A1A] hover:bg-[#333] text-white text-[9px] font-bold uppercase tracking-wider cursor-pointer border border-[#1A1A1A] text-center"
-              >
-                Save Key to Vault
-              </button>
-            </div>
+                  {addKeyError && (
+                    <span className="text-[9px] text-red-600 font-mono leading-none">[!] {addKeyError}</span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!newKeyLabel.trim()) {
+                        setAddKeyError("Please provide a label for the API key.");
+                        return;
+                      }
+                      if (!newKeyValue.trim()) {
+                        setAddKeyError("Please provide an API key value.");
+                        return;
+                      }
+                      
+                      const newId = "key-" + Date.now();
+                      const newKeyObj = {
+                        id: newId,
+                        label: newKeyLabel.trim(),
+                        key: newKeyValue.trim()
+                      };
+                      
+                      const updatedKeys = [...localKeys, newKeyObj];
+                      setLocalKeys(updatedKeys);
+                      setLocalActiveKeyId(newId);
+                      setTempCustomApiKey(newKeyValue.trim());
+                      
+                      // Reset form fields
+                      setNewKeyLabel("");
+                      setNewKeyValue("");
+                      setAddKeyError("");
+                    }}
+                    className="w-full py-1.5 bg-[#1A1A1A] hover:bg-[#333] text-white text-[9px] font-bold uppercase tracking-wider cursor-pointer border border-[#1A1A1A] text-center"
+                  >
+                    Save Key to Vault
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Grid: Left column (Model Selector) & Right column (Params Selector) */}
