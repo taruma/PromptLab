@@ -1182,6 +1182,25 @@ export default function PromptGeneratorPage() {
     v => v !== "visual_references" && v !== "cast" && v !== "idea"
   );
 
+  // Get active API Key Label for footer
+  const getActiveApiKeyLabel = () => {
+    if (!customApiKey) return "Server Default";
+    try {
+      const savedKeysStr = localStorage.getItem("prompt_generator_custom_api_keys");
+      const savedActiveId = localStorage.getItem("prompt_generator_active_api_key_id") || "";
+      if (savedKeysStr) {
+        const keysList = JSON.parse(savedKeysStr);
+        const activeKeyObj = keysList.find((k: any) => k.id === savedActiveId || k.key === customApiKey);
+        if (activeKeyObj) {
+          return activeKeyObj.label;
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return "Custom Key";
+  };
+
   return (
     <div className="min-h-screen bg-[#F4F4F2] flex flex-col font-sans text-[#1A1A1A]" id="main-content">
       {/* Header */}
@@ -1728,6 +1747,7 @@ export default function PromptGeneratorPage() {
           <span>Engine: {selectedModel.toUpperCase()}</span>
           <span>Reasoning: {thinkingLevel}</span>
           <span>Temp: {temperature.toFixed(1)}</span>
+          <span>Key: {getActiveApiKeyLabel().toUpperCase()}</span>
         </div>
         <div className="uppercase opacity-50 tracking-wider">PromptLab by Taruma Sakti</div>
       </footer>
