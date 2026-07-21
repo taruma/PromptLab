@@ -29,6 +29,7 @@ import {
 import AssetLibrarySidebar from "../components/AssetLibrarySidebar";
 import VisualAssetCard from "../components/VisualAssetCard";
 import EngineControlsModal from "../components/EngineControlsModal";
+import HistoryViewerModal from "../components/HistoryViewerModal";
 import {
   openDB,
   getStoredImage,
@@ -58,6 +59,11 @@ interface HistoryItem {
   images: { id?: string; label: string; base64: string; mimeType: string }[];
   output: string;
   filledPrompt: string;
+  name?: string;
+  model?: string;
+  thinkingLevel?: string;
+  temperature?: number;
+  maxTokens?: string;
 }
 
 export default function PromptGeneratorPage() {
@@ -88,8 +94,11 @@ export default function PromptGeneratorPage() {
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState<boolean>(false);
   const [isHistoryClearConfirmOpen, setIsHistoryClearConfirmOpen] = useState<boolean>(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(true);
+  const [isHistoryViewerOpen, setIsHistoryViewerOpen] = useState<boolean>(false);
   const [isLabManualOpen, setIsLabManualOpen] = useState<boolean>(true);
   const [storageWarningMessage, setStorageWarningMessage] = useState<string | null>(null);
+  const [pendingLoadItem, setPendingLoadItem] = useState<HistoryItem | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const toggleHistory = () => {
     setIsHistoryOpen(prev => {
@@ -443,6 +452,10 @@ export default function PromptGeneratorPage() {
           } else {
             setIsPromptConfigOpen(false);
           }
+        } else if (pendingLoadItem) {
+          setPendingLoadItem(null);
+        } else if (pendingDeleteId) {
+          setPendingDeleteId(null);
         } else {
           setIsLibraryOpen(false);
           setIsEngineConfigOpen(false);
@@ -458,11 +471,11 @@ export default function PromptGeneratorPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isPromptConfigOpen, isDiscardConfirmOpen, tempSystemPrompt, tempPromptTemplate, systemPrompt, promptTemplate]);
+  }, [isPromptConfigOpen, isDiscardConfirmOpen, tempSystemPrompt, tempPromptTemplate, systemPrompt, promptTemplate, pendingLoadItem, pendingDeleteId]);
 
   // Prevent body scrolling when any major modal is open
   useEffect(() => {
-    const isAnyModalOpen = isPromptConfigOpen || isEngineConfigOpen || isCompareOpen || isClearConfirmOpen || isHistoryClearConfirmOpen || isUrlImportConfirmOpen || isDiscardConfirmOpen || isLibraryOpen;
+    const isAnyModalOpen = isPromptConfigOpen || isEngineConfigOpen || isCompareOpen || isClearConfirmOpen || isHistoryClearConfirmOpen || isUrlImportConfirmOpen || isDiscardConfirmOpen || isLibraryOpen || !!pendingLoadItem || !!pendingDeleteId;
     if (isAnyModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -471,7 +484,7 @@ export default function PromptGeneratorPage() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isPromptConfigOpen, isEngineConfigOpen, isCompareOpen, isClearConfirmOpen, isHistoryClearConfirmOpen, isUrlImportConfirmOpen, isDiscardConfirmOpen, isLibraryOpen]);
+  }, [isPromptConfigOpen, isEngineConfigOpen, isCompareOpen, isClearConfirmOpen, isHistoryClearConfirmOpen, isUrlImportConfirmOpen, isDiscardConfirmOpen, isLibraryOpen, pendingLoadItem, pendingDeleteId]);
 
   // Helper: cleans the URL params
   const cleanUrlParam = () => {
@@ -995,9 +1008,8 @@ export default function PromptGeneratorPage() {
     }
   };
 
-  // Delete a specific history card
-  const handleDeleteHistoryItem = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  // Helper to delete a history item by ID (used by both inline and full modal viewer)
+  const deleteHistoryItemById = (id: string) => {
     const itemToDelete = history.find(item => item.id === id);
     if (itemToDelete && itemToDelete.images) {
       itemToDelete.images.forEach(img => {
@@ -1011,6 +1023,24 @@ export default function PromptGeneratorPage() {
       });
     }
     const updated = history.filter(item => item.id !== id);
+    setHistory(updated);
+    localStorage.setItem("prompt_generator_history", JSON.stringify(updated));
+  };
+
+  // Delete a specific history card
+  const handleDeleteHistoryItem = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPendingDeleteId(id);
+  };
+
+  // Rename a specific history slot
+  const handleRenameHistoryItem = (id: string, newName: string) => {
+    const updated = history.map(item => {
+      if (item.id === id) {
+        return { ...item, name: newName };
+      }
+      return item;
+    });
     setHistory(updated);
     localStorage.setItem("prompt_generator_history", JSON.stringify(updated));
   };
@@ -1160,6 +1190,10 @@ export default function PromptGeneratorPage() {
           images: historyImages,
           output: accumulatedText,
           filledPrompt: activeFilledPrompt || filledPrompt,
+          model: selectedModel,
+          thinkingLevel: thinkingLevel,
+          temperature: temperature,
+          maxTokens: maxTokens || undefined,
         };
 
         setHistory(prev => {
@@ -1548,6 +1582,18 @@ export default function PromptGeneratorPage() {
                 <span className="text-[8px] font-mono text-[#888884] bg-white/60 border border-[#D1D1CF] px-1.5 py-0.5 font-bold">
                   {history.length}
                 </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsHistoryViewerOpen(true);
+                  }}
+                  className="px-2 py-0.5 border border-[#D1D1CF] hover:border-[#1A1A1A] bg-white text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 text-[#1A1A1A] rounded-none shadow-sm shrink-0"
+                  title="Open History Inspector & Lab Viewer"
+                >
+                  <Eye className="w-3 h-3 text-[#1A1A1A]" />
+                  Expand Viewer
+                </button>
                 <span className="text-[#888884] group-hover:text-[#1A1A1A] transition-colors">
                   {isHistoryOpen ? (
                     <ChevronDown className="w-3.5 h-3.5 transform rotate-180 transition-transform" />
@@ -1580,13 +1626,13 @@ export default function PromptGeneratorPage() {
                 ) : (
                   <div className="flex flex-col divide-y divide-[#D1D1CF]" id="history-items-list">
                     {history.map((item) => {
-                      const title = item.variables["idea"] || "Untitled Outline";
-                      const snippet = title.length > 50 ? title.slice(0, 50) + "..." : title;
+                      const defaultTitle = item.variables["idea"] || "Untitled Outline";
+                      const snippet = item.name || (defaultTitle.length > 50 ? defaultTitle.slice(0, 50) + "..." : defaultTitle);
                       
                       return (
                         <div
                           key={item.id}
-                          onClick={() => handleLoadHistoryItem(item)}
+                          onClick={() => setPendingLoadItem(item)}
                           className="p-3.5 hover:bg-[#F4F4F2] cursor-pointer transition-all flex items-start justify-between gap-3 group"
                         >
                           <div className="min-w-0 flex-1">
@@ -2394,6 +2440,129 @@ export default function PromptGeneratorPage() {
         </div>
       )}
 
+      {/* Load Workspace Confirmation Modal */}
+      {pendingLoadItem && (
+        <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in" id="load-history-confirm-modal">
+          <div className="bg-white border border-[#D1D1CF] w-full max-w-md flex flex-col justify-between shadow-2xl relative rounded-none animate-scale-up">
+            
+            {/* Modal Header */}
+            <div className="h-14 border-b border-[#D1D1CF] px-6 flex items-center justify-between bg-[#F4F4F2]">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-[#1A1A1A]" />
+                <h3 className="text-xs font-black uppercase tracking-wider font-sans text-[#1A1A1A]">
+                  Confirm Load Workspace
+                </h3>
+              </div>
+              <button
+                onClick={() => setPendingLoadItem(null)}
+                className="text-stone-500 hover:text-[#1A1A1A] font-mono font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+              >
+                [ESC] CLOSE
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 bg-[#F4F4F2]/30 flex flex-col gap-4 text-xs leading-relaxed text-[#555]">
+              <p>
+                Are you sure you want to load the workspace preset <strong className="text-[#1A1A1A] uppercase">“{pendingLoadItem.name || pendingLoadItem.variables["idea"] || "Untitled Outline"}”</strong>? 
+              </p>
+              <p className="text-[#1A1A1A] font-bold">
+                This action will overwrite your current active session, including:
+              </p>
+              <ul className="list-disc pl-5 flex flex-col gap-1.5 font-mono text-[10px] text-[#1A1A1A] uppercase">
+                <li>All current text inputs & variable parameters</li>
+                <li>All active visual reference cards & character maps</li>
+                <li>The active generation result and reasoning logs</li>
+              </ul>
+              <div className="bg-white border border-[#D1D1CF] p-3 text-[10px] text-amber-800 leading-normal border-l-4 border-l-amber-500">
+                <span className="font-bold uppercase tracking-wider font-mono">Note:</span> Your customized System Instructions, Prompt Templates, and saved custom presets will remain completely untouched.
+              </div>
+            </div>
+
+            {/* Modal Footer Controls */}
+            <div className="h-16 border-t border-[#D1D1CF] px-6 flex items-center justify-end bg-[#F4F4F2]">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setPendingLoadItem(null)}
+                  className="px-4 py-2 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all bg-white text-[#1A1A1A]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    handleLoadHistoryItem(pendingLoadItem);
+                    setPendingLoadItem(null);
+                  }}
+                  className="px-5 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border border-[#1A1A1A]"
+                >
+                  Load Workspace
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Delete History Slot Confirmation Modal */}
+      {pendingDeleteId && (() => {
+        const itemToDelete = history.find(h => h.id === pendingDeleteId);
+        return (
+          <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in" id="delete-history-item-confirm-modal">
+            <div className="bg-white border border-[#D1D1CF] w-full max-w-md flex flex-col justify-between shadow-2xl relative rounded-none animate-scale-up">
+              
+              {/* Modal Header */}
+              <div className="h-14 border-b border-[#D1D1CF] px-6 flex items-center justify-between bg-[#F4F4F2]">
+                <div className="flex items-center gap-2">
+                  <Trash2 className="w-4 h-4 text-red-600" />
+                  <h3 className="text-xs font-black uppercase tracking-wider font-sans text-red-600">
+                    Confirm Delete Slot
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setPendingDeleteId(null)}
+                  className="text-stone-500 hover:text-[#1A1A1A] font-mono font-bold text-[10px] uppercase tracking-wider cursor-pointer"
+                >
+                  [ESC] CLOSE
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 bg-[#F4F4F2]/30 flex flex-col gap-4 text-xs leading-relaxed text-[#555]">
+                <p>
+                  Are you sure you want to delete the history slot <strong className="text-[#1A1A1A] uppercase">“{itemToDelete?.name || itemToDelete?.variables["idea"] || "Untitled Outline"}”</strong>?
+                </p>
+                <div className="bg-red-50 border border-red-200 p-3.5 text-[10px] text-red-800 leading-normal border-l-4 border-l-red-500 font-mono uppercase tracking-wider font-black leading-snug">
+                  <span>⚠️ Warning: This will permanently delete this generation record and all its associated image assets from IndexedDB. This operation is completely irreversible.</span>
+                </div>
+              </div>
+
+              {/* Modal Footer Controls */}
+              <div className="h-16 border-t border-[#D1D1CF] px-6 flex items-center justify-end bg-[#F4F4F2]">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setPendingDeleteId(null)}
+                    className="px-4 py-2 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all bg-white text-[#1A1A1A]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      deleteHistoryItemById(pendingDeleteId);
+                      setPendingDeleteId(null);
+                    }}
+                    className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider cursor-pointer transition-all border border-red-600"
+                  >
+                    Delete Record
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+
       {/* URL Preset Import Confirmation Modal */}
       {isUrlImportConfirmOpen && urlPresetData && (
         <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="url-import-confirm-modal">
@@ -3045,6 +3214,15 @@ export default function PromptGeneratorPage() {
         isOpen={isLibraryOpen}
         onClose={() => setIsLibraryOpen(false)}
         onAddImageToWorkspace={handleAddImageFromLibrary}
+      />
+
+      <HistoryViewerModal
+        isOpen={isHistoryViewerOpen}
+        onClose={() => setIsHistoryViewerOpen(false)}
+        history={history}
+        onRenameHistoryItem={handleRenameHistoryItem}
+        onDeleteHistoryItem={setPendingDeleteId}
+        onLoadHistoryItem={setPendingLoadItem}
       />
     </div>
   );
