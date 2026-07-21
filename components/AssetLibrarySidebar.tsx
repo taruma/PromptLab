@@ -11,7 +11,9 @@ import {
   FolderOpen,
   LayoutGrid,
   List,
-  ArrowUpDown
+  ArrowUpDown,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 
 import {
@@ -39,6 +41,65 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [addedFeedbackIds, setAddedFeedbackIds] = useState<Record<string, boolean>>({});
+  
+  // Dynamic width and dragging states
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("prompt_generator_library_sidebar_width");
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 320 && parsed <= 1200) return parsed;
+      }
+    }
+    return 448; // default standard width (max-w-md equivalent)
+  });
+
+  const [isResizing, setIsResizing] = useState<boolean>(false);
+  const isResizingRef = useRef<boolean>(false);
+  const startResizeXRef = useRef<number>(0);
+  const startWidthRef = useRef<number>(448);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    isResizingRef.current = true;
+    startResizeXRef.current = e.clientX;
+    startWidthRef.current = sidebarWidth;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const deltaX = e.clientX - startResizeXRef.current;
+      const newWidth = Math.max(320, Math.min(1200, startWidthRef.current + deltaX));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (isResizingRef.current) {
+        isResizingRef.current = false;
+        setIsResizing(false);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        setSidebarWidth((currentWidth) => {
+          localStorage.setItem("prompt_generator_library_sidebar_width", currentWidth.toString());
+          return currentWidth;
+        });
+      }
+    };
+
+    if (isResizing) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
   
   // Persistent view and sorting preference
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
@@ -294,11 +355,25 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
         id="asset-library-backdrop"
       />
 
-      {/* Sidebar Panel */}
+      {/* Sidebar Panel with dynamic, adjustable width */}
       <div 
-        className="relative w-full max-w-md bg-[#F4F4F2] border-r border-[#D1D1CF] h-full flex flex-col shadow-2xl z-10 transition-transform duration-300 transform translate-x-0"
+        className={`relative bg-[#F4F4F2] border-r border-[#D1D1CF] h-full flex flex-col shadow-2xl z-10 transform translate-x-0 ${
+          isResizing ? "transition-none" : "transition-all duration-300"
+        }`}
+        style={{ width: `${sidebarWidth}px`, maxWidth: "95vw" }}
         id="asset-library-panel"
       >
+        {/* Resize Handle */}
+        <div
+          onMouseDown={handleMouseDown}
+          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-[#1A1A1A]/10 active:bg-[#1A1A1A]/20 transition-all z-30 group"
+          id="library-resize-handle"
+          title="Drag to resize library"
+        >
+          {/* Subtle accent vertical grab line indicator */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[2px] h-10 bg-[#D1D1CF] group-hover:bg-[#1A1A1A] group-active:bg-[#1A1A1A] transition-colors" />
+        </div>
+
         {/* Header */}
         <div className="h-20 border-b border-[#D1D1CF] bg-white px-6 flex items-center justify-between shrink-0" id="asset-library-header">
           <div className="flex items-center gap-2.5">
@@ -310,14 +385,35 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
               <p className="text-[9px] text-[#888884] font-mono uppercase tracking-wider">Casting & Reference Bank</p>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-[#F4F4F2] text-[#888884] hover:text-[#1A1A1A] transition-all cursor-pointer"
-            title="Close Library"
-            id="close-library-btn"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {/* Quick Toggle Width Button */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextWidth = sidebarWidth >= 600 ? 448 : 768;
+                setSidebarWidth(nextWidth);
+                localStorage.setItem("prompt_generator_library_sidebar_width", nextWidth.toString());
+              }}
+              className="p-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-[#F4F4F2] text-[#888884] hover:text-[#1A1A1A] transition-all cursor-pointer"
+              title={sidebarWidth >= 600 ? "Collapse to Standard Width" : "Expand to Wide Width"}
+              id="toggle-library-width-btn"
+            >
+              {sidebarWidth >= 600 ? (
+                <Minimize2 className="w-3.5 h-3.5" />
+              ) : (
+                <Maximize2 className="w-3.5 h-3.5" />
+              )}
+            </button>
+
+            <button 
+              onClick={onClose}
+              className="p-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-[#F4F4F2] text-[#888884] hover:text-[#1A1A1A] transition-all cursor-pointer"
+              title="Close Library"
+              id="close-library-btn"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Search and Upload Section */}
@@ -442,13 +538,24 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
           ) : (
             <>
                {viewMode === "grid" ? (
-                <div className="grid grid-cols-2 gap-4" id="library-assets-grid">
+                <div 
+                  className={`grid gap-3 ${
+                    sidebarWidth >= 860 
+                      ? "grid-cols-5" 
+                      : sidebarWidth >= 660 
+                      ? "grid-cols-4" 
+                      : sidebarWidth >= 460 
+                      ? "grid-cols-3" 
+                      : "grid-cols-2"
+                  }`} 
+                  id="library-assets-grid"
+                >
                   {sortedAndFilteredImages.map((img) => {
                     const isAdded = addedFeedbackIds[img.id];
                     return (
                       <div 
                         key={img.id}
-                        className="bg-white border border-[#D1D1CF] p-3 flex flex-col gap-2.5 group relative hover:border-[#1A1A1A] transition-all"
+                        className="bg-white border border-[#D1D1CF] p-2 flex flex-col gap-1.5 group relative hover:border-[#1A1A1A] transition-all"
                         id={`lib-card-${img.id}`}
                       >
                         {/* Thumbnail box */}
@@ -462,10 +569,10 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
                           {/* Delete item */}
                           <button
                             onClick={() => handleDeleteLibraryItem(img.id)}
-                            className="absolute top-1 right-1 bg-white border border-[#D1D1CF] hover:border-red-600 hover:text-red-600 text-stone-500 p-1.2 transition-all cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            className="absolute top-1 right-1 bg-white border border-[#D1D1CF] hover:border-red-600 hover:text-red-600 text-stone-500 p-1 transition-all cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
                             title="Delete from library"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-2.5 h-2.5" />
                           </button>
                         </div>
 
@@ -475,14 +582,14 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
                         </div>
 
                         {/* Inline Label editing */}
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[8px] font-mono text-[#888884] uppercase tracking-wider">Asset Label:</span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[7px] font-mono text-[#888884] uppercase tracking-wider">Label:</span>
                           <input
                             type="text"
                             value={img.label}
                             onChange={(e) => handleUpdateLabel(img.id, e.target.value)}
                             placeholder="Name or description"
-                            className="text-[11px] font-bold bg-transparent border-b border-transparent hover:border-[#D1D1CF] focus:border-[#1A1A1A] outline-none text-[#1A1A1A] focus:text-stone-900 transition-colors w-full pb-0.5 font-sans"
+                            className="text-[10px] font-bold bg-transparent border-b border-transparent hover:border-[#D1D1CF] focus:border-[#1A1A1A] outline-none text-[#1A1A1A] focus:text-stone-900 transition-colors w-full pb-0.5 font-sans"
                             id={`lib-input-${img.id}`}
                           />
                         </div>
@@ -490,7 +597,7 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
                         {/* Trigger Button: Add to Workspace */}
                         <button
                           onClick={() => handleAddToWorkspace(img)}
-                          className={`w-full py-1.5 border text-[9px] uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-1 cursor-pointer mt-1 ${
+                          className={`w-full py-1 border text-[8px] uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-1 cursor-pointer mt-0.5 ${
                             isAdded
                               ? "bg-emerald-500 border-emerald-500 text-white"
                               : "bg-white border-[#D1D1CF] text-[#1A1A1A] hover:border-[#1A1A1A] hover:bg-[#F4F4F2]"
@@ -499,13 +606,13 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
                         >
                           {isAdded ? (
                             <>
-                              <Check className="w-3 h-3" />
+                              <Check className="w-2.5 h-2.5" />
                               Added!
                             </>
                           ) : (
                             <>
-                              <Plus className="w-3 h-3 text-[#888884]" />
-                              Use in Workspace
+                              <Plus className="w-2.5 h-2.5 text-[#888884]" />
+                              Add
                             </>
                           )}
                         </button>
