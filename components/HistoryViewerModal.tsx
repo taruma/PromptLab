@@ -49,6 +49,7 @@ export default function HistoryViewerModal({
 }: HistoryViewerModalProps) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchScope, setSearchScope] = useState<"default" | "visual_reference" | "idea" | "output" | "compiled_prompt">("default");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [resolvedImages, setResolvedImages] = useState<Record<string, string>>({});
@@ -110,14 +111,41 @@ export default function HistoryViewerModal({
 
   // Filter history items by search query
   const filteredHistory = history.filter(item => {
-    const title = item.name || item.variables["idea"] || "Untitled Outline";
-    const timestamp = item.timestamp;
-    const model = item.model || "";
-    return (
-      title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      timestamp.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      model.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.trim().toLowerCase();
+
+    if (searchScope === "default") {
+      const title = item.name || item.variables["idea"] || "Untitled Outline";
+      const timestamp = item.timestamp;
+      const model = item.model || "";
+      return (
+        title.toLowerCase().includes(query) ||
+        timestamp.toLowerCase().includes(query) ||
+        model.toLowerCase().includes(query)
+      );
+    }
+
+    if (searchScope === "visual_reference") {
+      if (!item.images) return false;
+      return item.images.some(img => img.label.toLowerCase().includes(query));
+    }
+
+    if (searchScope === "idea") {
+      const ideaVal = item.variables["idea"] || "";
+      return ideaVal.toLowerCase().includes(query);
+    }
+
+    if (searchScope === "output") {
+      const outputVal = item.output || "";
+      return outputVal.toLowerCase().includes(query);
+    }
+
+    if (searchScope === "compiled_prompt") {
+      const filledVal = item.filledPrompt || "";
+      return filledVal.toLowerCase().includes(query);
+    }
+
+    return true;
   });
 
   const startRename = (item: HistoryItem, e: React.MouseEvent) => {
@@ -193,17 +221,35 @@ export default function HistoryViewerModal({
           <div className="w-full md:w-80 flex flex-col shrink-0 bg-[#FAF9F6] h-1/3 md:h-full min-h-[180px] md:min-h-0">
             {/* Search Bar */}
             <div className="p-4 border-b border-[#D1D1CF] bg-white">
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                  <Search className="w-3.5 h-3.5 text-[#888884]" />
-                </span>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search history slots..."
-                  className="w-full bg-[#FAF9F6] border border-[#D1D1CF] py-1.5 pl-9 pr-3 text-[10px] uppercase tracking-wider font-bold outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A] placeholder-stone-400"
-                />
+              <div className="space-y-2">
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                    <Search className="w-3.5 h-3.5 text-[#888884]" />
+                  </span>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search history slots..."
+                    className="w-full bg-[#FAF9F6] border border-[#D1D1CF] py-1.5 pl-9 pr-3 text-[10px] uppercase tracking-wider font-bold outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A] placeholder-stone-400"
+                  />
+                </div>
+                
+                {/* Search Scope Selector */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[8px] font-mono font-bold text-[#888884] uppercase tracking-wider shrink-0">Area:</span>
+                  <select
+                    value={searchScope}
+                    onChange={(e) => setSearchScope(e.target.value as any)}
+                    className="flex-1 bg-[#FAF9F6] border border-[#D1D1CF] text-[9px] uppercase tracking-wider font-bold py-1 px-2 outline-none focus:border-[#1A1A1A] text-[#1A1A1A] cursor-pointer rounded-none h-7"
+                  >
+                    <option value="default">Default (Title / Model)</option>
+                    <option value="visual_reference">Visual Reference Labels</option>
+                    <option value="idea">Main Objective / Idea</option>
+                    <option value="output">Saved Output Text</option>
+                    <option value="compiled_prompt">Compiled Prompt Specs</option>
+                  </select>
+                </div>
               </div>
             </div>
 
