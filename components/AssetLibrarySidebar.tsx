@@ -14,6 +14,12 @@ import {
   ArrowUpDown
 } from "lucide-react";
 
+import {
+  getStoredImage,
+  saveStoredImage,
+  deleteStoredImage
+} from "../lib/indexeddb";
+
 interface LibraryImage {
   id: string;
   label: string;
@@ -27,72 +33,6 @@ interface AssetLibrarySidebarProps {
   onClose: () => void;
   onAddImageToWorkspace: (label: string, base64: string) => void;
 }
-
-// --- IndexedDB Configuration for Library ---
-const DB_NAME = "promptlab_db";
-const DB_VERSION = 1;
-const STORE_NAME = "images";
-
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !window.indexedDB) {
-      reject(new Error("IndexedDB is not supported."));
-      return;
-    }
-    const request = window.indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
-  });
-}
-
-function getStoredImage(id: string): Promise<string | null> {
-  return openDB().then((db) => {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, "readonly");
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.get(id);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        if (request.result) {
-          resolve(request.result.base64);
-        } else {
-          resolve(null);
-        }
-      };
-    });
-  });
-}
-
-function saveStoredImage(id: string, base64: string): Promise<void> {
-  return openDB().then((db) => {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.put({ id, base64 });
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
-  });
-}
-
-function deleteStoredImage(id: string): Promise<void> {
-  return openDB().then((db) => {
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.delete(id);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
-    });
-  });
-}
-
 export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorkspace }: AssetLibrarySidebarProps) {
   const [libraryImages, setLibraryImages] = useState<LibraryImage[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
