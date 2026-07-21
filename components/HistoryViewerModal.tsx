@@ -204,28 +204,7 @@ export default function HistoryViewerModal({
       return entries.filter(([key]) => templateVars.has(key));
     }
 
-    // Fallback for legacy history items without saved promptTemplate:
-    // Filter out dead variables whose keys/values were never substituted or present in filledPrompt
-    if (item.filledPrompt) {
-      const filledText = item.filledPrompt;
-      return entries.filter(([key, val]) => {
-        if (filledText.includes(`{{ ${key} }}`) || filledText.includes(`{{${key}}}`)) return true;
-
-        // If value is non-empty, check if value exists in filledPrompt
-        if (val && val.trim() !== "" && val.trim().toLowerCase() !== "up to you") {
-          return filledText.includes(val);
-        }
-
-        // If key name is mentioned in filledPrompt
-        const cleanKey = key.replace(/[_-]/g, " ");
-        if (cleanKey.length > 2 && filledText.toLowerCase().includes(cleanKey.toLowerCase())) {
-          return true;
-        }
-
-        return false;
-      });
-    }
-
+    // Fallback for legacy history items without saved promptTemplate: keep as-is
     return entries;
   };
 

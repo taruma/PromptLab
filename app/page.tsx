@@ -410,54 +410,33 @@ export default function PromptGeneratorPage() {
           const cleanedHistory = parsedHistory.map((item) => {
             if (!item.variables) return item;
 
-            const entries = Object.entries(item.variables);
-            let validVarSet: Set<string> | null = null;
-
+            // Clean variables strictly if promptTemplate is stored with the history item
             if (item.promptTemplate) {
               const matches = Array.from(item.promptTemplate.matchAll(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g));
-              validVarSet = new Set([...matches.map((m) => m[1]), "idea"]);
-            }
+              const validVarSet = new Set([...matches.map((m) => m[1]), "idea"]);
 
-            const cleanVars: Record<string, string> = {};
-            let itemChanged = false;
+              const entries = Object.entries(item.variables);
+              const cleanVars: Record<string, string> = {};
+              let itemChanged = false;
 
-            entries.forEach(([key, val]) => {
-              if (key === "visual_references" || key === "cast") {
-                itemChanged = true;
-                return;
-              }
-              if (key === "idea") {
-                cleanVars[key] = val;
-                return;
-              }
-
-              if (validVarSet) {
+              entries.forEach(([key, val]) => {
+                if (key === "visual_references" || key === "cast") {
+                  itemChanged = true;
+                  return;
+                }
                 if (validVarSet.has(key)) {
                   cleanVars[key] = val;
                 } else {
                   itemChanged = true;
                 }
-              } else if (item.filledPrompt) {
-                const filledText = item.filledPrompt;
-                const isKeyMentioned = filledText.includes(`{{ ${key} }}`) || filledText.includes(`{{${key}}}`);
-                const isValPresent = val && val.trim() !== "" && val.trim().toLowerCase() !== "up to you" && filledText.includes(val);
-                const cleanKey = key.replace(/[_-]/g, " ");
-                const isKeyInFilled = cleanKey.length > 2 && filledText.toLowerCase().includes(cleanKey.toLowerCase());
+              });
 
-                if (isKeyMentioned || isValPresent || isKeyInFilled) {
-                  cleanVars[key] = val;
-                } else {
-                  itemChanged = true;
-                }
-              } else {
-                cleanVars[key] = val;
+              if (itemChanged) {
+                wasModified = true;
+                return { ...item, variables: cleanVars };
               }
-            });
-
-            if (itemChanged) {
-              wasModified = true;
-              return { ...item, variables: cleanVars };
             }
+
             return item;
           });
 
