@@ -288,12 +288,13 @@ export default function HistoryViewerModal({
                       <div
                         key={item.id}
                         onClick={() => setSelectedItemId(item.id)}
-                        className={`p-3.5 cursor-pointer transition-all flex items-start justify-between gap-3 group relative ${
+                        className={`p-3.5 cursor-pointer transition-all flex flex-col group relative ${
                           isSelected ? "bg-white border-l-4 border-l-[#1A1A1A]" : "hover:bg-[#F4F4F2]"
                         }`}
                       >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 mb-1.5 font-mono text-[8px] text-[#888884]">
+                        {/* Row 1: Timestamp, image count, and hover action controls */}
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <div className="flex items-center gap-1.5 font-mono text-[8px] text-[#888884]">
                             <span>{item.timestamp}</span>
                             {item.images && item.images.length > 0 && (
                               <span className="bg-[#1A1A1A] text-white px-1 py-0.5 font-bold uppercase shrink-0">
@@ -302,75 +303,77 @@ export default function HistoryViewerModal({
                             )}
                           </div>
 
-                          {renamingId === item.id ? (
-                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="text"
-                                value={renameValue}
-                                onChange={(e) => setRenameValue(e.target.value)}
-                                onKeyDown={(e) => handleRenameKeyDown(item.id, e)}
-                                autoFocus
-                                className="w-full bg-white border border-[#1A1A1A] px-2 py-1 text-[10px] font-bold text-[#1A1A1A] rounded-none outline-none"
-                              />
+                          {/* Hover action controls on same row as date and image counter */}
+                          {renamingId !== item.id && (
+                            <div className="flex items-center gap-1 shrink-0 md:opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
-                                onClick={(e) => saveRename(item.id, e)}
-                                className="p-1 hover:text-emerald-600 transition-colors shrink-0 cursor-pointer"
-                                title="Save Name"
+                                onClick={(e) => startRename(item, e)}
+                                className="text-[#888884] hover:text-[#1A1A1A] p-0.5 transition-colors cursor-pointer"
+                                title="Rename history slot"
                               >
-                                <Check className="w-3.5 h-3.5" />
+                                <Edit2 className="w-3 h-3" />
                               </button>
                               <button
-                                onClick={cancelRename}
-                                className="p-1 hover:text-red-500 transition-colors shrink-0 cursor-pointer"
-                                title="Cancel"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteHistoryItem(item.id);
+                                }}
+                                className="text-[#888884] hover:text-red-500 p-0.5 transition-colors cursor-pointer"
+                                title="Delete history slot"
                               >
-                                <X className="w-3.5 h-3.5" />
+                                <Trash2 className="w-3 h-3" />
                               </button>
-                            </div>
-                          ) : (
-                            <h4 className={`text-[10px] font-bold uppercase tracking-tight break-words pr-2 leading-relaxed ${
-                              isSelected ? "text-[#1A1A1A]" : "text-[#555552] group-hover:text-[#1A1A1A]"
-                            }`}>
-                              {displayTitle}
-                            </h4>
-                          )}
-
-                          {(item.model || item.presetLabel) && (
-                            <div className="flex items-center gap-1.5 mt-1.5 font-mono text-[8px] text-[#888884]">
-                              {item.model && (
-                                <span className="border border-[#D1D1CF] bg-white text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase">
-                                  {item.model.replace("gemini-", "")}
-                                </span>
-                              )}
-                              {item.presetLabel && (
-                                <span className="border border-[#D1D1CF] bg-[#EAEAE8] text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold truncate max-w-[120px]">
-                                  {item.presetLabel}
-                                </span>
-                              )}
                             </div>
                           )}
                         </div>
 
-                        {/* Hover action controls */}
-                        {renamingId !== item.id && (
-                          <div className="flex items-center gap-1 shrink-0 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Row 2: Title / Rename input */}
+                        {renamingId === item.id ? (
+                          <div className="flex items-center gap-1.5 w-full" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              value={renameValue}
+                              onChange={(e) => setRenameValue(e.target.value)}
+                              onKeyDown={(e) => handleRenameKeyDown(item.id, e)}
+                              autoFocus
+                              className="w-full bg-white border border-[#1A1A1A] px-2 py-1 text-[10px] font-bold text-[#1A1A1A] rounded-none outline-none"
+                            />
                             <button
-                              onClick={(e) => startRename(item, e)}
-                              className="text-[#888884] hover:text-[#1A1A1A] p-1 transition-colors cursor-pointer"
-                              title="Rename history slot"
+                              onClick={(e) => saveRename(item.id, e)}
+                              className="p-1 hover:text-emerald-600 transition-colors shrink-0 cursor-pointer"
+                              title="Save Name"
                             >
-                              <Edit2 className="w-3 h-3" />
+                              <Check className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onDeleteHistoryItem(item.id);
-                              }}
-                              className="text-[#888884] hover:text-red-500 p-1 transition-colors cursor-pointer"
-                              title="Delete history slot"
+                              onClick={cancelRename}
+                              className="p-1 hover:text-red-500 transition-colors shrink-0 cursor-pointer"
+                              title="Cancel"
                             >
-                              <Trash2 className="w-3 h-3" />
+                              <X className="w-3.5 h-3.5" />
                             </button>
+                          </div>
+                        ) : (
+                          <h4 className={`text-[10px] font-bold uppercase tracking-tight break-words leading-relaxed w-full ${
+                            isSelected ? "text-[#1A1A1A]" : "text-[#555552] group-hover:text-[#1A1A1A]"
+                          }`}>
+                            {displayTitle}
+                          </h4>
+                        )}
+
+                        {/* Row 3: Model & Preset Badges */}
+                        {(item.model || item.presetLabel) && (
+                          <div className="flex items-center gap-1.5 mt-1.5 font-mono text-[8px] text-[#888884] w-full flex-wrap">
+                            {item.model && (
+                              <span className="border border-[#D1D1CF] bg-white text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase">
+                                {item.model.replace("gemini-", "")}
+                              </span>
+                            )}
+                            {item.presetLabel && (
+                              <span className="border border-[#D1D1CF] bg-[#EAEAE8] text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold truncate max-w-[140px]">
+                                {item.presetLabel}
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>

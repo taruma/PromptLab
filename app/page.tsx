@@ -1731,42 +1731,47 @@ export default function PromptGeneratorPage() {
                         <div
                           key={item.id}
                           onClick={() => setPendingLoadItem(item)}
-                          className="p-3.5 hover:bg-[#F4F4F2] cursor-pointer transition-all flex items-start justify-between gap-3 group"
+                          className="p-3.5 hover:bg-[#F4F4F2] cursor-pointer transition-all flex flex-col group"
                         >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[9px] text-[#888884] font-mono">{item.timestamp}</span>
+                          {/* Row 1: Timestamp, image count, and delete control */}
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <div className="flex items-center gap-2 font-mono text-[9px] text-[#888884]">
+                              <span>{item.timestamp}</span>
                               {item.images && item.images.length > 0 && (
                                 <span className="text-[8px] bg-[#1A1A1A] text-white px-1 font-mono uppercase font-bold">
                                   {item.images.length} IMG
                                 </span>
                               )}
                             </div>
-                            <h4 className="text-[11px] font-bold uppercase text-[#1A1A1A] truncate tracking-tight pr-2">
-                              {snippet}
-                            </h4>
-                            {(item.model || item.presetLabel) && (
-                              <div className="flex items-center gap-1.5 mt-1 font-mono text-[8px] text-[#888884]">
-                                {item.model && (
-                                  <span className="border border-[#D1D1CF] bg-white text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase">
-                                    {item.model.replace("gemini-", "")}
-                                  </span>
-                                )}
-                                {item.presetLabel && (
-                                  <span className="border border-[#D1D1CF] bg-[#EAEAE8] text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold truncate max-w-[120px]">
-                                    {item.presetLabel}
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                            <button
+                              onClick={(e) => handleDeleteHistoryItem(item.id, e)}
+                              className="text-[#888884] hover:text-red-500 opacity-0 group-hover:opacity-100 p-0.5 transition-all cursor-pointer shrink-0"
+                              title="Delete history slot"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-                          <button
-                            onClick={(e) => handleDeleteHistoryItem(item.id, e)}
-                            className="text-[#888884] hover:text-red-500 opacity-0 group-hover:opacity-100 p-1 transition-all cursor-pointer shrink-0"
-                            title="Delete history slot"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+
+                          {/* Row 2: Title */}
+                          <h4 className="text-[11px] font-bold uppercase text-[#1A1A1A] truncate tracking-tight w-full">
+                            {snippet}
+                          </h4>
+
+                          {/* Row 3: Model & Preset Badges */}
+                          {(item.model || item.presetLabel) && (
+                            <div className="flex items-center gap-1.5 mt-1 font-mono text-[8px] text-[#888884] w-full flex-wrap">
+                              {item.model && (
+                                <span className="border border-[#D1D1CF] bg-white text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase">
+                                  {item.model.replace("gemini-", "")}
+                                </span>
+                              )}
+                              {item.presetLabel && (
+                                <span className="border border-[#D1D1CF] bg-[#EAEAE8] text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold truncate max-w-[140px]">
+                                  {item.presetLabel}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
