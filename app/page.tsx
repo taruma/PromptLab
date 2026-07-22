@@ -74,6 +74,7 @@ export interface HistoryItem {
   timestamp: string;
   variables: Record<string, string>;
   images: { id?: string; label: string; base64: string; mimeType: string }[];
+  videos?: { id?: string; label: string; mimeType?: string; duration?: number }[];
   output: string;
   filledPrompt: string;
   promptTemplate?: string;
@@ -1070,6 +1071,21 @@ export default function PromptGeneratorPage() {
     );
     
     setUploadedImages(loadedImages);
+
+    if (item.videos && item.videos.length > 0) {
+      setUploadedVideos(
+        item.videos.map((vid, idx) => ({
+          id: vid.id || `vid-${Date.now()}-${idx}`,
+          label: vid.label,
+          base64: "",
+          mimeType: vid.mimeType || "video/mp4",
+          duration: vid.duration,
+        }))
+      );
+    } else {
+      setUploadedVideos([]);
+    }
+
     setGenerationResult(item.output);
     setFilledPrompt(item.filledPrompt);
     setThinkingResult("");
@@ -1599,6 +1615,13 @@ export default function PromptGeneratorPage() {
           })
         );
 
+        const historyVideos = uploadedVideos.map((vid, idx) => ({
+          id: vid.id || `hist-vid-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`,
+          label: vid.label,
+          mimeType: vid.mimeType,
+          duration: vid.duration,
+        }));
+
         const activeTemplateVars = new Set(extractVariables(promptTemplate));
         const cleanHistoryVariables: Record<string, string> = {};
         if (inputs["idea"] !== undefined) {
@@ -1627,6 +1650,7 @@ export default function PromptGeneratorPage() {
           }),
           variables: cleanHistoryVariables,
           images: historyImages,
+          videos: historyVideos,
           output: accumulatedText,
           filledPrompt: activeFilledPrompt || filledPrompt,
           promptTemplate: promptTemplate,

@@ -8,6 +8,7 @@ export interface HistoryItem {
   timestamp: string;
   variables: Record<string, string>;
   images: { id?: string; label: string; base64: string; mimeType: string }[];
+  videos?: { id?: string; label: string; mimeType?: string; duration?: number }[];
   output: string;
   filledPrompt: string;
   promptTemplate?: string;
@@ -172,6 +173,11 @@ export default function HistorySection({
                           {item.images && item.images.length > 0 && (
                             <span className="text-[8px] bg-[#1A1A1A] text-white px-1 font-mono uppercase font-bold">
                               {item.images.length} IMG
+                            </span>
+                          )}
+                          {item.videos && item.videos.length > 0 && (
+                            <span className="text-[8px] bg-purple-900 text-purple-100 px-1 font-mono uppercase font-bold">
+                              {item.videos.length} VID
                             </span>
                           )}
                         </div>

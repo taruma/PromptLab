@@ -7,11 +7,19 @@ export interface HistoryImageRef {
   mimeType: string;
 }
 
+export interface HistoryVideoRef {
+  id?: string;
+  label: string;
+  mimeType?: string;
+  duration?: number;
+}
+
 export interface HistoryItem {
   id: string;
   timestamp: string;
   variables: Record<string, string>;
   images: HistoryImageRef[];
+  videos?: HistoryVideoRef[];
   output: string;
   filledPrompt: string;
   promptTemplate?: string;
@@ -84,6 +92,7 @@ export async function exportHistoryToJSON(
       return {
         ...item,
         images: preparedImages,
+        videos: item.videos || [],
       };
     })
   );
@@ -176,11 +185,25 @@ export async function importHistoryFromJSON(
         }
       }
 
+      const videos: HistoryVideoRef[] = [];
+      if (Array.isArray(rawItem.videos)) {
+        for (let i = 0; i < rawItem.videos.length; i++) {
+          const rawVid = rawItem.videos[i];
+          videos.push({
+            id: rawVid.id || `hist-vid-${now}-${idx}-${i}`,
+            label: rawVid.label || `Video ${i + 1}`,
+            mimeType: rawVid.mimeType || "video/mp4",
+            duration: rawVid.duration,
+          });
+        }
+      }
+
       const item: HistoryItem = {
         id: newHistoryId,
         timestamp: rawItem.timestamp || new Date().toLocaleString(),
         variables: typeof rawItem.variables === "object" && rawItem.variables ? rawItem.variables : {},
         images,
+        videos,
         output: String(rawItem.output || ""),
         filledPrompt: String(rawItem.filledPrompt || rawItem.compiledPrompt || ""),
         promptTemplate: rawItem.promptTemplate,

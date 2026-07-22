@@ -11,6 +11,7 @@ import {
   FolderOpen, 
   Sparkles, 
   Image as ImageIcon,
+  Film,
   Settings,
   Copy,
   Star,
@@ -26,6 +27,7 @@ interface HistoryItem {
   timestamp: string;
   variables: Record<string, string>;
   images: { id?: string; label: string; base64: string; mimeType: string }[];
+  videos?: { id?: string; label: string; mimeType?: string; duration?: number }[];
   output: string;
   filledPrompt: string;
   promptTemplate?: string;
@@ -149,8 +151,9 @@ export default function HistoryViewerModal({
     }
 
     if (searchScope === "visual_reference") {
-      if (!item.images) return false;
-      return item.images.some(img => img.label.toLowerCase().includes(query));
+      const imgMatch = item.images && item.images.some(img => img.label.toLowerCase().includes(query));
+      const vidMatch = item.videos && item.videos.some(vid => vid.label.toLowerCase().includes(query));
+      return Boolean(imgMatch || vidMatch);
     }
 
     if (searchScope === "idea") {
@@ -528,6 +531,11 @@ export default function HistoryViewerModal({
                                 {item.images.length} IMG
                               </span>
                             )}
+                            {item.videos && item.videos.length > 0 && (
+                              <span className="bg-purple-900 text-purple-100 px-1 py-0.5 font-bold uppercase shrink-0">
+                                {item.videos.length} VID
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-1 shrink-0">
@@ -727,11 +735,11 @@ export default function HistoryViewerModal({
                 {/* Visual Reference Assets Section */}
                 <div className="flex flex-col gap-2">
                   <span className="text-[9px] uppercase tracking-wider text-[#888884] font-black font-mono">
-                    Visual References & Casting Maps ({selectedItem.images?.length || 0})
+                    Visual References & Casting Maps ({(selectedItem.images?.length || 0) + (selectedItem.videos?.length || 0)})
                   </span>
-                  {selectedItem.images && selectedItem.images.length > 0 ? (
+                  {((selectedItem.images && selectedItem.images.length > 0) || (selectedItem.videos && selectedItem.videos.length > 0)) ? (
                     <div className="flex flex-wrap gap-3">
-                      {selectedItem.images.map((img, idx) => {
+                      {selectedItem.images?.map((img, idx) => {
                         const b64 = resolvedImages[img.id || ""];
                         return (
                           <div key={img.id || idx} className="flex items-center gap-2.5 border border-[#D1D1CF] bg-[#F4F4F2] p-1.5 pr-3 text-[10px] font-mono shrink-0">
@@ -748,6 +756,22 @@ export default function HistoryViewerModal({
                               <span className="text-[8px] text-[#888884] font-black">@IMAGE{idx + 1}</span>
                               <span className="text-[#1A1A1A] font-bold truncate max-w-[140px] uppercase">
                                 {img.label}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {selectedItem.videos?.map((vid, idx) => {
+                        return (
+                          <div key={vid.id || idx} className="flex items-center gap-2.5 border border-purple-300 bg-purple-50 p-1.5 pr-3 text-[10px] font-mono shrink-0">
+                            <div className="w-9 h-9 relative shrink-0 border border-purple-200 bg-purple-100 flex items-center justify-center overflow-hidden">
+                              <Film className="w-4 h-4 text-purple-700" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[8px] text-purple-700 font-black">@VIDEO{idx + 1}</span>
+                              <span className="text-[#1A1A1A] font-bold truncate max-w-[140px] uppercase">
+                                {vid.label}
                               </span>
                             </div>
                           </div>
