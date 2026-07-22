@@ -4,11 +4,19 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
-## [v2.0.1] — July 22, 2026
+## [Unreleased]
 
-### Generation & Usability Patch
+### Generation & Usability
 
 - **Optional Core Idea:** Unlocked generation without requiring the Main Objective / Idea field to be filled. Users can now synthesize sequences using only other prompt parameters or pure templates.
+
+### Multi-Modal Video Support
+
+- **Video upload with `@videoN` reference annotations.** Upload MP4 video files alongside images as reference assets, automatically mapped to `@videoN` labels in the prompt template. Videos are sent as `inlineData` parts to the Gemini API, enabling true multi-modal generation with motion and temporal context. **Note**: Video files are large and may exceed POST body size limits on hosted/serverless platforms (e.g., Vercel's 4.5 MB limit). For video workflows, running the app locally is recommended.
+- **Video validation and processing.** A dedicated `validateAndProcessVideo` utility in `lib/video-utils.ts` enforces format (MP4 only), duration (≤30 seconds), and file size (≤35 MB) constraints before Base64 encoding. Invalid files receive clear, specific error messages.
+- **VideoAssetCard component.** Reusable UI card (`components/VideoAssetCard.tsx`) for displaying uploaded videos in the workspace sidebar with metadata (duration, dimensions) and a playback trigger.
+- **VideoPlayerModal component.** Full-screen modal (`components/VideoPlayerModal.tsx`) for previewing uploaded reference videos before generation, with standard HTML5 video controls.
+- **Unified reference tag pipeline.** Images (`@imageN`) and videos (`@videoN`) are now combined into a single `referenceTags` array server-side, producing a consolidated `{{ visual_references }}` variable that lists all media assets with their labels in the prompt template.
 
 ---
 

@@ -13,7 +13,7 @@
 
 ## What is PromptLab?
 
-PromptLab is a **first-draft playground** for prompt engineering. Write your system instructions and prompt templates with `{{ dynamic_variables }}`, upload reference images, and quickly test your prompts against **Google Gemini**. It's not a production pipeline — it's where you sketch, iterate, and nail down your prompt design before using it elsewhere.
+PromptLab is a **first-draft playground** for prompt engineering. Write your system instructions and prompt templates with `{{ dynamic_variables }}`, upload reference images and videos, and quickly test your prompts against **Google Gemini**. It's not a production pipeline — it's where you sketch, iterate, and nail down your prompt design before using it elsewhere.
 
 ---
 
@@ -21,6 +21,7 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 
 - **Dynamic Template Variables** — Add `{{ placeholders }}` to your prompt template and form fields appear automatically. No hardcoding needed.
 - **Visual Reference Uploads** — Drag and drop images to serve as casting or scene references. Each asset is auto-mapped (e.g., `@image1`) and injected into your prompt. Images are automatically compressed to high-quality JPEG to conserve storage.
+- **Multi-Modal Video Support** — Upload MP4 videos alongside images as reference assets. Videos are validated (≤30 seconds, ≤35 MB) and mapped to `@videoN` annotations. Preview uploaded videos in a full-screen player before generating. *(Note: video uploads work best when running locally; hosted deployments may hit POST payload size limits.)*
 - **Image Storage with IndexedDB** — Uploaded images are stored in your browser's IndexedDB, avoiding localStorage quota limits. You can upload larger files without worrying about storage caps.
 - **Custom Presets** — Save, update, or delete your own presets. Import and export as JSON files. Share presets via URL query parameters. Visual badges show when a preset is loaded or has unsaved changes.
 - **Engine Controls** — Switch between Gemini models (3.5 Flash, 3.1 Flash Lite, 3.1 Pro), adjust temperature, reasoning effort, and max output tokens.
@@ -87,7 +88,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 1. **Bring your own system instructions and template** via the **Configure Prompts** button — or start from one of the example presets
 2. **Fill in the template variables** that appear in the left panel
-3. **Upload reference images** by dragging them into the drop zone — label each one to map it to a character or setting
+3. **Upload reference images and videos** by dragging them into the drop zone — label each one to map it to a character or setting (e.g., `@image1` for images, `@video1` for videos). *For video uploads with larger files, run PromptLab locally to avoid payload size limits on hosted deployments.*
 4. **Click "Generate Sequence"** to test your prompt against Gemini
 5. **Review the output**, tweak your template, and generate again — iterate until your prompt design feels right
 6. **Browse past generations** in the history panel — favorite, export, or click any entry to restore it
@@ -114,7 +115,7 @@ Supported parameters: `?presetUrl=`, `?configUrl=`, `?preset=`, or `?config=`. O
 
 ## Tech Stack
 
-Built with [Next.js](https://nextjs.org/) 15, [Tailwind CSS](https://tailwindcss.com/) v4, [Vercel Analytics](https://vercel.com/analytics), and the [Google GenAI SDK](https://www.npmjs.com/package/@google/genai). Image persistence uses IndexedDB to avoid browser storage limits.
+Built with [Next.js](https://nextjs.org/) 15, [Tailwind CSS](https://tailwindcss.com/) v4, [Vercel Analytics](https://vercel.com/analytics), and the [Google GenAI SDK](https://www.npmjs.com/package/@google/genai). Image persistence uses IndexedDB to avoid browser storage limits. Video validation uses the HTML5 Video API for metadata extraction.
 
 ---
 

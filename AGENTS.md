@@ -6,7 +6,7 @@ Welcome to **PromptLab**. This document outlines the project architecture, desig
 
 ## 1. Core Purpose & Concept
 
-PromptLab is an elegant, single-page creative workspace designed to compile rich, structured prompt templates with customizable dynamic placeholders and multi-modal reference files (reference images mapped to `@imageX` casting annotations). The compiled instructions are processed server-side via the modern `@google/genai` SDK using the **Gemini 3.5 Flash** model.
+PromptLab is an elegant, single-page creative workspace designed to compile rich, structured prompt templates with customizable dynamic placeholders and multi-modal reference files (reference images mapped to `@imageX` and videos mapped to `@videoX` casting annotations). The compiled instructions are processed server-side via the modern `@google/genai` SDK using the **Gemini 3.5 Flash** model.
 
 Key differentiators:
 - **Zero Database / Hybrid Persistence**: Uses static filesystem templates for fallback config defaults, client-side `localStorage` for active session configurations, and local presets for quick workspace instantiation. Image blobs are persisted in **IndexedDB** to avoid browser localStorage quota limits.
@@ -27,6 +27,7 @@ Key differentiators:
 - **Utility Libraries**: `clsx` + `tailwind-merge` (via `lib/utils.ts` `cn()` helper), `class-variance-authority`, `@hookform/resolvers`.
 - **Client-Side Storage**: **IndexedDB** (`promptlab_db` → `images` object store) for image blob persistence, avoiding browser localStorage quota constraints.
 - **Image Processing**: HTML Canvas API for automatic JPEG compression (90% quality) with transparency flattening on uploaded images.
+- **Video Processing**: HTML5 Video API for metadata extraction and validation of uploaded MP4 videos (≤30s duration, ≤35 MB file size), with Base64 encoding via FileReader for Gemini API inlineData transmission.
 - **Build Tools**: `autoprefixer` for PostCSS, `firebase-tools` in devDependencies for potential future Firebase integration.
 
 ---
@@ -62,12 +63,15 @@ Key differentiators:
 │   ├── HistoryViewerModal.tsx       # Full-screen history browser with import/export
 │   ├── PresetCompareModal.tsx       # Full-screen diff viewer for preset comparison (unified/split views)
 │   ├── PresetExportDropdown.tsx     # Bulk export dropdown (All/Favorites/Selected) for user presets
-│   └── VisualAssetCard.tsx          # Reusable asset card with hover preview
+│   ├── VideoAssetCard.tsx           # Reusable video asset card with metadata and playback trigger
+│   ├── VideoPlayerModal.tsx         # Full-screen video playback modal for previewing uploaded videos
+│   └── VisualAssetCard.tsx          # Reusable image asset card with hover preview
 ├── /lib
 │   ├── utils.ts                     # UI utility functions (cn(), diff engine, image compression)
 │   ├── indexeddb.ts                 # IndexedDB helper module (open, get, save, delete)
 │   ├── history-export.ts           # History JSON import/export utilities
-│   └── preset-export.ts            # User preset bulk export/import utilities (JSON)
+│   ├── preset-export.ts            # User preset bulk export/import utilities (JSON)
+│   └── video-utils.ts              # Video validation and Base64 encoding utilities
 ├── /hooks
 │   └── use-mobile.ts                # Screen size hook helper (< 768px breakpoint)
 ├── /assets                          # Reserved for future static asset storage (currently empty)
@@ -118,7 +122,7 @@ PromptLab is crafted in an **Analog Brutalist Retro Lab** aesthetic. Any new com
 The workspace reads dynamic template specifications from the currently configured prompt template (loaded initially from files, then stored or customized via `localStorage` or JSON imports).
 - Putting standard double curly-brace parameters in the template (e.g., `{{ brand_voice }}`, `{{ word_limit }}`) will automatically trigger the UI to generate responsive form input fields.
 - **Reserved Special Keywords**: The placeholders `{{ visual_references }}`, `{{ cast }}`, and `{{ idea }}` are reserved for core canvas layout elements and auto-populated values. They are **STRICTLY EXCLUDED** from generating custom form text inputs.
-  - `{{ visual_references }}` and `{{ cast }}` are auto-populated from uploaded image labels (e.g., `@image1 as Character Name, @image2 as Setting Background`).
+  - `{{ visual_references }}` and `{{ cast }}` are auto-populated from uploaded image and video labels (e.g., `@image1 as Character Name, @video1 as Reference Clip`).
   - `{{ idea }}` is rendered as a dedicated full-width text area ("Main Objective / Idea") above the dynamic parameter forms.
 - To customize variables, users can configure them live in the "Configure Prompts" settings panel inside the editor view.
 
@@ -136,10 +140,13 @@ The workspace reads dynamic template specifications from the currently configure
 - **Defaults Reset**: An interactive **Reset Defaults** action is available within the modal footer to restore the system's baseline configuration instantly.
 - **Metadata Visibility**: The active Engine, Reasoning Level, and Temperature parameters are constantly reported in the workspace footer next to the system status indicator.
 
-### Rule D: Multi-modal Reference Handling
-- Visual references are uploaded by the user, parsed as Base64 strings, and passed to `/app/api/generate/route.ts`.
-- The generator automatically maps these reference files internally. Uploaded files represent a sequence of images mapped explicitly in order to label annotations (e.g. `@image1` mapped to "Character Name", `@image2` to "Setting Background").
-- In the generation route, these are combined with variables as `inlineData` parts alongside the compiled instructions.
+### Rule D: Multi-modal Reference Handling (Images & Video)
+
+- **Image References**: Visual reference images are uploaded by the user, processed through the Canvas compression pipeline (Rule H), and stored as Base64 in IndexedDB. Uploaded images are mapped in sequence order to `@imageN` label annotations (e.g. `@image1` as "Character Name", `@image2` as "Setting Background").
+- **Video References**: MP4 video files can be uploaded alongside images. Videos are validated via `lib/video-utils.ts` (MP4 format only, ≤30 seconds duration, ≤35 MB file size) and encoded as Base64 via the FileReader API. Videos are mapped to `@videoN` label annotations (e.g. `@video1` as "Reference Clip"). Unlike images, videos bypass the Canvas compression pipeline and IndexedDB storage — they are held in-memory during the active session only. **Note**: Video files are large and may exceed POST body size limits on hosted/serverless platforms (e.g., Vercel's 4.5 MB limit). For video workflows, running the app locally is recommended.
+- **Unified Reference Pipeline**: Images and videos are combined into a single `referenceTags` array server-side in `/app/api/generate/route.ts`, producing a consolidated `{{ visual_references }}` template variable that lists all media assets with their labels (e.g. `@image1 as Character Name, @video1 as Reference Clip`).
+- **API Transmission**: Both image and video data are cleaned (data URL prefix stripped) and passed as `inlineData` parts to the Gemini API alongside the compiled prompt text, enabling true multi-modal generation with both static and temporal visual context.
+- **Video Preview**: Uploaded videos can be previewed in a full-screen `VideoPlayerModal` component before generation, using standard HTML5 video controls with metadata display (duration, dimensions).
 
 ### Rule E: Real-time Streaming & Reasoning Traces (SSE Architecture)
 - **Streaming Output**: The workspace utilizes high-performance text streaming via Server-Sent Events (SSE). The server-side proxy `/app/api/generate/route.ts` streams chunks using the modern `generateContentStream` method.
