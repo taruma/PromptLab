@@ -896,6 +896,16 @@ export default function PromptGeneratorPage() {
     localStorage.removeItem("prompt_generator_history");
   };
 
+  // Import new history items and persist to local storage
+  const handleImportHistory = (newHistory: HistoryItem[]) => {
+    setHistory(newHistory);
+    try {
+      localStorage.setItem("prompt_generator_history", JSON.stringify(newHistory));
+    } catch (err) {
+      console.error("Failed to save imported history to local storage:", err);
+    }
+  };
+
   // We manage engine controls configuration via the external EngineControlsModal component.
 
   // Open the configuration modal
@@ -3257,6 +3267,7 @@ export default function PromptGeneratorPage() {
         onDeleteHistoryItem={setPendingDeleteId}
         onLoadHistoryItem={setPendingLoadItem}
         onToggleFavoriteHistoryItem={handleToggleFavoriteHistoryItem}
+        onImportHistory={handleImportHistory}
       />
     </div>
   );

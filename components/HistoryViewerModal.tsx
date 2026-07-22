@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Search, 
   Trash2, 
@@ -13,9 +13,13 @@ import {
   Image as ImageIcon,
   Settings,
   Copy,
-  Star
+  Star,
+  Download,
+  Upload,
+  Loader2
 } from "lucide-react";
 import { getStoredImage } from "../lib/indexeddb";
+import { exportHistoryToJSON, importHistoryFromJSON } from "../lib/history-export";
 
 interface HistoryItem {
   id: string;
@@ -43,6 +47,7 @@ interface HistoryViewerModalProps {
   onDeleteHistoryItem: (id: string) => void;
   onLoadHistoryItem: (item: HistoryItem) => void;
   onToggleFavoriteHistoryItem?: (id: string, e?: React.MouseEvent) => void;
+  onImportHistory?: (newHistory: HistoryItem[]) => void;
 }
 
 export default function HistoryViewerModal({
@@ -52,7 +57,8 @@ export default function HistoryViewerModal({
   onRenameHistoryItem,
   onDeleteHistoryItem,
   onLoadHistoryItem,
-  onToggleFavoriteHistoryItem
+  onToggleFavoriteHistoryItem,
+  onImportHistory
 }: HistoryViewerModalProps) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -65,6 +71,12 @@ export default function HistoryViewerModal({
   const [copied, setCopied] = useState(false);
   const [ideaCopied, setIdeaCopied] = useState(false);
   const [compiledCopied, setCompiledCopied] = useState(false);
+
+  // Export / Import UI states
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [statusBanner, setStatusBanner] = useState<{ message: string; isError?: boolean } | null>(null);
+  const historyFileInputRef = useRef<HTMLInputElement>(null);
 
   // Derive selectedItem from history and selectedItemId
   const selectedItem = React.useMemo(() => {
@@ -196,6 +208,55 @@ export default function HistoryViewerModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Export history handler
+  const handleExport = async (type: "all" | "favorites" | "selected") => {
+    setIsExportMenuOpen(false);
+    setIsProcessing(true);
+    setStatusBanner(null);
+    try {
+      const result = await exportHistoryToJSON(history, type, selectedItem);
+      setStatusBanner({
+        message: `Successfully exported ${result.count} history item(s) to "${result.filename}"`
+      });
+    } catch (err: any) {
+      setStatusBanner({
+        message: err.message || "Failed to export history records",
+        isError: true
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Import history handler
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsProcessing(true);
+    setStatusBanner(null);
+    try {
+      const text = await file.text();
+      const { updatedHistory, importedCount } = await importHistoryFromJSON(text, history);
+      if (onImportHistory) {
+        onImportHistory(updatedHistory);
+      }
+      setStatusBanner({
+        message: `Successfully imported ${importedCount} history record(s) with embedded images!`
+      });
+    } catch (err: any) {
+      setStatusBanner({
+        message: err.message || "Failed to parse and import history JSON file",
+        isError: true
+      });
+    } finally {
+      setIsProcessing(false);
+      if (e.target) {
+        e.target.value = "";
+      }
+    }
+  };
+
   // Custom parameters excluding special placeholders & unreferenced dead variables
   const getCustomParams = (item: HistoryItem | null): [string, string][] => {
     if (!item) return [];
@@ -221,21 +282,124 @@ export default function HistoryViewerModal({
     <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" id="history-viewer-modal-backdrop">
       <div className="bg-white border border-[#D1D1CF] w-full max-w-6xl h-[85vh] md:h-[80vh] flex flex-col shadow-2xl relative rounded-none overflow-hidden" id="history-viewer-modal-box">
         
+        {/* Hidden File Input for History Import */}
+        <input
+          type="file"
+          ref={historyFileInputRef}
+          onChange={handleImportFile}
+          accept=".json"
+          className="hidden"
+          id="history-json-import-input"
+        />
+
         {/* Modal Header */}
-        <div className="h-14 border-b border-[#D1D1CF] px-6 flex items-center justify-between bg-[#F4F4F2] shrink-0">
-          <div className="flex items-center gap-2">
-            <Settings className="w-4 h-4 text-[#1A1A1A]" />
-            <h3 className="text-xs font-black uppercase tracking-wider font-sans text-[#1A1A1A]">
+        <div className="h-14 border-b border-[#D1D1CF] px-6 flex items-center justify-between bg-[#F4F4F2] shrink-0 gap-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <Settings className="w-4 h-4 text-[#1A1A1A] shrink-0" />
+            <h3 className="text-xs font-black uppercase tracking-wider font-sans text-[#1A1A1A] truncate">
               Local Session History Explorer & Lab
             </h3>
           </div>
-          <button
-            onClick={onClose}
-            className="text-stone-500 hover:text-[#1A1A1A] font-mono font-bold text-[10px] uppercase tracking-wider cursor-pointer"
-          >
-            [ESC] CLOSE
-          </button>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Import Button */}
+            <button
+              type="button"
+              onClick={() => historyFileInputRef.current?.click()}
+              disabled={isProcessing}
+              className="px-2.5 py-1.5 bg-white hover:bg-[#FAF9F6] text-[#1A1A1A] border border-[#D1D1CF] text-[9px] font-mono font-bold uppercase tracking-wider cursor-pointer flex items-center gap-1.5 transition-all disabled:opacity-50 rounded-none shadow-xs"
+              title="Import history JSON file with embedded images"
+            >
+              {isProcessing ? (
+                <Loader2 className="w-3 h-3 animate-spin text-[#1A1A1A]" />
+              ) : (
+                <Upload className="w-3 h-3 text-[#1A1A1A]" />
+              )}
+              Import JSON
+            </button>
+
+            {/* Export Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                disabled={isProcessing || history.length === 0}
+                className="px-2.5 py-1.5 bg-[#1A1A1A] hover:bg-[#333] text-white text-[9px] font-mono font-bold uppercase tracking-wider cursor-pointer flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed rounded-none shadow-xs"
+                title="Export history records as JSON"
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-3 h-3 animate-spin text-white" />
+                ) : (
+                  <Download className="w-3 h-3 text-white" />
+                )}
+                Export JSON
+                <ChevronDown className="w-3 h-3 text-white/70" />
+              </button>
+
+              {isExportMenuOpen && (
+                <div className="absolute right-0 mt-1 w-52 bg-white border border-[#D1D1CF] shadow-xl z-50 py-1 font-mono text-[9px] uppercase tracking-wider divide-y divide-[#EAEAE8] rounded-none animate-fade-in">
+                  <button
+                    type="button"
+                    onClick={() => handleExport("all")}
+                    className="w-full text-left px-3 py-2 hover:bg-[#FAF9F6] text-[#1A1A1A] flex items-center justify-between font-bold cursor-pointer"
+                  >
+                    <span>Export All History</span>
+                    <span className="text-[#888884] font-normal">({history.length})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExport("favorites")}
+                    disabled={history.filter(h => h.isFavorite).length === 0}
+                    className="w-full text-left px-3 py-2 hover:bg-[#FAF9F6] text-[#1A1A1A] flex items-center justify-between font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span className="flex items-center gap-1">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+                      Favorites Only
+                    </span>
+                    <span className="text-[#888884] font-normal">
+                      ({history.filter(h => h.isFavorite).length})
+                    </span>
+                  </button>
+                  {selectedItem && (
+                    <button
+                      type="button"
+                      onClick={() => handleExport("selected")}
+                      className="w-full text-left px-3 py-2 hover:bg-[#FAF9F6] text-[#1A1A1A] flex items-center justify-between font-bold cursor-pointer"
+                    >
+                      <span>Export Selected Slot</span>
+                      <span className="text-[#888884] font-normal">(1)</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={onClose}
+              className="text-stone-500 hover:text-[#1A1A1A] font-mono font-bold text-[10px] uppercase tracking-wider cursor-pointer ml-2"
+            >
+              [ESC] CLOSE
+            </button>
+          </div>
         </div>
+
+        {/* Status Banner */}
+        {statusBanner && (
+          <div className={`px-6 py-2 text-[10px] font-mono font-bold uppercase tracking-wider border-b flex items-center justify-between animate-fade-in ${
+            statusBanner.isError
+              ? "bg-red-50 text-red-800 border-red-200"
+              : "bg-emerald-50 text-emerald-800 border-emerald-200"
+          }`}>
+            <span>{statusBanner.isError ? "[ERROR] " : "[✓] "}{statusBanner.message}</span>
+            <button
+              type="button"
+              onClick={() => setStatusBanner(null)}
+              className="text-stone-500 hover:text-[#1A1A1A] uppercase font-bold text-[9px] cursor-pointer"
+            >
+              [Dismiss]
+            </button>
+          </div>
+        )}
 
         {/* Modal Body Container */}
         <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden divide-y md:divide-y-0 md:divide-x divide-[#D1D1CF]">
