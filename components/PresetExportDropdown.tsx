@@ -45,12 +45,12 @@ export default function PresetExportDropdown({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
-        className="px-3 py-1.5 bg-white hover:bg-[#F4F4F2] text-[#1A1A1A] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-3 py-1.5 bg-[#1A1A1A] hover:bg-[#333333] text-white border border-[#1A1A1A] text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
         title="Export user presets to JSON"
       >
-        <Download className="w-3.5 h-3.5 shrink-0 text-[#888884]" />
+        <Download className="w-3.5 h-3.5 shrink-0 text-white" />
         <span className="hidden sm:inline">Export Presets</span>
-        <ChevronDown className={`w-3 h-3 text-[#888884] transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`w-3 h-3 text-white transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen && (

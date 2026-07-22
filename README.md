@@ -28,6 +28,7 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 - **Session History** — Past generations are saved locally. Favorite entries, filter by tabs (All / Favorites / Recent), import/export as JSON for backup or sharing, and clear with a single action.
 - **Asset Library** — A persistent image library sidebar. Upload, browse, search, rename, and reuse images across workspaces without re-uploading.
 - **Preset Compare & Diff Viewer** — Side-by-side diff between your current config and any saved preset. Git-style add/remove highlighting before you load.
+- **Preset Export & Import** — Bulk export user presets (All / Favorites / Active) as versioned JSON files, with duplicate detection and favorite/pinned reconciliation on import.
 - **Preset Search & Filtering** — Search presets by name and filter with All / System / User tab toggles for quick navigation.
 - **Lab Manual & Quick-Start Guide** — A built-in 4-step walkthrough helps new users get oriented and productive immediately.
 

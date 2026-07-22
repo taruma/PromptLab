@@ -60,11 +60,14 @@ Key differentiators:
 │   ├── EngineControlsModal.tsx      # Engine configuration modal (model, temperature, API key vault)
 │   ├── HistorySection.tsx           # Collapsible history section in sidebar
 │   ├── HistoryViewerModal.tsx       # Full-screen history browser with import/export
+│   ├── PresetCompareModal.tsx       # Full-screen diff viewer for preset comparison (unified/split views)
+│   ├── PresetExportDropdown.tsx     # Bulk export dropdown (All/Favorites/Selected) for user presets
 │   └── VisualAssetCard.tsx          # Reusable asset card with hover preview
 ├── /lib
 │   ├── utils.ts                     # UI utility functions (cn(), diff engine, image compression)
 │   ├── indexeddb.ts                 # IndexedDB helper module (open, get, save, delete)
-│   └── history-export.ts           # History JSON import/export utilities
+│   ├── history-export.ts           # History JSON import/export utilities
+│   └── preset-export.ts            # User preset bulk export/import utilities (JSON)
 ├── /hooks
 │   └── use-mobile.ts                # Screen size hook helper (< 768px breakpoint)
 ├── /assets                          # Reserved for future static asset storage (currently empty)
@@ -204,6 +207,14 @@ The workspace reads dynamic template specifications from the currently configure
 - **History Import/Export**: History data can be exported as JSON files (including date, compact timestamp, and unique 4-character suffix in the filename) and imported back via the HistoryViewerModal, enabling cross-device migration and backup.
 - **Clear History with Confirmation**: A "Clear All History" button triggers a confirmation modal warning that the operation deletes all saved history items and permanently purges their associated images from IndexedDB. This is irreversible.
 - **Decoupled Image IDs**: History images are stored under unique generated IDs (`hist-img-{timestamp}-{idx}-{random}`) independent of active session image IDs, ensuring that deleting or modifying active images never breaks historical references.
+
+### Rule N: Preset Bulk Export & Import
+- **Bulk Export Dropdown**: The `PresetExportDropdown` component (placed in the Configure Prompts modal header) provides a compact dropdown menu for exporting user presets in bulk with three modes: **Export All**, **Export Favorites**, and **Export Active Preset**. Each option shows a live count badge.
+- **Export Payload Format**: Exports produce a JSON file (`promptlab_presets_{tag}_{date}_{time}_{uniqueId}.json`) conforming to the `PresetExportPayload` interface with version (`"1.0"`), type (`"promptlab_presets_export"`), exportedAt timestamp, exportType, itemCount, and an array of `UserPreset` objects.
+- **UserPreset Interface**: Each preset carries `id` (string), `name` (string), `systemPrompt` (string), `promptTemplate` (string), and an optional `isFavorite` (boolean). The `UserPreset` interface is defined in `lib/preset-export.ts` and shared across the Configure Prompts modal and the export dropdown.
+- **Import with Duplicate Detection**: Imported JSON files are validated for structure (accepts raw arrays, `presets`-wrapped arrays, `items`-wrapped arrays, or single preset objects). Duplicates are detected by matching both ID and name+content combinations against existing presets, with skipped entries reported in the import summary.
+- **Favorite/Pinned Reconciliation**: The export utility accepts a `pinnedPresetIds` array to reconcile `isFavorite` status. On import, any preset marked as favorite/pinned is automatically added to the pinned IDs set.
+- **Filename Conventions**: Export filenames include the date (YYYY-MM-DD), a compact timestamp (HHMMSS), and a unique 4-character random suffix. For "selected" exports, the active preset's slugified name is used as the tag instead of the export type.
 
 ---
 
