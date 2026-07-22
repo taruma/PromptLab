@@ -147,6 +147,15 @@ export default function PromptGeneratorPage() {
   // Preset Search & Filter tabs
   const [presetSearch, setPresetSearch] = useState<string>("");
   const [activePresetTab, setActivePresetTab] = useState<"all" | "system" | "custom">("all");
+
+  const handlePresetTabChange = (tab: "all" | "system" | "custom") => {
+    setActivePresetTab(tab);
+    try {
+      localStorage.setItem("prompt_generator_preset_filter_tab", tab);
+    } catch (e) {
+      console.error("Failed to save preset filter tab", e);
+    }
+  };
   
   // Compare Preset states
   const [isCompareOpen, setIsCompareOpen] = useState<boolean>(false);
@@ -344,6 +353,7 @@ export default function PromptGeneratorPage() {
       const savedSysPresetsOpen = localStorage.getItem("prompt_generator_sys_presets_open");
       const savedCustomPresetsOpen = localStorage.getItem("prompt_generator_custom_presets_open");
       const savedLabManualOpen = localStorage.getItem("prompt_generator_lab_manual_open");
+      const savedPresetFilterTab = localStorage.getItem("prompt_generator_preset_filter_tab");
 
       setTimeout(() => {
         if (savedLabManualOpen !== null) {
@@ -399,6 +409,9 @@ export default function PromptGeneratorPage() {
         }
         if (savedCustomPresetsOpen !== null) {
           setIsCustomPresetsOpen(savedCustomPresetsOpen === "true");
+        }
+        if (savedPresetFilterTab === "all" || savedPresetFilterTab === "system" || savedPresetFilterTab === "custom") {
+          setActivePresetTab(savedPresetFilterTab as "all" | "system" | "custom");
         }
       }, 0);
     } catch (e) {
@@ -1989,7 +2002,7 @@ export default function PromptGeneratorPage() {
                     
                     <div className="grid grid-cols-3 border border-[#D1D1CF] bg-[#F4F4F2] p-0.5">
                       <button
-                        onClick={() => setActivePresetTab("all")}
+                        onClick={() => handlePresetTabChange("all")}
                         className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
                           activePresetTab === "all" 
                             ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
@@ -1999,7 +2012,7 @@ export default function PromptGeneratorPage() {
                         All ({presets.length + customPresets.length})
                       </button>
                       <button
-                        onClick={() => setActivePresetTab("system")}
+                        onClick={() => handlePresetTabChange("system")}
                         className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
                           activePresetTab === "system" 
                             ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
@@ -2009,7 +2022,7 @@ export default function PromptGeneratorPage() {
                         Sys ({presets.length})
                       </button>
                       <button
-                        onClick={() => setActivePresetTab("custom")}
+                        onClick={() => handlePresetTabChange("custom")}
                         className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
                           activePresetTab === "custom" 
                             ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
