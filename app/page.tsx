@@ -1089,6 +1089,8 @@ export default function PromptGeneratorPage() {
     try {
       const activePreset = activeEditingPresetId
         ? customPresets.find((p) => p.id === activeEditingPresetId) || null
+        : loadedPresetId
+        ? presets.find((p) => p.id === loadedPresetId) || customPresets.find((p) => p.id === loadedPresetId) || null
         : null;
 
       const { count, filename } = exportPresetsToJSON(
@@ -2037,7 +2039,13 @@ export default function PromptGeneratorPage() {
                 <PresetExportDropdown
                   allCount={customPresets.length}
                   favoritesCount={customPresets.filter((p) => p.isFavorite || pinnedPresetIds.includes(p.id)).length}
-                  activePreset={activeEditingPresetId ? customPresets.find((p) => p.id === activeEditingPresetId) : null}
+                  activePreset={
+                    activeEditingPresetId
+                      ? customPresets.find((p) => p.id === activeEditingPresetId) || null
+                      : loadedPresetId
+                      ? presets.find((p) => p.id === loadedPresetId) || customPresets.find((p) => p.id === loadedPresetId) || null
+                      : null
+                  }
                   onExport={handleExportPresets}
                 />
 

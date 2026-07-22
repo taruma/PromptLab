@@ -59,7 +59,20 @@ export function exportPresetsToJSON(
   const dateStr = now.toISOString().split("T")[0];
   const timeStr = now.toTimeString().split(" ")[0].replace(/:/g, "");
   const uniqueId = Math.random().toString(36).substring(2, 6);
-  const filename = `promptlab_presets_${exportType}_${dateStr}_${timeStr}_${uniqueId}.json`;
+
+  let exportTag: string = exportType;
+  if (exportType === "selected" && activePreset && activePreset.name) {
+    const slugifiedName = activePreset.name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    if (slugifiedName) {
+      exportTag = slugifiedName;
+    }
+  }
+
+  const filename = `promptlab_presets_${exportTag}_${dateStr}_${timeStr}_${uniqueId}.json`;
 
   const payload: PresetExportPayload = {
     version: "1.0",
