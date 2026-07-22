@@ -36,6 +36,12 @@ import EngineControlsModal from "../components/EngineControlsModal";
 import HistoryViewerModal from "../components/HistoryViewerModal";
 import HistorySection from "../components/HistorySection";
 import ClearHistoryConfirmModal from "../components/ClearHistoryConfirmModal";
+import PresetExportDropdown from "../components/PresetExportDropdown";
+import {
+  exportPresetsToJSON,
+  importPresetsFromJSON,
+  type UserPreset,
+} from "../lib/preset-export";
 import {
   PresetCompareModal,
   type PresetConfig,
@@ -138,13 +144,14 @@ export default function PromptGeneratorPage() {
   const [tempSystemPrompt, setTempSystemPrompt] = useState<string>("");
   const [tempPromptTemplate, setTempPromptTemplate] = useState<string>("");
   const [presets, setPresets] = useState<Array<{ id: string; name: string; systemPrompt: string; promptTemplate: string }>>([]);
-  const [customPresets, setCustomPresets] = useState<Array<{ id: string; name: string; systemPrompt: string; promptTemplate: string }>>([]);
+  const [customPresets, setCustomPresets] = useState<UserPreset[]>([]);
   const [newPresetName, setNewPresetName] = useState<string>("");
   const [isSystemPresetsOpen, setIsSystemPresetsOpen] = useState<boolean>(true);
   const [isCustomPresetsOpen, setIsCustomPresetsOpen] = useState<boolean>(true);
   const [activeEditingPresetId, setActiveEditingPresetId] = useState<string | null>(null);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState<boolean>(false);
   const [loadedPresetId, setLoadedPresetId] = useState<string | null>(null);
+  const [presetStatusBanner, setPresetStatusBanner] = useState<{ message: string; isError?: boolean } | null>(null);
   
   // Preset Search, Filter, Pinning & Sorting
   const [presetSearch, setPresetSearch] = useState<string>("");
@@ -154,14 +161,30 @@ export default function PromptGeneratorPage() {
 
   const togglePinPreset = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    let updatedPinned: string[] = [];
     setPinnedPresetIds(prev => {
-      const next = prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id];
+      updatedPinned = prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id];
       try {
-        localStorage.setItem("prompt_generator_pinned_presets", JSON.stringify(next));
+        localStorage.setItem("prompt_generator_pinned_presets", JSON.stringify(updatedPinned));
       } catch (err) {
         console.error("Failed to save pinned presets", err);
       }
-      return next;
+      return updatedPinned;
+    });
+
+    setCustomPresets(prev => {
+      const updated = prev.map(p => {
+        if (p.id === id) {
+          return { ...p, isFavorite: updatedPinned.includes(id) };
+        }
+        return p;
+      });
+      try {
+        localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(updated));
+      } catch (err) {
+        console.error("Failed to update custom presets in localStorage", err);
+      }
+      return updated;
     });
   };
 
@@ -1013,6 +1036,7 @@ export default function PromptGeneratorPage() {
 
   // Open the configuration modal
   const handleOpenPromptConfig = () => {
+    setPresetStatusBanner(null);
     setTempSystemPrompt(systemPrompt);
     setTempPromptTemplate(promptTemplate);
     
@@ -1043,60 +1067,93 @@ export default function PromptGeneratorPage() {
 
   // Revert/Re-fetch the default prompt files inside the configuration modal
   const handleRestoreDefaultPrompts = async () => {
+    setPresetStatusBanner(null);
     try {
       const res = await fetch("/api/prompt-config");
       const data = await res.json();
       if (res.ok) {
         setTempSystemPrompt(data.systemPrompt || "");
         setTempPromptTemplate(data.promptTemplate || "");
+        setPresetStatusBanner({ message: "Restored configurations to default TXT templates." });
       } else {
-        alert("Failed to load original templates: " + data.error);
+        setPresetStatusBanner({ message: "Failed to load original templates: " + data.error, isError: true });
       }
     } catch (err: any) {
-      alert("Error loading originals: " + err.message);
+      setPresetStatusBanner({ message: "Error loading originals: " + err.message, isError: true });
     }
   };
 
-  // Export current modal prompt configuration as JSON file
-  const handleExportJSON = () => {
+  // Export user presets to JSON file using modular utility
+  const handleExportPresets = (exportType: "all" | "favorites" | "selected") => {
+    setPresetStatusBanner(null);
     try {
-      const dataStr = JSON.stringify({
-        name: "Custom Workspace Preset",
-        systemPrompt: tempSystemPrompt,
-        promptTemplate: tempPromptTemplate
-      }, null, 2);
-      const blob = new Blob([dataStr], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      
-      const linkElement = document.createElement('a');
-      linkElement.setAttribute('href', url);
-      linkElement.setAttribute('download', 'prompt_lab_preset.json');
-      linkElement.click();
-      URL.revokeObjectURL(url);
-    } catch (e: any) {
-      alert("Failed to export configuration: " + e.message);
+      const activePreset = activeEditingPresetId
+        ? customPresets.find((p) => p.id === activeEditingPresetId) || null
+        : null;
+
+      const { count, filename } = exportPresetsToJSON(
+        customPresets,
+        exportType,
+        activePreset,
+        pinnedPresetIds
+      );
+      setPresetStatusBanner({
+        message: `Successfully exported ${count} preset(s) to "${filename}"`
+      });
+    } catch (err: any) {
+      setPresetStatusBanner({
+        message: err.message || "Failed to export presets.",
+        isError: true
+      });
     }
   };
 
-  // Import custom prompt configuration from JSON file
-  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Import user presets from JSON file with duplicate detection using modular utility
+  const handleImportPresets = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    
+
+    setPresetStatusBanner(null);
     const file = files[0];
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const parsed = JSON.parse(event.target?.result as string);
-        if (parsed.systemPrompt !== undefined && parsed.promptTemplate !== undefined) {
-          setTempSystemPrompt(parsed.systemPrompt || "");
-          setTempPromptTemplate(parsed.promptTemplate || "");
-          alert(`Successfully loaded preset: "${parsed.name || 'Untitled'}"`);
-        } else {
-          alert("Invalid file format. The JSON must contain 'systemPrompt' and 'promptTemplate' fields.");
+        const jsonText = event.target?.result as string;
+        const { updatedPresets, newPinnedIds, importedCount, skippedCount } = importPresetsFromJSON(
+          jsonText,
+          customPresets,
+          pinnedPresetIds
+        );
+
+        if (importedCount === 0 && skippedCount === 0) {
+          setPresetStatusBanner({
+            message: "No valid user presets found in the imported file.",
+            isError: true
+          });
+          return;
         }
+
+        if (importedCount > 0) {
+          setCustomPresets(updatedPresets);
+          localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(updatedPresets));
+
+          if (newPinnedIds.length > 0) {
+            const mergedPinned = Array.from(new Set([...pinnedPresetIds, ...newPinnedIds]));
+            setPinnedPresetIds(mergedPinned);
+            localStorage.setItem("prompt_generator_pinned_presets", JSON.stringify(mergedPinned));
+          }
+        }
+
+        let alertMsg = `Successfully imported ${importedCount} preset(s).`;
+        if (skippedCount > 0) {
+          alertMsg += ` (${skippedCount} duplicate(s) skipped)`;
+        }
+        setPresetStatusBanner({ message: alertMsg });
       } catch (err: any) {
-        alert("Failed to parse JSON file: " + err.message);
+        setPresetStatusBanner({
+          message: "Failed to import presets: " + err.message,
+          isError: true
+        });
       }
     };
     reader.readAsText(file);
@@ -1949,11 +2006,11 @@ export default function PromptGeneratorPage() {
         <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6" id="prompt-config-modal">
           <div className="bg-white border border-[#D1D1CF] w-full max-w-5xl h-[85vh] flex flex-col justify-between shadow-2xl relative">
             
-            {/* Hidden Input for JSON Import */}
+            {/* Hidden Input for User Presets Import */}
             <input 
               type="file" 
               ref={jsonInputRef} 
-              onChange={handleImportJSON} 
+              onChange={handleImportPresets} 
               accept=".json" 
               className="hidden" 
             />
@@ -1971,20 +2028,18 @@ export default function PromptGeneratorPage() {
                 <button
                   onClick={() => jsonInputRef.current?.click()}
                   className="px-3 py-1.5 bg-white hover:bg-[#F4F4F2] text-[#1A1A1A] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  title="Import configuration JSON file"
+                  title="Import user presets JSON file"
                 >
                   <FolderOpen className="w-3.5 h-3.5 shrink-0 text-[#888884]" />
-                  <span className="hidden sm:inline">Import JSON</span>
+                  <span className="hidden sm:inline">Import Presets</span>
                 </button>
 
-                <button
-                  onClick={handleExportJSON}
-                  className="px-3 py-1.5 bg-white hover:bg-[#F4F4F2] text-[#1A1A1A] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  title="Export configuration JSON file"
-                >
-                  <Download className="w-3.5 h-3.5 shrink-0 text-[#888884]" />
-                  <span className="hidden sm:inline">Export JSON</span>
-                </button>
+                <PresetExportDropdown
+                  allCount={customPresets.length}
+                  favoritesCount={customPresets.filter((p) => p.isFavorite || pinnedPresetIds.includes(p.id)).length}
+                  activePreset={activeEditingPresetId ? customPresets.find((p) => p.id === activeEditingPresetId) : null}
+                  onExport={handleExportPresets}
+                />
 
                 <button
                   onClick={handleRestoreDefaultPrompts}
@@ -2003,6 +2058,23 @@ export default function PromptGeneratorPage() {
                 </button>
               </div>
             </div>
+
+            {/* Status Banner */}
+            {presetStatusBanner && (
+              <div className={`px-6 py-2 text-[10px] font-mono font-bold uppercase tracking-wider border-b flex items-center justify-between shrink-0 animate-fade-in ${
+                presetStatusBanner.isError
+                  ? "bg-red-50 text-red-800 border-red-200"
+                  : "bg-emerald-50 text-emerald-800 border-emerald-200"
+              }`}>
+                <span>{presetStatusBanner.isError ? "[ERROR] " : "[✓] "}{presetStatusBanner.message}</span>
+                <button
+                  onClick={() => setPresetStatusBanner(null)}
+                  className="hover:opacity-75 cursor-pointer ml-4 font-sans text-xs"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             {/* Modal Content */}
             <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-[#F4F4F2]/50">
