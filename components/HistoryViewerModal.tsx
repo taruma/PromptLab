@@ -12,7 +12,8 @@ import {
   Sparkles, 
   Image as ImageIcon,
   Settings,
-  Copy
+  Copy,
+  Star
 } from "lucide-react";
 import { getStoredImage } from "../lib/indexeddb";
 
@@ -31,6 +32,7 @@ interface HistoryItem {
   thinkingLevel?: string;
   temperature?: number;
   maxTokens?: string;
+  isFavorite?: boolean;
 }
 
 interface HistoryViewerModalProps {
@@ -40,6 +42,7 @@ interface HistoryViewerModalProps {
   onRenameHistoryItem: (id: string, newName: string) => void;
   onDeleteHistoryItem: (id: string) => void;
   onLoadHistoryItem: (item: HistoryItem) => void;
+  onToggleFavoriteHistoryItem?: (id: string, e?: React.MouseEvent) => void;
 }
 
 export default function HistoryViewerModal({
@@ -48,11 +51,13 @@ export default function HistoryViewerModal({
   history,
   onRenameHistoryItem,
   onDeleteHistoryItem,
-  onLoadHistoryItem
+  onLoadHistoryItem,
+  onToggleFavoriteHistoryItem
 }: HistoryViewerModalProps) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchScope, setSearchScope] = useState<"default" | "visual_reference" | "idea" | "output" | "compiled_prompt">("default");
+  const [activeTab, setActiveTab] = useState<"all" | "favorites">("all");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [resolvedImages, setResolvedImages] = useState<Record<string, string>>({});
@@ -112,8 +117,9 @@ export default function HistoryViewerModal({
 
   if (!isOpen) return null;
 
-  // Filter history items by search query
+  // Filter history items by search query and activeTab
   const filteredHistory = history.filter(item => {
+    if (activeTab === "favorites" && !item.isFavorite) return false;
     if (!searchQuery.trim()) return true;
     const query = searchQuery.trim().toLowerCase();
 
@@ -236,9 +242,34 @@ export default function HistoryViewerModal({
           
           {/* Left panel: search and list of history slots */}
           <div className="w-full md:w-80 flex flex-col shrink-0 bg-[#FAF9F6] h-1/3 md:h-full min-h-[180px] md:min-h-0">
-            {/* Search Bar */}
+            {/* Search & Tabs Header */}
             <div className="p-4 border-b border-[#D1D1CF] bg-white">
-              <div className="space-y-2">
+              <div className="space-y-2.5">
+                {/* Tabs: All vs Favorites */}
+                <div className="flex items-center gap-1 border-b border-[#D1D1CF] pb-2">
+                  <button
+                    onClick={() => setActiveTab("all")}
+                    className={`flex-1 py-1 text-[9px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border ${
+                      activeTab === "all"
+                        ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                        : "bg-[#FAF9F6] text-[#888884] border-[#D1D1CF] hover:text-[#1A1A1A]"
+                    }`}
+                  >
+                    All ({history.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("favorites")}
+                    className={`flex-1 py-1 text-[9px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border flex items-center justify-center gap-1 ${
+                      activeTab === "favorites"
+                        ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                        : "bg-[#FAF9F6] text-[#888884] border-[#D1D1CF] hover:text-[#1A1A1A]"
+                    }`}
+                  >
+                    <Star className={`w-3 h-3 ${activeTab === "favorites" ? "fill-amber-400 text-amber-400" : ""}`} />
+                    Favorites ({history.filter(h => h.isFavorite).length})
+                  </button>
+                </div>
+
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3">
                     <Search className="w-3.5 h-3.5 text-[#888884]" />
@@ -274,7 +305,7 @@ export default function HistoryViewerModal({
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               {filteredHistory.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#888884] uppercase font-mono text-[9px] gap-1">
-                  <span>No history logs found</span>
+                  <span>{activeTab === "favorites" ? "No favorited logs found" : "No history logs found"}</span>
                   {searchQuery && <span className="italic">Modify search filter</span>}
                 </div>
               ) : (
@@ -289,12 +320,28 @@ export default function HistoryViewerModal({
                         key={item.id}
                         onClick={() => setSelectedItemId(item.id)}
                         className={`p-3.5 cursor-pointer transition-all flex flex-col group relative ${
-                          isSelected ? "bg-white border-l-4 border-l-[#1A1A1A]" : "hover:bg-[#F4F4F2]"
+                          isSelected
+                            ? "bg-white border-l-4 border-l-[#1A1A1A]"
+                            : item.isFavorite
+                            ? "bg-[#FFFDF5] hover:bg-[#FFF9E6] border-l-2 border-l-amber-400"
+                            : "hover:bg-[#F4F4F2]"
                         }`}
                       >
-                        {/* Row 1: Timestamp, image count, and hover action controls */}
+                        {/* Row 1: Favorite toggle on left, Timestamp, image count, and hover action controls */}
                         <div className="flex items-center justify-between gap-2 mb-1.5">
                           <div className="flex items-center gap-1.5 font-mono text-[8px] text-[#888884]">
+                            {onToggleFavoriteHistoryItem && (
+                              <button
+                                type="button"
+                                onClick={(e) => onToggleFavoriteHistoryItem(item.id, e)}
+                                className={`p-0.5 -ml-1 transition-colors cursor-pointer ${
+                                  item.isFavorite ? "text-amber-500 hover:text-amber-600" : "text-[#888884] hover:text-amber-500 opacity-60 group-hover:opacity-100"
+                                }`}
+                                title={item.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                              >
+                                <Star className={`w-3.5 h-3.5 ${item.isFavorite ? "fill-amber-400 text-amber-500" : ""}`} />
+                              </button>
+                            )}
                             <span>{item.timestamp}</span>
                             {item.images && item.images.length > 0 && (
                               <span className="bg-[#1A1A1A] text-white px-1 py-0.5 font-bold uppercase shrink-0">
@@ -303,28 +350,29 @@ export default function HistoryViewerModal({
                             )}
                           </div>
 
-                          {/* Hover action controls on same row as date and image counter */}
-                          {renamingId !== item.id && (
-                            <div className="flex items-center gap-1 shrink-0 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={(e) => startRename(item, e)}
-                                className="text-[#888884] hover:text-[#1A1A1A] p-0.5 transition-colors cursor-pointer"
-                                title="Rename history slot"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onDeleteHistoryItem(item.id);
-                                }}
-                                className="text-[#888884] hover:text-red-500 p-0.5 transition-colors cursor-pointer"
-                                title="Delete history slot"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {renamingId !== item.id && (
+                              <div className="flex items-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={(e) => startRename(item, e)}
+                                  className="text-[#888884] hover:text-[#1A1A1A] p-0.5 transition-colors cursor-pointer"
+                                  title="Rename history slot"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteHistoryItem(item.id);
+                                  }}
+                                  className="text-[#888884] hover:text-red-500 p-0.5 transition-colors cursor-pointer"
+                                  title="Delete history slot"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         {/* Row 2: Title / Rename input */}
@@ -412,16 +460,32 @@ export default function HistoryViewerModal({
                       Synthesized on {selectedItem.timestamp}
                     </span>
                   </div>
-                  <button
-                    onClick={() => {
-                      onLoadHistoryItem(selectedItem);
-                      onClose();
-                    }}
-                    className="px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer border border-[#1A1A1A] shrink-0 flex items-center gap-1.5 shadow-sm rounded-none"
-                  >
-                    <FolderOpen className="w-3.5 h-3.5" />
-                    Load Workspace
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {onToggleFavoriteHistoryItem && (
+                      <button
+                        onClick={(e) => onToggleFavoriteHistoryItem(selectedItem.id, e)}
+                        className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer border flex items-center gap-1.5 shrink-0 rounded-none ${
+                          selectedItem.isFavorite
+                            ? "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
+                            : "bg-[#FAF9F6] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
+                        }`}
+                        title={selectedItem.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                      >
+                        <Star className={`w-3.5 h-3.5 ${selectedItem.isFavorite ? "fill-amber-400 text-amber-500" : "text-[#888884]"}`} />
+                        {selectedItem.isFavorite ? "Favorited" : "Favorite"}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        onLoadHistoryItem(selectedItem);
+                        onClose();
+                      }}
+                      className="px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer border border-[#1A1A1A] shrink-0 flex items-center gap-1.5 shadow-sm rounded-none"
+                    >
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      Load Workspace
+                    </button>
+                  </div>
                 </div>
 
                 {/* Compact Engine Configuration Row */}

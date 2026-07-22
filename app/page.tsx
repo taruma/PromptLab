@@ -23,7 +23,8 @@ import {
   BookOpen,
   Search,
   GitCompare,
-  AlertTriangle
+  AlertTriangle,
+  Star
 } from "lucide-react";
 
 import AssetLibrarySidebar from "../components/AssetLibrarySidebar";
@@ -67,6 +68,7 @@ interface HistoryItem {
   thinkingLevel?: string;
   temperature?: number;
   maxTokens?: string;
+  isFavorite?: boolean;
 }
 
 export default function PromptGeneratorPage() {
@@ -91,6 +93,7 @@ export default function PromptGeneratorPage() {
   
   // Workspace UI states
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [historyTab, setHistoryTab] = useState<"all" | "favorites">("all");
   const [copied, setCopied] = useState<boolean>(false);
   const [showCompiled, setShowCompiled] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
@@ -1110,6 +1113,19 @@ export default function PromptGeneratorPage() {
     setPendingDeleteId(id);
   };
 
+  // Toggle favorite status for a specific history slot
+  const handleToggleFavoriteHistoryItem = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const updated = history.map(item => {
+      if (item.id === id) {
+        return { ...item, isFavorite: !item.isFavorite };
+      }
+      return item;
+    });
+    setHistory(updated);
+    localStorage.setItem("prompt_generator_history", JSON.stringify(updated));
+  };
+
   // Rename a specific history slot
   const handleRenameHistoryItem = (id: string, newName: string) => {
     const updated = history.map(item => {
@@ -1670,16 +1686,44 @@ export default function PromptGeneratorPage() {
           <section className={`flex flex-col ${isHistoryOpen ? "h-52 shrink-0" : "shrink-0"}`} id="history-panel">
             <div 
               onClick={toggleHistory}
-              className="flex justify-between items-center mb-3 cursor-pointer select-none group"
+              className="flex justify-between items-center mb-3 cursor-pointer select-none group flex-wrap gap-y-2"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-[10px] uppercase tracking-[0.20em] text-[#888884] font-bold flex items-center gap-1.5">
                   <History className="w-3.5 h-3.5" />
-                  Local Session History
+                  History
                 </h2>
                 <span className="text-[8px] font-mono text-[#888884] bg-white/60 border border-[#D1D1CF] px-1.5 py-0.5 font-bold">
                   {history.length}
                 </span>
+
+                {/* Sub-tab filter buttons */}
+                <div className="flex items-center gap-0.5 bg-[#FAF9F6] border border-[#D1D1CF] p-0.5" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryTab("all")}
+                    className={`px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                      historyTab === "all"
+                        ? "bg-[#1A1A1A] text-white"
+                        : "text-[#888884] hover:text-[#1A1A1A]"
+                    }`}
+                  >
+                    All ({history.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryTab("favorites")}
+                    className={`px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 ${
+                      historyTab === "favorites"
+                        ? "bg-[#1A1A1A] text-white"
+                        : "text-[#888884] hover:text-[#1A1A1A]"
+                    }`}
+                  >
+                    <Star className={`w-2.5 h-2.5 ${historyTab === "favorites" ? "fill-amber-400 text-amber-400" : ""}`} />
+                    Favs ({history.filter(h => h.isFavorite).length})
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={(e) => {
@@ -1690,7 +1734,7 @@ export default function PromptGeneratorPage() {
                   title="Open History Inspector & Lab Viewer"
                 >
                   <Eye className="w-3 h-3 text-[#1A1A1A]" />
-                  Expand Viewer
+                  Expand
                 </button>
                 <span className="text-[#888884] group-hover:text-[#1A1A1A] transition-colors">
                   {isHistoryOpen ? (
@@ -1716,41 +1760,69 @@ export default function PromptGeneratorPage() {
 
             {isHistoryOpen && (
               <div className="flex-1 bg-white border border-[#D1D1CF] overflow-y-auto custom-scrollbar" id="history-container">
-                {history.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#888884]">
-                    <FolderOpen className="w-5 h-5 text-[#D1D1CF] mb-1.5" />
-                    <span className="text-[9px] uppercase tracking-wider font-bold">Asset Log Empty</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col divide-y divide-[#D1D1CF]" id="history-items-list">
-                    {history.map((item) => {
-                      const defaultTitle = item.variables["idea"] || "Untitled Outline";
-                      const snippet = item.name || (defaultTitle.length > 50 ? defaultTitle.slice(0, 50) + "..." : defaultTitle);
-                      
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={() => setPendingLoadItem(item)}
-                          className="p-3.5 hover:bg-[#F4F4F2] cursor-pointer transition-all flex flex-col group"
-                        >
-                          {/* Row 1: Timestamp, image count, and delete control */}
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <div className="flex items-center gap-2 font-mono text-[9px] text-[#888884]">
-                              <span>{item.timestamp}</span>
-                              {item.images && item.images.length > 0 && (
-                                <span className="text-[8px] bg-[#1A1A1A] text-white px-1 font-mono uppercase font-bold">
-                                  {item.images.length} IMG
-                                </span>
-                              )}
+                {(() => {
+                  const displayedHistory = historyTab === "favorites" ? history.filter(item => item.isFavorite) : history;
+                  if (displayedHistory.length === 0) {
+                    return (
+                      <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#888884]">
+                        <FolderOpen className="w-5 h-5 text-[#D1D1CF] mb-1.5" />
+                        <span className="text-[9px] uppercase tracking-wider font-bold">
+                          {historyTab === "favorites" ? "No Favorites Saved" : "Asset Log Empty"}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="flex flex-col divide-y divide-[#D1D1CF]" id="history-items-list">
+                      {displayedHistory.map((item) => {
+                        const defaultTitle = item.variables["idea"] || "Untitled Outline";
+                        const snippet = item.name || (defaultTitle.length > 50 ? defaultTitle.slice(0, 50) + "..." : defaultTitle);
+                        
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => setPendingLoadItem(item)}
+                            className={`p-3.5 cursor-pointer transition-all flex flex-col group border-l-2 ${
+                              item.isFavorite
+                                ? "bg-[#FFFDF5] hover:bg-[#FFF9E6] border-l-amber-400"
+                                : "hover:bg-[#F4F4F2] border-l-transparent"
+                            }`}
+                          >
+                            {/* Row 1: Favorite toggle on left, Timestamp, image count, and delete control */}
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <div className="flex items-center gap-1.5 font-mono text-[9px] text-[#888884]">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleToggleFavoriteHistoryItem(item.id, e)}
+                                  className={`p-0.5 -ml-1 transition-colors cursor-pointer ${
+                                    item.isFavorite
+                                      ? "text-amber-500 hover:text-amber-600"
+                                      : "text-[#888884] hover:text-amber-500 opacity-60 group-hover:opacity-100"
+                                  }`}
+                                  title={item.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                                >
+                                  <Star className={`w-3.5 h-3.5 ${item.isFavorite ? "fill-amber-400 text-amber-500" : ""}`} />
+                                </button>
+                                <span>{item.timestamp}</span>
+                                {item.images && item.images.length > 0 && (
+                                  <span className="text-[8px] bg-[#1A1A1A] text-white px-1 font-mono uppercase font-bold">
+                                    {item.images.length} IMG
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteHistoryItem(item.id, e)}
+                                  className="text-[#888884] hover:text-red-500 opacity-0 group-hover:opacity-100 p-0.5 transition-all cursor-pointer shrink-0"
+                                  title="Delete history slot"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
-                            <button
-                              onClick={(e) => handleDeleteHistoryItem(item.id, e)}
-                              className="text-[#888884] hover:text-red-500 opacity-0 group-hover:opacity-100 p-0.5 transition-all cursor-pointer shrink-0"
-                              title="Delete history slot"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
 
                           {/* Row 2: Title */}
                           <h4 className="text-[11px] font-bold uppercase text-[#1A1A1A] truncate tracking-tight w-full">
@@ -1776,7 +1848,8 @@ export default function PromptGeneratorPage() {
                       );
                     })}
                   </div>
-                )}
+                );
+              })()}
               </div>
             )}
           </section>
@@ -3340,6 +3413,7 @@ export default function PromptGeneratorPage() {
         onRenameHistoryItem={handleRenameHistoryItem}
         onDeleteHistoryItem={setPendingDeleteId}
         onLoadHistoryItem={setPendingLoadItem}
+        onToggleFavoriteHistoryItem={handleToggleFavoriteHistoryItem}
       />
     </div>
   );
