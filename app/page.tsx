@@ -1824,13 +1824,11 @@ export default function PromptGeneratorPage() {
           <div className="mt-2">
             <button
               onClick={handleGeneratePrompt}
-              disabled={isLoading || !inputs["idea"]}
+              disabled={isLoading}
               className={`w-full h-14 uppercase tracking-[0.25em] font-bold text-xs transition-all active:scale-[0.98] cursor-pointer ${
                 isLoading 
                   ? "bg-[#EAEAE8] text-[#888884] border border-[#D1D1CF] cursor-not-allowed"
-                  : !inputs["idea"]
-                    ? "bg-[#EAEAE8] border border-[#D1D1CF] text-[#888884] cursor-not-allowed"
-                    : "bg-[#1A1A1A] text-white hover:bg-[#333] border border-[#1A1A1A]"
+                  : "bg-[#1A1A1A] text-white hover:bg-[#333] border border-[#1A1A1A]"
               }`}
               id="generate-prompt-btn"
             >
@@ -1843,11 +1841,6 @@ export default function PromptGeneratorPage() {
                 "Generate Sequence"
               )}
             </button>
-            {!inputs["idea"] && (
-              <p className="text-[9px] text-[#888884] text-center mt-2 font-mono uppercase tracking-wider">
-                * Specify Core Idea first to unlock generation
-              </p>
-            )}
           </div>
 
         </div>

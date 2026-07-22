@@ -4,6 +4,14 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
+## [v2.0.1] — July 22, 2026
+
+### Generation & Usability Patch
+
+- **Optional Core Idea:** Unlocked generation without requiring the Main Objective / Idea field to be filled. Users can now synthesize sequences using only other prompt parameters or pure templates.
+
+---
+
 ## [v2.0.0] — July 22, 2026
 
 ### History Management
