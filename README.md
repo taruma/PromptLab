@@ -22,10 +22,10 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 - **Dynamic Template Variables** — Add `{{ placeholders }}` to your prompt template and form fields appear automatically. No hardcoding needed.
 - **Visual Reference Uploads** — Drag and drop images to serve as casting or scene references. Each asset is auto-mapped (e.g., `@image1`) and injected into your prompt. Images are automatically compressed to high-quality JPEG to conserve storage.
 - **Image Storage with IndexedDB** — Uploaded images are stored in your browser's IndexedDB, avoiding localStorage quota limits. You can upload larger files without worrying about storage caps.
-- **Custom Presets** — Save your own system instructions and templates. Import and export them as JSON files. Share presets via URL query parameters.
+- **Custom Presets** — Save, update, or delete your own presets. Import and export as JSON files. Share presets via URL query parameters. Visual badges show when a preset is loaded or has unsaved changes.
 - **Engine Controls** — Switch between Gemini models (3.5 Flash, 3.1 Flash Lite, 3.1 Pro), adjust temperature, reasoning effort, and max output tokens.
-- **Custom API Key** — Bring your own Gemini API key to use personal quotas or premium models.
-- **Session History** — Past generations are saved locally in your browser for easy recall. Clear history with a single action.
+- **API Key Vault** — Bring your own Gemini API keys. Manage multiple labeled keys, switch between them, and delete old ones — all from the Engine Controls panel.
+- **Session History** — Past generations are saved locally. Favorite entries, filter by tabs (All / Favorites / Recent), import/export as JSON for backup or sharing, and clear with a single action.
 - **Asset Library** — A persistent image library sidebar. Upload, browse, search, rename, and reuse images across workspaces without re-uploading.
 - **Preset Compare & Diff Viewer** — Side-by-side diff between your current config and any saved preset. Git-style add/remove highlighting before you load.
 - **Preset Search & Filtering** — Search presets by name and filter with All / System / User tab toggles for quick navigation.
@@ -89,7 +89,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 3. **Upload reference images** by dragging them into the drop zone — label each one to map it to a character or setting
 4. **Click "Generate Sequence"** to test your prompt against Gemini
 5. **Review the output**, tweak your template, and generate again — iterate until your prompt design feels right
-6. **Browse past generations** in the history panel; click any entry to restore it
+6. **Browse past generations** in the history panel — favorite, export, or click any entry to restore it
 
 ### Sharing Presets via URL
 

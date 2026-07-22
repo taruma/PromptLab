@@ -55,9 +55,16 @@ Key differentiators:
 │   ├── android-chrome-*.png         # Android Chrome web app icons
 │   └── apple-touch-icon.png         # Apple touch icon
 ├── /components
-│   └── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed)
+│   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed)
+│   ├── ClearHistoryConfirmModal.tsx # Confirmation modal for clearing all history
+│   ├── EngineControlsModal.tsx      # Engine configuration modal (model, temperature, API key vault)
+│   ├── HistorySection.tsx           # Collapsible history section in sidebar
+│   ├── HistoryViewerModal.tsx       # Full-screen history browser with import/export
+│   └── VisualAssetCard.tsx          # Reusable asset card with hover preview
 ├── /lib
-│   └── utils.ts                     # UI utility functions (class merging via cn())
+│   ├── utils.ts                     # UI utility functions (cn(), diff engine, image compression)
+│   ├── indexeddb.ts                 # IndexedDB helper module (open, get, save, delete)
+│   └── history-export.ts           # History JSON import/export utilities
 ├── /hooks
 │   └── use-mobile.ts                # Screen size hook helper (< 768px breakpoint)
 ├── /assets                          # Reserved for future static asset storage (currently empty)
@@ -70,7 +77,8 @@ Key differentiators:
 ├── .gitignore                       # Git ignore rules
 ├── .env.example                     # Environment configuration documentation (GEMINI_API_KEY, APP_URL)
 ├── next-env.d.ts                    # Next.js TypeScript declarations
-└── metadata.json                    # Platform capabilities and application metadata
+├── metadata.json                    # Platform capabilities and application metadata
+└── README.md                        # Project README
 ```
 
 ---
@@ -114,7 +122,8 @@ The workspace reads dynamic template specifications from the currently configure
 ### Rule B: Server-Side API Only (API Key Protection & Key Overrides)
 - Never import or configure the `@google/genai` client on client components.
 - The `GEMINI_API_KEY` is a private backend secret.
-- **Custom Local API Key Override**: Users can optionally configure a custom developer Gemini API key inside the **Engine Controls** modal. This key is stored exclusively in client-side `localStorage` and passed securely as part of the POST payload to the server-side proxy handler (`/app/api/generate/route.ts`). This avoids exposing the key to the public web while giving users control over their own API quotas.
+- **API Key Vault**: The Engine Controls modal includes a collapsible **API Key Vault** section supporting multiple labeled API keys with add, switch, and delete operations. Existing legacy keys are automatically migrated into the vault on first access. The active key's label is displayed in the workspace footer.
+- **Custom Local API Key Override**: Users can optionally configure custom developer Gemini API keys inside the **Engine Controls** modal. These keys are stored exclusively in client-side `localStorage` and passed securely as part of the POST payload to the server-side proxy handler (`/app/api/generate/route.ts`). This avoids exposing keys to the public web while giving users control over their own API quotas.
 - Keep all generations routed securely through the proxy handler `/app/api/generate/route.ts`. The client passes its active custom prompts (`systemPrompt` and `promptTemplate`) as POST arguments.
 
 ### Rule C: Engine Controls & Hyperparameters
@@ -191,6 +200,8 @@ The workspace reads dynamic template specifications from the currently configure
 ### Rule M: History Management
 - **Session History Persistence**: Generation results are automatically archived to localStorage (`prompt_generator_history`), preserving the generated text, active variable states, and image references for future recall.
 - **History Recall**: Clicking a history card restores the full workspace state (prompt templates, variables, image references — loading blobs from IndexedDB) and populates the output panel with the archived generation result.
+- **Favorite Toggle & Filter Tabs**: History items can be favorited for quick access, with filter tabs (All / Favorites / Recent) for browsing. The collapsible history section in the sidebar provides an inline view with expandable history cards.
+- **History Import/Export**: History data can be exported as JSON files (including date, compact timestamp, and unique 4-character suffix in the filename) and imported back via the HistoryViewerModal, enabling cross-device migration and backup.
 - **Clear History with Confirmation**: A "Clear All History" button triggers a confirmation modal warning that the operation deletes all saved history items and permanently purges their associated images from IndexedDB. This is irreversible.
 - **Decoupled Image IDs**: History images are stored under unique generated IDs (`hist-img-{timestamp}-{idx}-{random}`) independent of active session image IDs, ensuring that deleting or modifying active images never breaks historical references.
 
