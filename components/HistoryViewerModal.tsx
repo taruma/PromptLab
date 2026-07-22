@@ -48,6 +48,7 @@ interface HistoryViewerModalProps {
   onLoadHistoryItem: (item: HistoryItem) => void;
   onToggleFavoriteHistoryItem?: (id: string, e?: React.MouseEvent) => void;
   onImportHistory?: (newHistory: HistoryItem[]) => void;
+  onClearHistory?: () => void;
 }
 
 export default function HistoryViewerModal({
@@ -58,7 +59,8 @@ export default function HistoryViewerModal({
   onDeleteHistoryItem,
   onLoadHistoryItem,
   onToggleFavoriteHistoryItem,
-  onImportHistory
+  onImportHistory,
+  onClearHistory
 }: HistoryViewerModalProps) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -374,6 +376,20 @@ export default function HistoryViewerModal({
               )}
             </div>
 
+            {/* Clear History Button */}
+            {onClearHistory && (
+              <button
+                type="button"
+                onClick={onClearHistory}
+                disabled={isProcessing || history.length === 0}
+                className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-[9px] font-mono font-bold uppercase tracking-wider cursor-pointer flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed rounded-none shadow-xs"
+                title="Clear local session history"
+              >
+                <Trash2 className="w-3 h-3 text-red-600" />
+                Clear History
+              </button>
+            )}
+
             <button
               onClick={onClose}
               className="text-stone-500 hover:text-[#1A1A1A] font-mono font-bold text-[10px] uppercase tracking-wider cursor-pointer ml-2"
@@ -594,6 +610,23 @@ export default function HistoryViewerModal({
                 </div>
               )}
             </div>
+
+            {/* Left Panel Footer Action Bar */}
+            {onClearHistory && history.length > 0 && (
+              <div className="p-2.5 border-t border-[#D1D1CF] bg-white flex items-center justify-between shrink-0 font-mono text-[9px]">
+                <span className="text-[#888884] font-bold uppercase">
+                  {history.length} Record{history.length === 1 ? "" : "s"}
+                </span>
+                <button
+                  type="button"
+                  onClick={onClearHistory}
+                  className="text-red-600 hover:text-red-700 font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Trash2 className="w-3 h-3 text-red-600" />
+                  Clear History...
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right panel: details panel */}
