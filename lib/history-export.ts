@@ -88,8 +88,11 @@ export async function exportHistoryToJSON(
     })
   );
 
-  const dateStr = new Date().toISOString().split("T")[0];
-  const filename = `promptlab_history_${exportType}_${dateStr}.json`;
+  const now = new Date();
+  const dateStr = now.toISOString().split("T")[0];
+  const timeStr = now.toTimeString().split(" ")[0].replace(/:/g, "");
+  const uniqueId = Math.random().toString(36).substring(2, 6);
+  const filename = `promptlab_history_${exportType}_${dateStr}_${timeStr}_${uniqueId}.json`;
 
   const payload: HistoryExportPayload = {
     version: "1.0",
