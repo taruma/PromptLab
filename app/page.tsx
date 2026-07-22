@@ -24,7 +24,10 @@ import {
   Search,
   GitCompare,
   AlertTriangle,
-  Star
+  Star,
+  X,
+  ArrowUpDown,
+  SlidersHorizontal
 } from "lucide-react";
 
 import AssetLibrarySidebar from "../components/AssetLibrarySidebar";
@@ -139,14 +142,55 @@ export default function PromptGeneratorPage() {
   const [newPresetName, setNewPresetName] = useState<string>("");
   const [isSystemPresetsOpen, setIsSystemPresetsOpen] = useState<boolean>(true);
   const [isCustomPresetsOpen, setIsCustomPresetsOpen] = useState<boolean>(true);
-  const [isDiskDropdownOpen, setIsDiskDropdownOpen] = useState<boolean>(false);
   const [activeEditingPresetId, setActiveEditingPresetId] = useState<string | null>(null);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState<boolean>(false);
   const [loadedPresetId, setLoadedPresetId] = useState<string | null>(null);
   
-  // Preset Search & Filter tabs
+  // Preset Search, Filter, Pinning & Sorting
   const [presetSearch, setPresetSearch] = useState<string>("");
   const [activePresetTab, setActivePresetTab] = useState<"all" | "system" | "custom">("all");
+  const [pinnedPresetIds, setPinnedPresetIds] = useState<string[]>([]);
+  const [presetSortMode, setPresetSortMode] = useState<"pinned" | "name-asc" | "name-desc">("pinned");
+
+  const togglePinPreset = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setPinnedPresetIds(prev => {
+      const next = prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id];
+      try {
+        localStorage.setItem("prompt_generator_pinned_presets", JSON.stringify(next));
+      } catch (err) {
+        console.error("Failed to save pinned presets", err);
+      }
+      return next;
+    });
+  };
+
+  const handleSortChange = (mode: "pinned" | "name-asc" | "name-desc") => {
+    setPresetSortMode(mode);
+    try {
+      localStorage.setItem("prompt_generator_preset_sort", mode);
+    } catch (e) {
+      console.error("Failed to save preset sort mode", e);
+    }
+  };
+
+  const sortAndFilterPresets = <T extends { id: string; name: string; systemPrompt: string; promptTemplate: string }>(presetList: T[]): T[] => {
+    const filtered = presetList.filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase()));
+    
+    return [...filtered].sort((a, b) => {
+      const aPinned = pinnedPresetIds.includes(a.id);
+      const bPinned = pinnedPresetIds.includes(b.id);
+      
+      // Pinned items always sort to top
+      if (aPinned && !bPinned) return -1;
+      if (!aPinned && bPinned) return 1;
+      
+      if (presetSortMode === "name-desc") {
+        return b.name.localeCompare(a.name);
+      }
+      return a.name.localeCompare(b.name);
+    });
+  };
 
   const handlePresetTabChange = (tab: "all" | "system" | "custom") => {
     setActivePresetTab(tab);
@@ -354,8 +398,18 @@ export default function PromptGeneratorPage() {
       const savedCustomPresetsOpen = localStorage.getItem("prompt_generator_custom_presets_open");
       const savedLabManualOpen = localStorage.getItem("prompt_generator_lab_manual_open");
       const savedPresetFilterTab = localStorage.getItem("prompt_generator_preset_filter_tab");
+      const savedPinnedPresets = localStorage.getItem("prompt_generator_pinned_presets");
+      const savedPresetSort = localStorage.getItem("prompt_generator_preset_sort");
 
       setTimeout(() => {
+        if (savedPinnedPresets) {
+          try {
+            setPinnedPresetIds(JSON.parse(savedPinnedPresets));
+          } catch (e) {}
+        }
+        if (savedPresetSort === "pinned" || savedPresetSort === "name-asc" || savedPresetSort === "name-desc") {
+          setPresetSortMode(savedPresetSort);
+        }
         if (savedLabManualOpen !== null) {
           setIsLabManualOpen(savedLabManualOpen === "true");
         }
@@ -1898,6 +1952,15 @@ export default function PromptGeneratorPage() {
         <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6" id="prompt-config-modal">
           <div className="bg-white border border-[#D1D1CF] w-full max-w-5xl h-[85vh] flex flex-col justify-between shadow-2xl relative">
             
+            {/* Hidden Input for JSON Import */}
+            <input 
+              type="file" 
+              ref={jsonInputRef} 
+              onChange={handleImportJSON} 
+              accept=".json" 
+              className="hidden" 
+            />
+
             {/* Modal Header */}
             <div className="h-16 border-b border-[#D1D1CF] px-6 flex items-center justify-between bg-[#F4F4F2] shrink-0">
               <div className="flex items-center gap-2">
@@ -1906,89 +1969,52 @@ export default function PromptGeneratorPage() {
                   System Prompt & Template Editor
                 </h3>
               </div>
-              <button
-                onClick={handleClosePromptConfig}
-                className="text-stone-500 hover:text-[#1A1A1A] font-mono font-bold text-[10px] uppercase tracking-wider cursor-pointer"
-              >
-                [ESC] CLOSE
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => jsonInputRef.current?.click()}
+                  className="px-3 py-1.5 bg-white hover:bg-[#F4F4F2] text-[#1A1A1A] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  title="Import configuration JSON file"
+                >
+                  <FolderOpen className="w-3.5 h-3.5 shrink-0 text-[#888884]" />
+                  <span className="hidden sm:inline">Import JSON</span>
+                </button>
+
+                <button
+                  onClick={handleExportJSON}
+                  className="px-3 py-1.5 bg-white hover:bg-[#F4F4F2] text-[#1A1A1A] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  title="Export configuration JSON file"
+                >
+                  <Download className="w-3.5 h-3.5 shrink-0 text-[#888884]" />
+                  <span className="hidden sm:inline">Export JSON</span>
+                </button>
+
+                <button
+                  onClick={handleRestoreDefaultPrompts}
+                  className="px-3 py-1.5 bg-white hover:bg-red-50 text-red-700 border border-[#D1D1CF] hover:border-red-300 text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  title="Reset configurations to original TXT defaults"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 shrink-0 text-red-500" />
+                  <span className="hidden sm:inline">Reset to TXT</span>
+                </button>
+
+                <button
+                  onClick={handleClosePromptConfig}
+                  className="text-stone-500 hover:text-[#1A1A1A] font-mono font-bold text-[10px] uppercase tracking-wider cursor-pointer ml-2"
+                >
+                  [ESC] CLOSE
+                </button>
+              </div>
             </div>
 
             {/* Modal Content */}
             <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-[#F4F4F2]/50">
               
               {/* Left Sidebar: Presets & Disk Management */}
-              <div className="w-full md:w-64 border-r border-[#D1D1CF] bg-white p-5 flex flex-col gap-5 shrink-0 overflow-y-auto">
+              <div className="w-full md:w-72 border-r border-[#D1D1CF] bg-white p-4 flex flex-col gap-3.5 shrink-0 overflow-hidden">
                   
-                  {/* Workspace Actions Dropdown */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setIsDiskDropdownOpen(!isDiskDropdownOpen)}
-                      className="w-full px-3 py-2 bg-[#F4F4F2] hover:bg-[#EAEAE8] text-[#1A1A1A] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center justify-between gap-1.5"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <FolderOpen className="w-3.5 h-3.5 shrink-0" />
-                        Config Options
-                      </span>
-                      <ChevronDown className={`w-3 h-3 text-[#888884] transition-transform duration-200 ${isDiskDropdownOpen ? "rotate-180" : ""}`} />
-                    </button>
-                    
-                    {isDiskDropdownOpen && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-10" 
-                          onClick={() => setIsDiskDropdownOpen(false)} 
-                        />
-                        <div className="absolute left-0 right-0 mt-1 bg-white border border-[#1A1A1A] shadow-lg z-20 flex flex-col">
-                          {/* Hidden Input */}
-                          <input 
-                            type="file" 
-                            ref={jsonInputRef} 
-                            onChange={(e) => {
-                              handleImportJSON(e);
-                              setIsDiskDropdownOpen(false);
-                            }} 
-                            accept=".json" 
-                            className="hidden" 
-                          />
-                          <button
-                            onClick={() => jsonInputRef.current?.click()}
-                            className="w-full px-4 py-2.5 hover:bg-[#F4F4F2] text-left text-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-2 border-b border-[#D1D1CF]"
-                          >
-                            <FolderOpen className="w-3.5 h-3.5 shrink-0 text-[#888884]" />
-                            Import JSON
-                          </button>
-                          
-                          <button
-                            onClick={() => {
-                              handleExportJSON();
-                              setIsDiskDropdownOpen(false);
-                            }}
-                            className="w-full px-4 py-2.5 hover:bg-[#F4F4F2] text-left text-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-2 border-b border-[#D1D1CF]"
-                          >
-                            <Download className="w-3.5 h-3.5 shrink-0 text-[#888884]" />
-                            Export JSON
-                          </button>
-                          
-                          <button
-                            onClick={() => {
-                              handleRestoreDefaultPrompts();
-                              setIsDiskDropdownOpen(false);
-                            }}
-                            className="w-full px-4 py-2.5 hover:bg-red-50 text-red-700 text-left text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-2"
-                          >
-                            <RefreshCw className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                            Reset to TXT Files
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <hr className="border-[#D1D1CF]" />
-
-                  {/* Preset Search & Filter */}
-                  <div className="flex flex-col gap-2">
+                  {/* Preset Search, Filter & Sort Controls */}
+                  <div className="flex flex-col gap-2 shrink-0">
                     <div className="relative flex items-center">
                       <Search className="w-3.5 h-3.5 text-[#888884] absolute left-2.5 pointer-events-none" />
                       <input
@@ -1996,238 +2022,296 @@ export default function PromptGeneratorPage() {
                         placeholder="Search presets..."
                         value={presetSearch}
                         onChange={(e) => setPresetSearch(e.target.value)}
-                        className="w-full bg-[#F4F4F2] border border-[#D1D1CF] pl-8 pr-2.5 py-1.5 text-[10px] uppercase font-bold tracking-wider outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A]"
+                        className="w-full bg-[#F4F4F2] border border-[#D1D1CF] pl-8 pr-7 py-1.5 text-[10px] uppercase font-bold tracking-wider outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A]"
                       />
+                      {presetSearch && (
+                        <button
+                          onClick={() => setPresetSearch("")}
+                          className="absolute right-2 text-[#888884] hover:text-[#1A1A1A] cursor-pointer p-0.5 transition-colors"
+                          title="Instant clear search filter"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                     
-                    <div className="grid grid-cols-3 border border-[#D1D1CF] bg-[#F4F4F2] p-0.5">
-                      <button
-                        onClick={() => handlePresetTabChange("all")}
-                        className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
-                          activePresetTab === "all" 
-                            ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
-                            : "text-[#888884] hover:text-[#1A1A1A]"
-                        }`}
-                      >
-                        All ({presets.length + customPresets.length})
-                      </button>
-                      <button
-                        onClick={() => handlePresetTabChange("system")}
-                        className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
-                          activePresetTab === "system" 
-                            ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
-                            : "text-[#888884] hover:text-[#1A1A1A]"
-                        }`}
-                      >
-                        Sys ({presets.length})
-                      </button>
-                      <button
-                        onClick={() => handlePresetTabChange("custom")}
-                        className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
-                          activePresetTab === "custom" 
-                            ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
-                            : "text-[#888884] hover:text-[#1A1A1A]"
-                        }`}
-                      >
-                        User ({customPresets.length})
-                      </button>
+                    <div className="flex items-center gap-1.5">
+                      <div className="grid grid-cols-3 flex-1 border border-[#D1D1CF] bg-[#F4F4F2] p-0.5">
+                        <button
+                          onClick={() => handlePresetTabChange("all")}
+                          className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
+                            activePresetTab === "all" 
+                              ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
+                              : "text-[#888884] hover:text-[#1A1A1A]"
+                          }`}
+                        >
+                          All ({presets.length + customPresets.length})
+                        </button>
+                        <button
+                          onClick={() => handlePresetTabChange("system")}
+                          className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
+                            activePresetTab === "system" 
+                              ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
+                              : "text-[#888884] hover:text-[#1A1A1A]"
+                          }`}
+                        >
+                          Sys ({presets.length})
+                        </button>
+                        <button
+                          onClick={() => handlePresetTabChange("custom")}
+                          className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
+                            activePresetTab === "custom" 
+                              ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
+                              : "text-[#888884] hover:text-[#1A1A1A]"
+                          }`}
+                        >
+                          User ({customPresets.length})
+                        </button>
+                      </div>
+
+                      {/* Compact Symbol Sorter */}
+                      <div className="relative flex items-center border border-[#D1D1CF] bg-[#F4F4F2] hover:bg-white px-1.5 py-0.5 transition-colors shrink-0" title="Sort presets (Fav / A-Z / Z-A)">
+                        <ArrowUpDown className="w-3 h-3 text-[#888884] shrink-0 mr-0.5 pointer-events-none" />
+                        <select
+                          value={presetSortMode}
+                          onChange={(e) => handleSortChange(e.target.value as "pinned" | "name-asc" | "name-desc")}
+                          className="bg-transparent text-[8px] font-black uppercase tracking-wider outline-none text-[#1A1A1A] cursor-pointer py-0.5"
+                        >
+                          <option value="pinned">★ Fav</option>
+                          <option value="name-asc">A-Z</option>
+                          <option value="name-desc">Z-A</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 
-                  <hr className="border-[#D1D1CF]" />
+                  <hr className="border-[#D1D1CF] shrink-0" />
 
-                  {/* System Presets */}
-                  {(activePresetTab === "all" || activePresetTab === "system") && (
-                    <div>
-                      <button 
-                        onClick={() => {
-                          const newVal = !isSystemPresetsOpen;
-                          setIsSystemPresetsOpen(newVal);
-                          localStorage.setItem("prompt_generator_sys_presets_open", String(newVal));
-                        }}
-                        className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span>System Presets</span>
-                          {presetSearch && (
-                            <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5 font-mono font-bold">
-                              {presets.filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase())).length}/{presets.length}
+                  {/* Scrollable Preset Lists Container */}
+                  <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 flex flex-col gap-4">
+                    {/* System Presets */}
+                    {(activePresetTab === "all" || activePresetTab === "system") && (
+                      <div>
+                        <button 
+                          onClick={() => {
+                            const newVal = !isSystemPresetsOpen;
+                            setIsSystemPresetsOpen(newVal);
+                            localStorage.setItem("prompt_generator_sys_presets_open", String(newVal));
+                          }}
+                          className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>System Presets</span>
+                            <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5 font-mono">
+                              {presetSearch 
+                                ? `${sortAndFilterPresets(presets).length}/${presets.length}` 
+                                : presets.length
+                              }
                             </span>
-                          )}
-                        </div>
-                        <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isSystemPresetsOpen ? "rotate-180" : ""}`} />
-                      </button>
-                      
-                      {isSystemPresetsOpen && (
-                        <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-0.5 transition-all">
-                          {presets
-                            .filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase()))
-                            .map((preset) => {
-                              const isLoaded = loadedPresetId === preset.id;
-                              const isModified = isLoaded && (tempSystemPrompt !== preset.systemPrompt || tempPromptTemplate !== preset.promptTemplate);
-                              return (
-                                <div 
-                                  key={preset.id}
-                                  className={`w-full border flex items-center justify-between transition-all text-[10px] font-bold uppercase tracking-wider ${
-                                    isLoaded 
-                                      ? isModified
-                                        ? "bg-amber-50 border-amber-500 text-amber-900 shadow-xs"
-                                        : "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
-                                      : "bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
-                                  }`}
-                                >
-                                  <button
-                                    onClick={() => {
-                                      setTempSystemPrompt(preset.systemPrompt);
-                                      setTempPromptTemplate(preset.promptTemplate);
-                                      setActiveEditingPresetId(null);
-                                      setNewPresetName("");
-                                      setLoadedPresetId(preset.id);
-                                    }}
-                                    className="flex-1 text-left px-3 py-2 cursor-pointer truncate flex items-center gap-1.5 justify-between"
-                                  >
-                                    <span className="truncate">{preset.name}</span>
-                                    {isModified && (
-                                      <span className="text-[8px] bg-amber-200 text-amber-800 px-1 py-0.5 rounded-none font-mono font-bold shrink-0 animate-pulse">
-                                        [EDITED]
-                                      </span>
-                                    )}
-                                    {isLoaded && !isModified && (
-                                      <span className="text-[8px] bg-emerald-700 text-white px-1 py-0.5 rounded-none font-mono font-bold shrink-0">
-                                        [ACTIVE]
-                                      </span>
-                                    )}
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setComparePreset(preset);
-                                      setIsCompareOpen(true);
-                                      setCompareTab("system");
-                                    }}
-                                    className={`p-2 transition-all cursor-pointer border-l ${
-                                      isLoaded ? isModified ? "border-amber-500/30 hover:bg-amber-100 text-amber-700" : "border-[#333] hover:bg-[#333] text-amber-400" : "border-[#D1D1CF] hover:bg-white text-[#888884] hover:text-[#1A1A1A]"
-                                    }`}
-                                    title="Compare differences with active workspace"
-                                  >
-                                    <GitCompare className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          {presets.filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase())).length === 0 && (
-                            <div className="text-[9px] text-[#888884] font-mono italic p-2 border border-[#D1D1CF] bg-[#F4F4F2] uppercase text-center">
-                              No Matches Found
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                          </div>
+                          <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isSystemPresetsOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        
+                        {isSystemPresetsOpen && (
+                          <div className="flex flex-col gap-1 transition-all">
+                            {sortAndFilterPresets(presets)
+                              .map((preset) => {
+                                const isLoaded = loadedPresetId === preset.id;
+                                const isModified = isLoaded && (tempSystemPrompt !== preset.systemPrompt || tempPromptTemplate !== preset.promptTemplate);
+                                const isPinned = pinnedPresetIds.includes(preset.id);
 
-                  {/* Custom Presets */}
-                  {(activePresetTab === "all" || activePresetTab === "custom") && (
-                    <div>
-                      <button 
-                        onClick={() => {
-                          const newVal = !isCustomPresetsOpen;
-                          setIsCustomPresetsOpen(newVal);
-                          localStorage.setItem("prompt_generator_custom_presets_open", String(newVal));
-                        }}
-                        className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span>Your Presets</span>
-                          <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5 font-mono">
-                            {presetSearch 
-                              ? `${customPresets.filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase())).length}/${customPresets.length}` 
-                              : customPresets.length
-                            }
-                          </span>
-                        </div>
-                        <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isCustomPresetsOpen ? "rotate-180" : ""}`} />
-                      </button>
-                      
-                      {isCustomPresetsOpen && (
-                        <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-0.5 transition-all">
-                          {customPresets
-                            .filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase()))
-                            .map((preset) => {
-                              const isLoaded = loadedPresetId === preset.id;
-                              const isModified = isLoaded && (tempSystemPrompt !== preset.systemPrompt || tempPromptTemplate !== preset.promptTemplate);
-                              return (
-                                <div 
-                                  key={preset.id}
-                                  className={`w-full border flex items-center justify-between transition-all text-[10px] font-bold uppercase tracking-wider ${
-                                    isLoaded 
-                                      ? isModified
-                                        ? "bg-amber-50 border-amber-500 text-amber-900 shadow-xs"
-                                        : "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
-                                      : "bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
-                                  }`}
-                                >
-                                  <button
-                                    onClick={() => {
-                                      setTempSystemPrompt(preset.systemPrompt);
-                                      setTempPromptTemplate(preset.promptTemplate);
-                                      setActiveEditingPresetId(preset.id);
-                                      setNewPresetName(preset.name);
-                                      setLoadedPresetId(preset.id);
-                                    }}
-                                    className="flex-1 text-left px-3 py-2 cursor-pointer truncate flex items-center gap-1.5 justify-between"
-                                  >
-                                    <span className="truncate">{preset.name}</span>
-                                    {isModified && (
-                                      <span className="text-[8px] bg-amber-200 text-amber-800 px-1 py-0.5 rounded-none font-mono font-bold shrink-0 animate-pulse">
-                                        [EDITED]
-                                      </span>
-                                    )}
-                                    {isLoaded && !isModified && (
-                                      <span className="text-[8px] bg-emerald-700 text-white px-1 py-0.5 rounded-none font-mono font-bold shrink-0">
-                                        [ACTIVE]
-                                      </span>
-                                    )}
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setComparePreset(preset);
-                                      setIsCompareOpen(true);
-                                      setCompareTab("system");
-                                    }}
-                                    className={`p-2 transition-all cursor-pointer border-l ${
-                                      isLoaded ? isModified ? "border-amber-500/30 hover:bg-amber-100 text-amber-700" : "border-[#333] hover:bg-[#333] text-amber-400" : "border-[#D1D1CF] hover:bg-white text-[#888884] hover:text-[#1A1A1A]"
+                                return (
+                                  <div 
+                                    key={preset.id}
+                                    className={`w-full border flex items-center justify-between transition-all text-[9px] font-bold uppercase tracking-wider ${
+                                      isLoaded 
+                                        ? isModified
+                                          ? "bg-amber-50 border-amber-500 text-amber-900 shadow-xs"
+                                          : "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
+                                        : "bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
                                     }`}
-                                    title="Compare differences with active workspace"
                                   >
-                                    <GitCompare className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => handleDeleteCustomPreset(preset.id, e)}
-                                    className={`p-2 transition-all cursor-pointer border-l hover:text-red-500 ${
-                                      isLoaded ? isModified ? "border-amber-500/30 hover:bg-amber-100" : "border-[#333] hover:bg-[#333]" : "border-[#D1D1CF] hover:bg-white"
+                                    <button
+                                      onClick={(e) => togglePinPreset(preset.id, e)}
+                                      className={`p-1.5 cursor-pointer border-r shrink-0 transition-colors ${
+                                        isLoaded 
+                                          ? isModified ? "border-amber-500/30 hover:bg-amber-100" : "border-[#333] hover:bg-[#333]" 
+                                          : "border-[#D1D1CF] hover:bg-white"
+                                      }`}
+                                      title={isPinned ? "Unstar preset" : "Star preset to top"}
+                                    >
+                                      <Star className={`w-3 h-3 ${isPinned ? "fill-amber-400 text-amber-500" : "text-[#888884] hover:text-amber-500"}`} />
+                                    </button>
+
+                                    <button
+                                      onClick={() => {
+                                        setTempSystemPrompt(preset.systemPrompt);
+                                        setTempPromptTemplate(preset.promptTemplate);
+                                        setActiveEditingPresetId(null);
+                                        setNewPresetName("");
+                                        setLoadedPresetId(preset.id);
+                                      }}
+                                      className="flex-1 text-left cursor-pointer truncate flex items-center gap-1.5 justify-between min-w-0 px-2 py-1"
+                                      title={preset.name}
+                                    >
+                                      <span className="truncate">{preset.name}</span>
+                                      {isModified && (
+                                        <span className="text-[8px] bg-amber-200 text-amber-800 px-1 py-0.5 rounded-none font-mono font-bold shrink-0 animate-pulse ml-1">
+                                          [EDIT]
+                                        </span>
+                                      )}
+                                      {isLoaded && !isModified && (
+                                        <span className="text-[8px] bg-emerald-700 text-white px-1 py-0.5 rounded-none font-mono font-bold shrink-0 ml-1">
+                                          [ACT]
+                                        </span>
+                                      )}
+                                    </button>
+                                    
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setComparePreset(preset);
+                                        setIsCompareOpen(true);
+                                        setCompareTab("system");
+                                      }}
+                                      className={`p-1.5 transition-all cursor-pointer border-l shrink-0 ${
+                                        isLoaded ? isModified ? "border-amber-500/30 hover:bg-amber-100 text-amber-700" : "border-[#333] hover:bg-[#333] text-amber-400" : "border-[#D1D1CF] hover:bg-white text-[#888884] hover:text-[#1A1A1A]"
+                                      }`}
+                                      title="Compare differences with active workspace"
+                                    >
+                                      <GitCompare className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            {sortAndFilterPresets(presets).length === 0 && (
+                              <div className="text-[9px] text-[#888884] font-mono italic p-2 border border-[#D1D1CF] bg-[#F4F4F2] uppercase text-center">
+                                No Matches Found
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Custom Presets */}
+                    {(activePresetTab === "all" || activePresetTab === "custom") && (
+                      <div>
+                        <button 
+                          onClick={() => {
+                            const newVal = !isCustomPresetsOpen;
+                            setIsCustomPresetsOpen(newVal);
+                            localStorage.setItem("prompt_generator_custom_presets_open", String(newVal));
+                          }}
+                          className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span>Your Presets</span>
+                            <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5 font-mono">
+                              {presetSearch 
+                                ? `${sortAndFilterPresets(customPresets).length}/${customPresets.length}` 
+                                : customPresets.length
+                              }
+                            </span>
+                          </div>
+                          <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isCustomPresetsOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        
+                        {isCustomPresetsOpen && (
+                          <div className="flex flex-col gap-1 transition-all">
+                            {sortAndFilterPresets(customPresets)
+                              .map((preset) => {
+                                const isLoaded = loadedPresetId === preset.id;
+                                const isModified = isLoaded && (tempSystemPrompt !== preset.systemPrompt || tempPromptTemplate !== preset.promptTemplate);
+                                const isPinned = pinnedPresetIds.includes(preset.id);
+
+                                return (
+                                  <div 
+                                    key={preset.id}
+                                    className={`w-full border flex items-center justify-between transition-all text-[9px] font-bold uppercase tracking-wider ${
+                                      isLoaded 
+                                        ? isModified
+                                          ? "bg-amber-50 border-amber-500 text-amber-900 shadow-xs"
+                                          : "bg-[#1A1A1A] text-white border-[#1A1A1A]" 
+                                        : "bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
                                     }`}
-                                    title="Delete preset"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          {customPresets.filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase())).length === 0 && (
-                            <div className="text-[9px] text-[#888884] font-mono italic p-2 border border-[#D1D1CF] bg-[#F4F4F2] uppercase text-center">
-                              No Matches Found
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                                    <button
+                                      onClick={(e) => togglePinPreset(preset.id, e)}
+                                      className={`p-1.5 cursor-pointer border-r shrink-0 transition-colors ${
+                                        isLoaded 
+                                          ? isModified ? "border-amber-500/30 hover:bg-amber-100" : "border-[#333] hover:bg-[#333]" 
+                                          : "border-[#D1D1CF] hover:bg-white"
+                                      }`}
+                                      title={isPinned ? "Unstar preset" : "Star preset to top"}
+                                    >
+                                      <Star className={`w-3 h-3 ${isPinned ? "fill-amber-400 text-amber-500" : "text-[#888884] hover:text-amber-500"}`} />
+                                    </button>
 
-                  <hr className="border-[#D1D1CF]" />
+                                    <button
+                                      onClick={() => {
+                                        setTempSystemPrompt(preset.systemPrompt);
+                                        setTempPromptTemplate(preset.promptTemplate);
+                                        setActiveEditingPresetId(preset.id);
+                                        setNewPresetName(preset.name);
+                                        setLoadedPresetId(preset.id);
+                                      }}
+                                      className="flex-1 text-left cursor-pointer truncate flex items-center gap-1.5 justify-between min-w-0 px-2 py-1"
+                                      title={preset.name}
+                                    >
+                                      <span className="truncate">{preset.name}</span>
+                                      {isModified && (
+                                        <span className="text-[8px] bg-amber-200 text-amber-800 px-1 py-0.5 rounded-none font-mono font-bold shrink-0 animate-pulse ml-1">
+                                          [EDIT]
+                                        </span>
+                                      )}
+                                      {isLoaded && !isModified && (
+                                        <span className="text-[8px] bg-emerald-700 text-white px-1 py-0.5 rounded-none font-mono font-bold shrink-0 ml-1">
+                                          [ACT]
+                                        </span>
+                                      )}
+                                    </button>
 
-                  {/* Save current as custom preset */}
-                  <div className="flex flex-col gap-2">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setComparePreset(preset);
+                                        setIsCompareOpen(true);
+                                        setCompareTab("system");
+                                      }}
+                                      className={`p-1.5 transition-all cursor-pointer border-l shrink-0 ${
+                                        isLoaded ? isModified ? "border-amber-500/30 hover:bg-amber-100 text-amber-700" : "border-[#333] hover:bg-[#333] text-amber-400" : "border-[#D1D1CF] hover:bg-white text-[#888884] hover:text-[#1A1A1A]"
+                                      }`}
+                                      title="Compare differences with active workspace"
+                                    >
+                                      <GitCompare className="w-3 h-3" />
+                                    </button>
+
+                                    <button
+                                      onClick={(e) => handleDeleteCustomPreset(preset.id, e)}
+                                      className={`p-1.5 transition-all cursor-pointer border-l shrink-0 hover:text-red-500 ${
+                                        isLoaded ? isModified ? "border-amber-500/30 hover:bg-amber-100" : "border-[#333] hover:bg-[#333]" : "border-[#D1D1CF] hover:bg-white"
+                                      }`}
+                                      title="Delete preset"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            {sortAndFilterPresets(customPresets).length === 0 && (
+                              <div className="text-[9px] text-[#888884] font-mono italic p-2 border border-[#D1D1CF] bg-[#F4F4F2] uppercase text-center">
+                                No Matches Found
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sticky Bottom Save / Workspace Area */}
+                  <div className="shrink-0 pt-3 border-t border-[#D1D1CF] bg-white flex flex-col gap-2">
                     <div className="flex justify-between items-center">
                       <h4 className="text-[10px] font-black uppercase tracking-wider text-[#1A1A1A]">
                         {activeEditingPresetId ? "Preset Workspace" : "Save Current As Preset"}
@@ -2254,7 +2338,7 @@ export default function PromptGeneratorPage() {
                         value={newPresetName}
                         onChange={(e) => setNewPresetName(e.target.value)}
                         placeholder="Preset name (e.g. Scriptwriter)"
-                        className="w-full bg-white border border-[#D1D1CF] p-2 text-[10px] outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A]"
+                        className="w-full bg-[#F4F4F2] border border-[#D1D1CF] p-2 text-[10px] outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A]"
                       />
                       {activeEditingPresetId ? (
                         <div className="flex flex-col gap-1.5">
