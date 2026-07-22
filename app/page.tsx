@@ -32,6 +32,7 @@ import {
 
 import AssetLibrarySidebar from "../components/AssetLibrarySidebar";
 import VisualAssetCard from "../components/VisualAssetCard";
+import VideoAssetCard from "../components/VideoAssetCard";
 import EngineControlsModal from "../components/EngineControlsModal";
 import HistoryViewerModal from "../components/HistoryViewerModal";
 import HistorySection from "../components/HistorySection";
@@ -56,6 +57,10 @@ import {
   getRawUrl,
   compressImageToJpeg
 } from "../lib/utils";
+import {
+  validateAndProcessVideo,
+  type UploadedVideo
+} from "../lib/video-utils";
 
 interface UploadedImage {
   id: string;
@@ -93,6 +98,8 @@ export default function PromptGeneratorPage() {
   // User input states
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [uploadedVideos, setUploadedVideos] = useState<UploadedVideo[]>([]);
+  const [videoError, setVideoError] = useState<string | null>(null);
   
   // Generation state
   const [generationResult, setGenerationResult] = useState<string>("");
@@ -378,6 +385,39 @@ export default function PromptGeneratorPage() {
             console.error("Failed to parse/load saved images", e);
           }
 
+          // Load uploaded videos from local storage & IndexedDB
+          try {
+            const savedVideos = localStorage.getItem("prompt_generator_uploaded_videos");
+            if (savedVideos) {
+              const parsedVideos = JSON.parse(savedVideos) as UploadedVideo[];
+              const resolvedVideos = await Promise.all(
+                parsedVideos.map(async (vid) => {
+                  if (vid.base64) {
+                    try {
+                      await saveStoredImage(vid.id, vid.base64);
+                    } catch (err) {
+                      console.error("Failed to migrate existing video to IndexedDB:", err);
+                    }
+                    return vid;
+                  } else {
+                    try {
+                      const dbBase64 = await getStoredImage(vid.id);
+                      if (dbBase64) {
+                        return { ...vid, base64: dbBase64 };
+                      }
+                    } catch (err) {
+                      console.error(`Failed to load video ${vid.id} from IndexedDB:`, err);
+                    }
+                    return vid;
+                  }
+                })
+              );
+              setUploadedVideos(resolvedVideos);
+            }
+          } catch (e) {
+            console.error("Failed to parse/load saved videos", e);
+          }
+
           // Load previous generation outputs from local storage
           try {
             const savedGenResult = localStorage.getItem("prompt_generator_generation_result");
@@ -581,6 +621,18 @@ export default function PromptGeneratorPage() {
       }
     }
   }, [uploadedImages, isConfigLoaded, storageWarningMessage]);
+
+  // Save uploaded videos to localStorage whenever they change
+  useEffect(() => {
+    if (isConfigLoaded) {
+      try {
+        const strippedVideos = uploadedVideos.map(({ base64, ...rest }) => rest);
+        localStorage.setItem("prompt_generator_uploaded_videos", JSON.stringify(strippedVideos));
+      } catch (err: any) {
+        console.error("Failed to save videos to local storage:", err);
+      }
+    }
+  }, [uploadedVideos, isConfigLoaded]);
 
   // Save active generation results to localStorage whenever they change
   useEffect(() => {
@@ -817,13 +869,102 @@ export default function PromptGeneratorPage() {
     setDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      await handleImageFiles(e.dataTransfer.files);
+      await handleIncomingFiles(e.dataTransfer.files);
     }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      await handleImageFiles(e.target.files);
+      await handleIncomingFiles(e.target.files);
+    }
+  };
+
+  // Process selected video files (<30s duration, .mp4, <=720p height)
+  const handleVideoFiles = async (files: FileList) => {
+    setVideoError(null);
+    const videoFiles = Array.from(files).filter(
+      f => f.type.startsWith("video/") || f.name.toLowerCase().endsWith(".mp4")
+    );
+    if (videoFiles.length === 0) return;
+
+    const newUploadedVideos: UploadedVideo[] = [];
+    const errors: string[] = [];
+
+    for (let i = 0; i < videoFiles.length; i++) {
+      const file = videoFiles[i];
+      const result = await validateAndProcessVideo(file);
+      if (!result.valid || !result.base64) {
+        errors.push(result.error || `Invalid video file ${file.name}`);
+        continue;
+      }
+
+      const rawName = file.name.split(".")[0];
+      const cleanLabel = rawName
+        .replace(/[_-]/g, " ")
+        .replace(/\b\w/g, c => c.toUpperCase());
+
+      const vidId = `vid-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
+      try {
+        await saveStoredImage(vidId, result.base64);
+      } catch (dbErr) {
+        console.error("Failed to save video to IndexedDB:", dbErr);
+      }
+
+      newUploadedVideos.push({
+        id: vidId,
+        label: cleanLabel,
+        base64: result.base64,
+        mimeType: file.type || "video/mp4",
+        duration: result.duration,
+        width: result.width,
+        height: result.height,
+      });
+    }
+
+    if (errors.length > 0) {
+      setVideoError(errors.join(" "));
+    }
+
+    if (newUploadedVideos.length > 0) {
+      setUploadedVideos(prev => [...prev, ...newUploadedVideos]);
+    }
+  };
+
+  // Route incoming files to appropriate image or video processing handlers
+  const handleIncomingFiles = async (files: FileList) => {
+    const fileArray = Array.from(files);
+    const imageFiles = fileArray.filter(f => f.type.startsWith("image/"));
+    const videoFiles = fileArray.filter(
+      f => f.type.startsWith("video/") || f.name.toLowerCase().endsWith(".mp4")
+    );
+
+    if (imageFiles.length > 0) {
+      const dt = new DataTransfer();
+      imageFiles.forEach(f => dt.items.add(f));
+      await handleImageFiles(dt.files);
+    }
+
+    if (videoFiles.length > 0) {
+      const dt = new DataTransfer();
+      videoFiles.forEach(f => dt.items.add(f));
+      await handleVideoFiles(dt.files);
+    }
+  };
+
+  // Update label of specific uploaded video
+  const handleUpdateVideoLabel = (id: string, value: string) => {
+    setUploadedVideos(prev =>
+      prev.map(vid => vid.id === id ? { ...vid, label: value } : vid)
+    );
+  };
+
+  // Delete uploaded video
+  const handleDeleteVideo = (id: string) => {
+    setUploadedVideos(prev => prev.filter(vid => vid.id !== id));
+    try {
+      deleteStoredImage(id);
+    } catch (err) {
+      console.error("Failed to delete video from IndexedDB:", err);
     }
   };
 
@@ -948,7 +1089,7 @@ export default function PromptGeneratorPage() {
     clearedInputs["idea"] = "";
     setInputs(clearedInputs);
 
-    // Delete current images from IndexedDB to avoid storage clutter
+    // Delete current images & videos from IndexedDB to avoid storage clutter
     uploadedImages.forEach(img => {
       try {
         deleteStoredImage(img.id);
@@ -957,7 +1098,16 @@ export default function PromptGeneratorPage() {
       }
     });
 
+    uploadedVideos.forEach(vid => {
+      try {
+        deleteStoredImage(vid.id);
+      } catch (err) {
+        console.error("Failed to clean up video on session clear:", err);
+      }
+    });
+
     setUploadedImages([]);
+    setUploadedVideos([]);
     setGenerationResult("");
     setFilledPrompt("");
     setThinkingResult("");
@@ -1339,6 +1489,11 @@ export default function PromptGeneratorPage() {
           base64: img.base64,
           mimeType: img.mimeType,
         })),
+        videos: uploadedVideos.map(vid => ({
+          label: vid.label,
+          base64: vid.base64,
+          mimeType: vid.mimeType,
+        })),
         systemPrompt,
         promptTemplate,
         model: selectedModel,
@@ -1717,8 +1872,23 @@ export default function PromptGeneratorPage() {
             </div>
 
             <p className="text-[11px] text-[#888884] font-medium tracking-tight -mt-1 leading-normal">
-              Upload images to serve as reference models. The system will name-map each asset (e.g. @image1) and inject references cleanly into your templates. All files are automatically compressed to high-quality (90%) JPEG format to conserve browser local storage.
+              Upload images or MP4 reference videos (&le;30s, &le;35MB). The system will name-map each asset (e.g. @image1, @video1) and inject references cleanly into your prompt templates.
             </p>
+
+            {videoError && (
+              <div className="bg-red-50 border border-red-300 p-3 flex justify-between items-start text-[10px] text-red-700 font-mono leading-relaxed rounded-none" id="video-validation-error">
+                <div className="flex gap-2">
+                  <span className="font-bold">⚠️ VIDEO ERROR:</span>
+                  <span>{videoError}</span>
+                </div>
+                <button 
+                  onClick={() => setVideoError(null)}
+                  className="font-bold hover:text-red-900 px-1 ml-2 shrink-0 cursor-pointer"
+                >
+                  [X]
+                </button>
+              </div>
+            )}
 
             {storageWarningMessage && (
               <div className="bg-[#FFFBEB] border border-[#F59E0B] p-3 flex justify-between items-start text-[10px] text-[#B45309] font-mono leading-relaxed rounded-none" id="storage-quota-warning">
@@ -1754,17 +1924,17 @@ export default function PromptGeneratorPage() {
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="image/*,video/mp4,video/*"
                   onChange={handleFileChange}
                   className="hidden"
                   id="image-file-uploader"
                 />
                 <span className="text-xl text-[#888884] font-bold">+</span>
-                <span className="text-[9px] uppercase font-bold tracking-widest text-[#1A1A1A]">Upload File</span>
-                <span className="text-[8px] text-[#888884] font-mono uppercase tracking-tight">Drag / Select</span>
+                <span className="text-[9px] uppercase font-bold tracking-widest text-[#1A1A1A]">Upload Asset</span>
+                <span className="text-[8px] text-[#888884] font-mono uppercase tracking-tight">Image or MP4 Video</span>
               </div>
 
-              {/* Active Asset Cards */}
+              {/* Active Image Cards */}
               {uploadedImages.map((img, index) => (
                 <VisualAssetCard
                   key={img.id}
@@ -1772,6 +1942,17 @@ export default function PromptGeneratorPage() {
                   index={index}
                   onUpdateLabel={handleUpdateLabel}
                   onDeleteImage={handleDeleteImage}
+                />
+              ))}
+
+              {/* Active Video Cards */}
+              {uploadedVideos.map((vid, index) => (
+                <VideoAssetCard
+                  key={vid.id}
+                  video={vid}
+                  index={index}
+                  onUpdateLabel={handleUpdateVideoLabel}
+                  onDeleteVideo={handleDeleteVideo}
                 />
               ))}
             </div>

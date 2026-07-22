@@ -19,11 +19,18 @@ interface UploadedImage {
   mimeType: string;
 }
 
+interface UploadedVideo {
+  label: string;
+  base64: string; // potentially a dataURL
+  mimeType: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
     let { 
       variables = {}, 
       images = [], 
+      videos = [],
       systemPrompt, 
       promptTemplate,
       model = "gemini-3.5-flash",
@@ -34,6 +41,7 @@ export async function POST(req: NextRequest) {
     } = await req.json() as {
       variables: Record<string, string>;
       images: UploadedImage[];
+      videos?: UploadedVideo[];
       systemPrompt?: string;
       promptTemplate?: string;
       model?: string;
@@ -77,14 +85,23 @@ export async function POST(req: NextRequest) {
 
     let filledTemplate = promptTemplate;
 
-    // Process image reference naming e.g. "@image1 as Name, @image2 as Name"
+    // Process reference naming e.g. "@image1 as Name, @video1 as Name"
     const imageList: UploadedImage[] = images || [];
-    let visualReferencesText = "None";
+    const videoList: UploadedVideo[] = videos || [];
+    
+    const referenceTags: string[] = [];
     if (imageList.length > 0) {
-      visualReferencesText = imageList
-        .map((img, index) => `@image${index + 1} as ${img.label || `Image ${index + 1}`}`)
-        .join(", ");
+      imageList.forEach((img, index) => {
+        referenceTags.push(`@image${index + 1} as ${img.label || `Image ${index + 1}`}`);
+      });
     }
+    if (videoList.length > 0) {
+      videoList.forEach((vid, index) => {
+        referenceTags.push(`@video${index + 1} as ${vid.label || `Video ${index + 1}`}`);
+      });
+    }
+
+    const visualReferencesText = referenceTags.length > 0 ? referenceTags.join(", ") : "None";
 
     // Set automatic variables for references/cast
     const finalVariables = {
@@ -117,6 +134,23 @@ export async function POST(req: NextRequest) {
       parts.push({
         inlineData: {
           mimeType: img.mimeType || "image/jpeg",
+          data: cleanData,
+        }
+      });
+    }
+
+    // Add the visual reference videos to the request parts
+    for (let i = 0; i < videoList.length; i++) {
+      const vid = videoList[i];
+      let cleanData = vid.base64;
+      const commaIndex = cleanData.indexOf(",");
+      if (commaIndex !== -1) {
+        cleanData = cleanData.substring(commaIndex + 1);
+      }
+
+      parts.push({
+        inlineData: {
+          mimeType: vid.mimeType || "video/mp4",
           data: cleanData,
         }
       });
