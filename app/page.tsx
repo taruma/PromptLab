@@ -49,6 +49,7 @@ import LabManualSection from "../components/LabManualSection";
 import MainIdeaSection from "../components/MainIdeaSection";
 import ParameterInputsSection from "../components/ParameterInputsSection";
 import FooterStatusBar from "../components/FooterStatusBar";
+import PromptTemplateHelpTooltip from "../components/PromptTemplateHelpTooltip";
 import {
   exportPresetsToJSON,
   importPresetsFromJSON,
@@ -2510,17 +2511,6 @@ export default function PromptGeneratorPage() {
 
               {/* Right Editors Space */}
               <div className="flex-1 p-6 overflow-y-auto flex flex-col gap-5">
-                
-                {/* Alert/Tip header */}
-                <div className="bg-white border border-[#D1D1CF] p-3 text-[10px] leading-relaxed flex items-start gap-2.5">
-                  <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                  <div className="flex flex-col gap-1 text-[#555]">
-                    <span className="font-bold text-[#1A1A1A] uppercase tracking-wider text-[9px] font-mono">Variables Parsing Engine:</span>
-                    <p>
-                      Use double curly-braces <code className="font-mono bg-[#F4F4F2] px-1 text-[#1A1A1A] font-bold text-[9px]">{"{{ name }}"}</code> in your template. PromptLab generates input composers for them instantly on save.
-                    </p>
-                  </div>
-                </div>
 
                 {/* Workspace code grids */}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 flex-1 min-h-0">
@@ -2528,7 +2518,7 @@ export default function PromptGeneratorPage() {
                   {/* System Prompt block */}
                   <div className="flex flex-col gap-2 min-h-[250px]">
                     <label htmlFor="modal-system-prompt" className="text-[10px] uppercase tracking-wider font-bold text-[#1A1A1A]">
-                      System Instructions (Expert Behavior & Constraints)
+                      System Instructions
                     </label>
                     <textarea
                       id="modal-system-prompt"
@@ -2541,9 +2531,48 @@ export default function PromptGeneratorPage() {
 
                   {/* Prompt Template block */}
                   <div className="flex flex-col gap-2 min-h-[250px]">
-                    <label htmlFor="modal-prompt-template" className="text-[10px] uppercase tracking-wider font-bold text-[#1A1A1A]">
-                      Prompt Template (Prompt block with placeholders)
-                    </label>
+                    <div className="flex items-center justify-between flex-wrap gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <label htmlFor="modal-prompt-template" className="text-[10px] uppercase tracking-wider font-bold text-[#1A1A1A]">
+                          Prompt Template
+                        </label>
+                        <PromptTemplateHelpTooltip />
+                      </div>
+                      <div className="flex items-center gap-1.5 font-mono">
+                        <span
+                          className={`text-[8px] px-1.5 py-0.5 border font-bold uppercase transition-all ${
+                            /\{\{\s*idea\s*\}\}/.test(tempPromptTemplate)
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                              : "bg-amber-50 text-amber-800 border-amber-300"
+                          }`}
+                          title={
+                            /\{\{\s*idea\s*\}\}/.test(tempPromptTemplate)
+                              ? "{{ idea }} placeholder connects to Main Objective / Idea"
+                              : "{{ idea }} placeholder is missing from prompt template"
+                          }
+                        >
+                          {/\{\{\s*idea\s*\}\}/.test(tempPromptTemplate) ? "✓ {{ idea }}" : "⚠️ {{ idea }} missing"}
+                        </span>
+                        <span
+                          className={`text-[8px] px-1.5 py-0.5 border font-bold uppercase transition-all ${
+                            /\{\{\s*(visual_references|cast)\s*\}\}/.test(tempPromptTemplate)
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                              : "bg-amber-50 text-amber-800 border-amber-300"
+                          }`}
+                          title={
+                            /\{\{\s*(visual_references|cast)\s*\}\}/.test(tempPromptTemplate)
+                              ? "Media references placeholder is present"
+                              : "{{ visual_references }} or {{ cast }} placeholder is missing from prompt template"
+                          }
+                        >
+                          {/\{\{\s*cast\s*\}\}/.test(tempPromptTemplate)
+                            ? "✓ {{ cast }}"
+                            : /\{\{\s*visual_references\s*\}\}/.test(tempPromptTemplate)
+                            ? "✓ {{ visual_references }}"
+                            : "⚠️ {{ visual_references }} missing"}
+                        </span>
+                      </div>
+                    </div>
                     <textarea
                       id="modal-prompt-template"
                       value={tempPromptTemplate}
@@ -2570,7 +2599,7 @@ export default function PromptGeneratorPage() {
                       ))}
                     {extractVariables(tempPromptTemplate).filter(v => v !== "visual_references" && v !== "cast" && v !== "idea").length === 0 && (
                       <span className="text-[9px] text-[#888884] italic font-mono uppercase">
-                        No variables detected
+                        No custom variables detected
                       </span>
                     )}
                   </div>

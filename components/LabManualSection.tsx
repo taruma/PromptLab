@@ -40,7 +40,7 @@ export default function LabManualSection({
               <div className="flex flex-col gap-0.5">
                 <span className="font-sans font-bold uppercase tracking-wider text-[10px] text-[#1A1A1A]">Configure Template</span>
                 <p className="text-[#888884] text-[11px] leading-relaxed">
-                  Click <strong className="text-[#1A1A1A]">Configure Prompts</strong> in the top header to define your custom System Instructions and curly-brace variables (e.g. <code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">{"{{ variable }}"}</code>).
+                  Click <strong className="text-[#1A1A1A]">Configure Prompts</strong> to customize System Instructions, curly-brace variables (e.g. <code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">{"{{ variable }}"}</code>), or import and compare saved presets.
                 </p>
               </div>
             </div>
@@ -50,7 +50,7 @@ export default function LabManualSection({
               <div className="flex flex-col gap-0.5">
                 <span className="font-sans font-bold uppercase tracking-wider text-[10px] text-[#1A1A1A]">Input Active Values</span>
                 <p className="text-[#888884] text-[11px] leading-relaxed">
-                  Fill in your core concept under <strong className="text-[#1A1A1A]">Main Objective / Idea</strong>. Dynamic form inputs are automatically generated below for all other custom placeholders.
+                  Fill in your core concept under <strong className="text-[#1A1A1A]">Main Objective / Idea</strong>. Dynamic form inputs are automatically generated below for all template placeholders.
                 </p>
               </div>
             </div>
@@ -60,7 +60,7 @@ export default function LabManualSection({
               <div className="flex flex-col gap-0.5">
                 <span className="font-sans font-bold uppercase tracking-wider text-[10px] text-[#1A1A1A]">Upload References</span>
                 <p className="text-[#888884] text-[11px] leading-relaxed">
-                  Upload reference images to map characters, backgrounds, or assets to sequential <code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">@imageX</code> variables used in your prompt templates.
+                  Attach reference images (<code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">@imageX</code>) and MP4 videos or YouTube links (<code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">@videoX</code>), or pick saved items from the <strong className="text-[#1A1A1A]">Asset Library</strong>.
                 </p>
               </div>
             </div>
@@ -70,7 +70,7 @@ export default function LabManualSection({
               <div className="flex flex-col gap-0.5">
                 <span className="font-sans font-bold uppercase tracking-wider text-[10px] text-[#1A1A1A]">Synthesize Sequence</span>
                 <p className="text-[#888884] text-[11px] leading-relaxed">
-                  Choose your model and parameters in <strong className="text-[#1A1A1A]">Engine Controls</strong>, then hit <strong className="text-[#1A1A1A]">Generate Sequence</strong> to stream real-time results and thinking logs.
+                  Configure Gemini models, reasoning levels, and key vault in <strong className="text-[#1A1A1A]">Engine Controls</strong>, then hit <strong className="text-[#1A1A1A]">Generate Sequence</strong> to stream real-time thinking traces and script output.
                 </p>
               </div>
             </div>
