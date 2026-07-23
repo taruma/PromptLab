@@ -45,6 +45,16 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 - **Asset library JSON export.** A compact `AssetExportDropdown` in the asset library header supports exporting All or Selected images as a versioned JSON file (`promptlab_asset_library_{tag}_{date}_{time}_{uniqueId}.json`). The exported filename is displayed in a success toast for easy reference.
 - **Asset library JSON import.** An `AssetImportModal` allows importing previously exported asset library JSON files, with automatic duplicate detection — images matching existing entries by ID or label+content are skipped, and a summary reports total imported, duplicates, and errors after processing.
 
+### Architecture & Refactoring
+
+- **AppHeader component.** Extracted the top navigation bar (logo, Asset Library, Engine Controls, Configure Prompts, and Clear Session buttons) into a dedicated `components/AppHeader.tsx` component with a clean `AppHeaderProps` interface.
+- **FooterStatusBar component.** Extracted the bottom status bar (engine model, reasoning level, and temperature display) into `components/FooterStatusBar.tsx`.
+- **LabManualSection component.** Extracted the collapsible quick-start guide sidebar section into `components/LabManualSection.tsx`.
+- **MainIdeaSection component.** Extracted the Main Objective / Idea textarea section into `components/MainIdeaSection.tsx`.
+- **ParameterInputsSection component.** Extracted the dynamic parameter form inputs section into `components/ParameterInputsSection.tsx`.
+- **Confirmation modal extraction.** Four confirmation dialogs were extracted from the monolithic page into standalone components: `ClearSessionConfirmModal`, `DeleteHistoryConfirmModal`, `DiscardChangesConfirmModal`, and `LoadWorkspaceConfirmModal`. Each accepts a focused set of props and manages its own layout and accessibility.
+- **page.tsx reduction.** The main workspace file was slimmed by approximately 475 lines (net reduction) through the extraction of 9 reusable components, improving maintainability and separation of concerns without changing any user-facing behavior.
+
 ---
 
 ## [v2.0.0] — July 22, 2026

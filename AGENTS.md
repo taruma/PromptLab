@@ -57,6 +57,7 @@ Key differentiators:
 │   └── apple-touch-icon.png         # Apple touch icon
 ├── /components
 │   ├── AddYouTubeModal.tsx          # Modal for adding YouTube video URL references
+│   ├── AppHeader.tsx                # Top navigation bar with logo and action buttons
 │   ├── AssetExportDropdown.tsx      # Dropdown for exporting asset library items (All/Selected)
 │   ├── AssetImportModal.tsx         # Modal for importing asset library JSON with duplicate detection
 │   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed)
@@ -65,9 +66,13 @@ Key differentiators:
 │   ├── DeleteHistoryConfirmModal.tsx # Confirmation modal for deleting single history slot
 │   ├── DiscardChangesConfirmModal.tsx # Confirmation modal for discarding unsaved prompt config changes
 │   ├── EngineControlsModal.tsx      # Engine configuration modal (model, temperature, API key vault)
+│   ├── FooterStatusBar.tsx          # Bottom status bar showing engine, reasoning, and temperature
 │   ├── HistorySection.tsx           # Collapsible history section in sidebar
 │   ├── HistoryViewerModal.tsx       # Full-screen history browser with import/export
+│   ├── LabManualSection.tsx         # Collapsible quick-start guide section in sidebar
 │   ├── LoadWorkspaceConfirmModal.tsx # Confirmation modal for loading workspace history item
+│   ├── MainIdeaSection.tsx          # Main Objective / Idea textarea section
+│   ├── ParameterInputsSection.tsx   # Dynamic parameter form inputs section
 │   ├── PresetCompareModal.tsx       # Full-screen diff viewer for preset comparison (unified/split views)
 │   ├── PresetExportDropdown.tsx     # Bulk export dropdown (All/Favorites/Selected) for user presets
 │   ├── VideoAssetCard.tsx           # Reusable video asset card with metadata and playback trigger
@@ -99,7 +104,7 @@ Key differentiators:
 
 ### app/page.tsx Internal Structure
 
-The main workspace file (~3,300 lines) is organized into these major sections:
+The main workspace file (~2,900 lines) is organized into these major sections:
 
 - **State Declarations**: ~30+ `useState` hooks covering prompt config (system/prompt text, active presets, variables, inputs), engine parameters (model, temperature, reasoning/maxTokens), visual assets (uploaded images + videos, asset library sidebar), generation state (result, thinking trace, filled prompt, loading flags), history (items, favorites, filter tab), preset management (editing ID, loaded ID, new name, status banner), and modal visibility toggles.
 - **localStorage Persistence Effects**: `useEffect` hooks auto-load session state on mount (prompt config, engine params, variables, uploaded image metadata, collapsed sections). Additional effects persist changes back to localStorage as the user edits.
