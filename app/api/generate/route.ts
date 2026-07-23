@@ -71,15 +71,15 @@ export async function POST(req: NextRequest) {
         })
       : ai;
 
-    // Load original prompt and template from files if not supplied by the client
-    if (!systemPrompt || !promptTemplate) {
+    // Load original prompt and template from files if not supplied (undefined/null) by the client
+    if (systemPrompt === undefined || systemPrompt === null || promptTemplate === undefined || promptTemplate === null) {
       const systemPromptPath = path.join(process.cwd(), "prompts", "system_prompt.txt");
       const promptTemplatePath = path.join(process.cwd(), "prompts", "prompt_template.txt");
 
-      if (!systemPrompt) {
+      if (systemPrompt === undefined || systemPrompt === null) {
         systemPrompt = await fs.readFile(systemPromptPath, "utf-8");
       }
-      if (!promptTemplate) {
+      if (promptTemplate === undefined || promptTemplate === null) {
         promptTemplate = await fs.readFile(promptTemplatePath, "utf-8");
       }
     }
