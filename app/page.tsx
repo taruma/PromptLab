@@ -1033,18 +1033,6 @@ export default function PromptGeneratorPage() {
 
   // Load a historic generation back into the editor
   const handleLoadHistoryItem = async (item: HistoryItem) => {
-    // Restore system prompt & prompt template if saved in history item
-    if (item.promptTemplate) {
-      setPromptTemplate(item.promptTemplate);
-      localStorage.setItem("prompt_generator_prompt_template", item.promptTemplate);
-      const vars = extractVariables(item.promptTemplate);
-      setVariables(vars);
-    }
-    if (item.systemPrompt) {
-      setSystemPrompt(item.systemPrompt);
-      localStorage.setItem("prompt_generator_system_prompt", item.systemPrompt);
-    }
-
     // Set inputs cleanly from history item variables
     const updatedInputs: Record<string, string> = {};
     Object.keys(item.variables).forEach(k => {
