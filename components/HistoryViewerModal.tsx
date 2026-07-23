@@ -601,20 +601,18 @@ export default function HistoryViewerModal({
                         )}
 
                         {/* Row 3: Model & Preset Badges */}
-                        {(item.model || item.presetLabel) && (
-                          <div className="flex items-center gap-1.5 mt-1.5 font-mono text-[8px] text-[#888884] w-full flex-wrap">
-                            {item.model && (
-                              <span className="border border-[#D1D1CF] bg-white text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase">
-                                {item.model.replace("gemini-", "")}
-                              </span>
-                            )}
-                            {item.presetLabel && (
-                              <span className="border border-[#D1D1CF] bg-[#EAEAE8] text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold truncate max-w-[140px]">
-                                {item.presetLabel}
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1.5 mt-1.5 font-mono text-[8px] text-[#888884] w-full flex-wrap">
+                          {item.model && (
+                            <span className="border border-[#D1D1CF] bg-white text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase">
+                              {item.model.replace("gemini-", "")}
+                            </span>
+                          )}
+                          {(item.presetLabel || item.systemPrompt || item.promptTemplate) && (
+                            <span className="border border-[#D1D1CF] bg-[#EAEAE8] text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold truncate max-w-[140px]">
+                              {item.presetLabel || "PRESET: CUSTOM"}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -725,11 +723,11 @@ export default function HistoryViewerModal({
                       {selectedItem.maxTokens || "UNLIMITED"}
                     </span>
                   </div>
-                  {selectedItem.presetLabel && (
+                  {(selectedItem.presetLabel || selectedItem.systemPrompt || selectedItem.promptTemplate) && (
                     <div className="flex items-center gap-1.5 bg-[#F4F4F2] border border-[#D1D1CF] px-2 py-0.5">
                       <span className="text-[8px] text-[#888884] uppercase font-bold">Preset</span>
                       <span className="text-[#1A1A1A] font-extrabold uppercase text-[9px]">
-                        {selectedItem.presetLabel}
+                        {selectedItem.presetLabel ? selectedItem.presetLabel.replace("PRESET: ", "") : "CUSTOM"}
                       </span>
                     </div>
                   )}
