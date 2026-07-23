@@ -208,7 +208,7 @@ export default function HistorySection({
                         )}
                         {(item.presetLabel || item.systemPrompt || item.promptTemplate) && (
                           <span className="border border-[#D1D1CF] bg-[#EAEAE8] text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold truncate max-w-[140px]">
-                            {item.presetLabel || "PRESET: CUSTOM"}
+                            {item.presetLabel || "CUSTOM"}
                           </span>
                         )}
                       </div>
