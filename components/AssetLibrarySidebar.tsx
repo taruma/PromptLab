@@ -13,7 +13,12 @@ import {
   List,
   ArrowUpDown,
   Maximize2,
-  Minimize2
+  Minimize2,
+  CheckSquare,
+  Square,
+  Download,
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 
 import {
@@ -21,6 +26,14 @@ import {
   saveStoredImage,
   deleteStoredImage
 } from "../lib/indexeddb";
+
+import AssetExportDropdown from "./AssetExportDropdown";
+import AssetImportModal from "./AssetImportModal";
+import {
+  exportAssetLibraryJSON,
+  processAssetImport,
+  AssetExportItem
+} from "../lib/asset-library-export";
 
 interface LibraryImage {
   id: string;
@@ -41,6 +54,13 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [addedFeedbackIds, setAddedFeedbackIds] = useState<Record<string, boolean>>({});
+  
+  // Selection & Import/Export State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [statusToast, setStatusToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const jsonFileInputRef = useRef<HTMLInputElement>(null);
   
   // Dynamic width and dragging states
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
@@ -301,6 +321,99 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
     }, 1500);
   };
 
+  const showToast = (type: "success" | "error", message: string) => {
+    setStatusToast({ type, message });
+    setTimeout(() => {
+      setStatusToast(null);
+    }, 3500);
+  };
+
+  const toggleSelectAsset = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allIds = libraryImages.map((img) => img.id);
+    setSelectedIds(new Set(allIds));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleExportAllAssets = () => {
+    try {
+      exportAssetLibraryJSON(libraryImages);
+      showToast("success", `Exported all ${libraryImages.length} assets as JSON.`);
+    } catch (err: any) {
+      showToast("error", err?.message || "Failed to export assets.");
+    }
+  };
+
+  const handleExportSelectedAssets = () => {
+    try {
+      const selectedAssets = libraryImages.filter((img) => selectedIds.has(img.id));
+      if (selectedAssets.length === 0) return;
+      exportAssetLibraryJSON(selectedAssets, `promptlab_selected_assets_${selectedAssets.length}.json`);
+      showToast("success", `Exported ${selectedAssets.length} selected assets.`);
+    } catch (err: any) {
+      showToast("error", err?.message || "Failed to export selected assets.");
+    }
+  };
+
+  const handleJsonFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImportFile(file);
+      setIsImportModalOpen(true);
+      e.target.value = "";
+    }
+  };
+
+  const handleConfirmImport = async (
+    mode: "merge" | "overwrite",
+    assets: AssetExportItem[]
+  ) => {
+    try {
+      const { newAssets, count } = await processAssetImport(assets, mode, libraryImages);
+      setLibraryImages(newAssets);
+      setSelectedIds(new Set());
+      showToast(
+        "success",
+        mode === "overwrite"
+          ? `Library overwritten with ${count} imported assets.`
+          : `Imported ${count} assets into library.`
+      );
+    } catch (err: any) {
+      showToast("error", err?.message || "Import failed.");
+      throw err;
+    }
+  };
+
+  const handleDeleteSelectedAssets = async () => {
+    if (selectedIds.size === 0) return;
+    const idsToDelete = Array.from(selectedIds);
+    setLibraryImages((prev) => prev.filter((img) => !selectedIds.has(img.id)));
+    setSelectedIds(new Set());
+
+    for (const id of idsToDelete) {
+      try {
+        await deleteStoredImage(id);
+      } catch (err) {
+        console.error(`Failed to delete library image ${id} from IndexedDB:`, err);
+      }
+    }
+    showToast("success", `Deleted ${idsToDelete.length} selected assets.`);
+  };
+
   // Filter and sort items dynamically
   const getSortedAndFilteredImages = () => {
     const filtered = libraryImages.filter(img =>
@@ -386,6 +499,26 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
             </div>
           </div>
           <div className="flex items-center gap-1.5">
+            {/* Asset Import/Export Dropdown */}
+            <AssetExportDropdown
+              totalCount={libraryImages.length}
+              selectedCount={selectedIds.size}
+              onExportAll={handleExportAllAssets}
+              onExportSelected={handleExportSelectedAssets}
+              onImportClick={() => jsonFileInputRef.current?.click()}
+              disabled={!isLoaded}
+            />
+
+            {/* Hidden JSON file input for asset library import */}
+            <input
+              ref={jsonFileInputRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={handleJsonFileSelected}
+              className="hidden"
+              id="library-json-importer"
+            />
+
             {/* Quick Toggle Width Button */}
             <button
               type="button"
@@ -471,34 +604,59 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
 
           {/* View Mode & Sorter Controls Row */}
           <div className="flex items-center justify-between gap-4 mt-1" id="library-controls-row">
-            {/* Left: View Mode Toggles */}
-            <div className="flex items-center border border-[#D1D1CF]" id="library-view-toggles">
-              <button
-                type="button"
-                onClick={() => setViewMode("grid")}
-                className={`p-1.5 transition-all cursor-pointer ${
-                  viewMode === "grid" 
-                    ? "bg-[#1A1A1A] text-white" 
-                    : "bg-[#F4F4F2] text-[#888884] hover:text-[#1A1A1A] hover:bg-[#EAEAE8]"
-                }`}
-                title="Grid View"
-                id="view-grid-btn"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("list")}
-                className={`p-1.5 border-l border-[#D1D1CF] transition-all cursor-pointer ${
-                  viewMode === "list" 
-                    ? "bg-[#1A1A1A] text-white" 
-                    : "bg-[#F4F4F2] text-[#888884] hover:text-[#1A1A1A] hover:bg-[#EAEAE8]"
-                }`}
-                title="Compact List View"
-                id="view-list-btn"
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
+            {/* Left: View Mode Toggles & Select All */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center border border-[#D1D1CF]" id="library-view-toggles">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={`p-1.5 transition-all cursor-pointer ${
+                    viewMode === "grid" 
+                      ? "bg-[#1A1A1A] text-white" 
+                      : "bg-[#F4F4F2] text-[#888884] hover:text-[#1A1A1A] hover:bg-[#EAEAE8]"
+                  }`}
+                  title="Grid View"
+                  id="view-grid-btn"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={`p-1.5 border-l border-[#D1D1CF] transition-all cursor-pointer ${
+                    viewMode === "list" 
+                      ? "bg-[#1A1A1A] text-white" 
+                      : "bg-[#F4F4F2] text-[#888884] hover:text-[#1A1A1A] hover:bg-[#EAEAE8]"
+                  }`}
+                  title="Compact List View"
+                  id="view-list-btn"
+                >
+                  <List className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {libraryImages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={
+                    selectedIds.size === libraryImages.length
+                      ? handleDeselectAll
+                      : handleSelectAll
+                  }
+                  className="px-2 py-1 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-[#F4F4F2] text-[9px] font-mono uppercase font-bold text-[#1A1A1A] transition-all cursor-pointer flex items-center gap-1"
+                  title={selectedIds.size === libraryImages.length ? "Deselect All" : "Select All"}
+                  id="select-all-toggle-btn"
+                >
+                  {selectedIds.size === libraryImages.length ? (
+                    <CheckSquare className="w-3 h-3 text-[#1A1A1A]" />
+                  ) : (
+                    <Square className="w-3 h-3 text-[#888884]" />
+                  )}
+                  <span>
+                    {selectedIds.size === libraryImages.length ? "All" : "Select"}
+                  </span>
+                </button>
+              )}
             </div>
 
             {/* Right: Sort By Dropdown */}
@@ -520,6 +678,62 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
               </select>
             </div>
           </div>
+
+          {/* Contextual Bulk Action Bar when items are selected */}
+          {selectedIds.size > 0 && (
+            <div className="bg-[#1A1A1A] text-white p-2.5 px-3 border border-[#1A1A1A] flex items-center justify-between font-mono text-[9px] uppercase tracking-wider animate-in fade-in duration-200">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="font-bold">{selectedIds.size} Selected</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleExportSelectedAssets}
+                  className="px-2 py-1 bg-white hover:bg-[#F4F4F2] text-[#1A1A1A] font-bold text-[8px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
+                  title="Export selected assets to JSON"
+                >
+                  <Download className="w-2.5 h-2.5" />
+                  <span>Export</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteSelectedAssets}
+                  className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white font-bold text-[8px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1"
+                  title="Delete selected assets"
+                >
+                  <Trash2 className="w-2.5 h-2.5" />
+                  <span>Delete</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeselectAll}
+                  className="px-1.5 py-1 text-stone-400 hover:text-white transition-colors"
+                  title="Clear Selection"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Status Toast Banner */}
+          {statusToast && (
+            <div
+              className={`p-2.5 px-3 border text-[10px] font-mono uppercase tracking-wider flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200 ${
+                statusToast.type === "success"
+                  ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                  : "bg-red-50 border-red-300 text-red-800"
+              }`}
+            >
+              {statusToast.type === "success" ? (
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" />
+              ) : (
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-red-600" />
+              )}
+              <span className="flex-1 truncate">{statusToast.message}</span>
+            </div>
+          )}
         </div>
 
         {/* Scrollable Assets List */}
@@ -531,7 +745,7 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
               <p className="text-[10px] text-[#888884] leading-relaxed mt-1">
                 {searchQuery 
                   ? "Try searching for a different name or keyword" 
-                  : "Upload visual references above to build your private reusable casting bank!"
+                  : "Upload visual references above or import a JSON package to build your bank!"
                 }
               </p>
             </div>
@@ -552,10 +766,15 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
                 >
                   {sortedAndFilteredImages.map((img) => {
                     const isAdded = addedFeedbackIds[img.id];
+                    const isSelected = selectedIds.has(img.id);
                     return (
                       <div 
                         key={img.id}
-                        className="bg-white border border-[#D1D1CF] p-2 flex flex-col gap-1.5 group relative hover:border-[#1A1A1A] transition-all"
+                        className={`bg-white border p-2 flex flex-col gap-1.5 group relative transition-all ${
+                          isSelected 
+                            ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A] bg-stone-50/50" 
+                            : "border-[#D1D1CF] hover:border-[#1A1A1A]"
+                        }`}
                         id={`lib-card-${img.id}`}
                       >
                         {/* Thumbnail box */}
@@ -566,6 +785,24 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
                             className="w-full h-full object-cover"
                           />
                           
+                          {/* Selection checkbox button */}
+                          <button
+                            type="button"
+                            onClick={() => toggleSelectAsset(img.id)}
+                            className={`absolute top-1 left-1 p-1 border transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-[#1A1A1A] border-[#1A1A1A] text-white opacity-100"
+                                : "bg-white/90 border-[#D1D1CF] text-stone-500 hover:text-[#1A1A1A] opacity-80 group-hover:opacity-100"
+                            }`}
+                            title={isSelected ? "Deselect item" : "Select item"}
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-2.5 h-2.5 text-white" />
+                            ) : (
+                              <Square className="w-2.5 h-2.5" />
+                            )}
+                          </button>
+
                           {/* Delete item */}
                           <button
                             onClick={() => handleDeleteLibraryItem(img.id)}
@@ -624,14 +861,33 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
                 <div className="flex flex-col gap-2.5" id="library-assets-list">
                   {sortedAndFilteredImages.map((img) => {
                     const isAdded = addedFeedbackIds[img.id];
+                    const isSelected = selectedIds.has(img.id);
                     return (
                       <div 
                         key={img.id}
-                        className="bg-white border border-[#D1D1CF] p-2 flex items-center justify-between gap-3 group hover:border-[#1A1A1A] transition-all"
+                        className={`bg-white border p-2 flex items-center justify-between gap-3 group transition-all ${
+                          isSelected 
+                            ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A] bg-stone-50/50" 
+                            : "border-[#D1D1CF] hover:border-[#1A1A1A]"
+                        }`}
                         id={`lib-row-${img.id}`}
                       >
-                        {/* Left: Thumbnail & Input */}
+                        {/* Left: Checkbox, Thumbnail & Input */}
                         <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          {/* Selection Checkbox */}
+                          <button
+                            type="button"
+                            onClick={() => toggleSelectAsset(img.id)}
+                            className="p-1 text-stone-400 hover:text-[#1A1A1A] transition-colors cursor-pointer shrink-0"
+                            title={isSelected ? "Deselect item" : "Select item"}
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-4 h-4 text-[#1A1A1A]" />
+                            ) : (
+                              <Square className="w-4 h-4" />
+                            )}
+                          </button>
+
                           {/* Thumbnail */}
                           <div className="w-10 h-10 bg-[#EAEAE8] border border-[#D1D1CF] shrink-0 overflow-hidden flex items-center justify-center relative">
                             <img 
@@ -704,6 +960,18 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
           Stored Locally via IndexedDB & localStorage
         </div>
       </div>
+
+      {/* Asset Import Modal */}
+      <AssetImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => {
+          setIsImportModalOpen(false);
+          setImportFile(null);
+        }}
+        file={importFile}
+        existingCount={libraryImages.length}
+        onConfirmImport={handleConfirmImport}
+      />
     </div>
   );
 }
