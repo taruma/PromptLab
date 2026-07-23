@@ -6,6 +6,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Helper: converts typical GitHub blob URLs to raw URLs
+export const truncateText = (text: string, maxLength: number = 80): string => {
+  if (!text) return "";
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength).trim() + "...";
+};
+
 export const getRawUrl = (url: string): string => {
   try {
     const parsed = new URL(url);

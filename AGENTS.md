@@ -61,9 +61,13 @@ Key differentiators:
 │   ├── AssetImportModal.tsx         # Modal for importing asset library JSON with duplicate detection
 │   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed)
 │   ├── ClearHistoryConfirmModal.tsx # Confirmation modal for clearing all history
+│   ├── ClearSessionConfirmModal.tsx # Confirmation modal for clearing active session
+│   ├── DeleteHistoryConfirmModal.tsx # Confirmation modal for deleting single history slot
+│   ├── DiscardChangesConfirmModal.tsx # Confirmation modal for discarding unsaved prompt config changes
 │   ├── EngineControlsModal.tsx      # Engine configuration modal (model, temperature, API key vault)
 │   ├── HistorySection.tsx           # Collapsible history section in sidebar
 │   ├── HistoryViewerModal.tsx       # Full-screen history browser with import/export
+│   ├── LoadWorkspaceConfirmModal.tsx # Confirmation modal for loading workspace history item
 │   ├── PresetCompareModal.tsx       # Full-screen diff viewer for preset comparison (unified/split views)
 │   ├── PresetExportDropdown.tsx     # Bulk export dropdown (All/Favorites/Selected) for user presets
 │   ├── VideoAssetCard.tsx           # Reusable video asset card with metadata and playback trigger
