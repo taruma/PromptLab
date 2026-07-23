@@ -17,7 +17,8 @@ import {
   Star,
   Download,
   Upload,
-  Loader2
+  Loader2,
+  GitCompare
 } from "lucide-react";
 import YouTubeIcon from "./YouTubeIcon";
 import { getStoredImage } from "../lib/indexeddb";
@@ -53,6 +54,7 @@ interface HistoryViewerModalProps {
   onToggleFavoriteHistoryItem?: (id: string, e?: React.MouseEvent) => void;
   onImportHistory?: (newHistory: HistoryItem[]) => void;
   onClearHistory?: () => void;
+  onCompareHistoryItem?: (item: HistoryItem) => void;
 }
 
 export default function HistoryViewerModal({
@@ -64,7 +66,8 @@ export default function HistoryViewerModal({
   onLoadHistoryItem,
   onToggleFavoriteHistoryItem,
   onImportHistory,
-  onClearHistory
+  onClearHistory,
+  onCompareHistoryItem
 }: HistoryViewerModalProps) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -729,6 +732,17 @@ export default function HistoryViewerModal({
                       <span className="text-[#1A1A1A] font-extrabold uppercase text-[9px]">
                         {selectedItem.presetLabel ? selectedItem.presetLabel.replace("PRESET: ", "") : "CUSTOM"}
                       </span>
+                      {onCompareHistoryItem && (selectedItem.systemPrompt || selectedItem.promptTemplate) && (
+                        <button
+                          type="button"
+                          onClick={() => onCompareHistoryItem(selectedItem)}
+                          className="ml-1 px-1.5 py-0.5 bg-white hover:bg-[#1A1A1A] text-[#1A1A1A] hover:text-white border border-[#D1D1CF] hover:border-[#1A1A1A] transition-all cursor-pointer font-sans text-[8px] font-bold uppercase flex items-center gap-1"
+                          title="Compare system prompt and prompt template diff with active workspace"
+                        >
+                          <GitCompare className="w-2.5 h-2.5" />
+                          <span>Diff</span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

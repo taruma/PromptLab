@@ -1486,6 +1486,19 @@ export default function PromptGeneratorPage() {
     localStorage.setItem("prompt_generator_history", JSON.stringify(updated));
   };
 
+  // Open preset compare modal to compare history item prompts with active workspace
+  const handleCompareHistoryItem = (item: HistoryItem) => {
+    setTempSystemPrompt(systemPrompt);
+    setTempPromptTemplate(promptTemplate);
+    setComparePreset({
+      id: item.id,
+      name: item.name ? `History: ${item.name}` : item.presetLabel ? `History: ${item.presetLabel}` : "History Item",
+      systemPrompt: item.systemPrompt || systemPrompt,
+      promptTemplate: item.promptTemplate || promptTemplate,
+    });
+    setIsCompareOpen(true);
+  };
+
   // Copy plain text output to clipboard
   const handleCopyOutput = () => {
     if (!generationResult) return;
@@ -2717,6 +2730,27 @@ export default function PromptGeneratorPage() {
           setTempSystemPrompt(preset.systemPrompt);
           setTempPromptTemplate(preset.promptTemplate);
 
+          setSystemPrompt(preset.systemPrompt);
+          setPromptTemplate(preset.promptTemplate);
+          const vars = extractVariables(preset.promptTemplate);
+          setVariables(vars);
+
+          setInputs((prev) => {
+            const updated: Record<string, string> = {};
+            if (prev["idea"] !== undefined) {
+              updated["idea"] = prev["idea"];
+            }
+            vars.forEach((v) => {
+              if (v !== "visual_references" && v !== "cast") {
+                updated[v] = prev[v] !== undefined ? prev[v] : "";
+              }
+            });
+            return updated;
+          });
+
+          localStorage.setItem("prompt_generator_system_prompt", preset.systemPrompt);
+          localStorage.setItem("prompt_generator_prompt_template", preset.promptTemplate);
+
           const isSystem = presets.some((p) => p.id === preset.id);
           if (isSystem) {
             setActiveEditingPresetId(null);
@@ -2766,6 +2800,7 @@ export default function PromptGeneratorPage() {
         onToggleFavoriteHistoryItem={handleToggleFavoriteHistoryItem}
         onImportHistory={handleImportHistory}
         onClearHistory={() => setIsHistoryClearConfirmOpen(true)}
+        onCompareHistoryItem={handleCompareHistoryItem}
       />
 
       <AddYouTubeModal
