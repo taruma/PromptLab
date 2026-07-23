@@ -34,6 +34,11 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 - **Custom YouTubeIcon SVG component.** Replaced all `lucide-react` `Youtube` icon imports with a dedicated inline SVG component (`components/YouTubeIcon.tsx`), ensuring consistent YouTube branding across `VideoAssetCard`, `VideoPlayerModal`, `AddYouTubeModal`, and `HistoryViewerModal`.
 - **Simplified prompt reset.** The "Reset Prompts" action (formerly "Reset to TXT") now clears the preset editor client-side instead of fetching defaults from the API, providing instant feedback without a network round-trip. This also deselects any loaded preset.
 
+### Asset Library Import & Export
+
+- **Asset library JSON export.** A compact `AssetExportDropdown` in the asset library header supports exporting All or Selected images as a versioned JSON file (`promptlab_asset_library_{tag}_{date}_{time}_{uniqueId}.json`). The exported filename is displayed in a success toast for easy reference.
+- **Asset library JSON import.** An `AssetImportModal` allows importing previously exported asset library JSON files, with automatic duplicate detection — images matching existing entries by ID or label+content are skipped, and a summary reports total imported, duplicates, and errors after processing.
+
 ---
 
 ## [v2.0.0] — July 22, 2026

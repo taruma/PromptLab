@@ -57,6 +57,8 @@ Key differentiators:
 │   └── apple-touch-icon.png         # Apple touch icon
 ├── /components
 │   ├── AddYouTubeModal.tsx          # Modal for adding YouTube video URL references
+│   ├── AssetExportDropdown.tsx      # Dropdown for exporting asset library items (All/Selected)
+│   ├── AssetImportModal.tsx         # Modal for importing asset library JSON with duplicate detection
 │   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed)
 │   ├── ClearHistoryConfirmModal.tsx # Confirmation modal for clearing all history
 │   ├── EngineControlsModal.tsx      # Engine configuration modal (model, temperature, API key vault)
@@ -71,6 +73,7 @@ Key differentiators:
 ├── /lib
 │   ├── utils.ts                     # UI utility functions (cn(), diff engine, image compression)
 │   ├── indexeddb.ts                 # IndexedDB helper module (open, get, save, delete)
+│   ├── asset-library-export.ts     # Asset library JSON import/export utilities
 │   ├── history-export.ts           # History JSON import/export utilities
 │   ├── preset-export.ts            # User preset bulk export/import utilities (JSON)
 │   └── video-utils.ts              # Video validation and Base64 encoding utilities
