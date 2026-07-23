@@ -29,6 +29,11 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 - **Video-aware visual reference search.** The history search scope "Visual References & Casting Maps" now matches against both image and video labels, ensuring video-labeled entries appear in filtered results.
 - **Video assets in detail view & interactive YouTube playback.** The HistoryViewerModal's detail panel renders video entries under "Visual References & Casting Maps". Clicking any YouTube video card (`[YT ▶ PLAY]`) in history immediately opens the embedded `VideoPlayerModal` iframe player to preview the referenced YouTube clip directly within the history viewer.
 
+### UI & Configuration
+
+- **Custom YouTubeIcon SVG component.** Replaced all `lucide-react` `Youtube` icon imports with a dedicated inline SVG component (`components/YouTubeIcon.tsx`), ensuring consistent YouTube branding across `VideoAssetCard`, `VideoPlayerModal`, `AddYouTubeModal`, and `HistoryViewerModal`.
+- **Simplified prompt reset.** The "Reset Prompts" action (formerly "Reset to TXT") now clears the preset editor client-side instead of fetching defaults from the API, providing instant feedback without a network round-trip. This also deselects any loaded preset.
+
 ---
 
 ## [v2.0.0] — July 22, 2026

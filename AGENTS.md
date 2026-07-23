@@ -28,7 +28,7 @@ Key differentiators:
 - **Client-Side Storage**: **IndexedDB** (`promptlab_db` → `images` object store) for image blob persistence, avoiding browser localStorage quota constraints.
 - **Image Processing**: HTML Canvas API for automatic JPEG compression (90% quality) with transparency flattening on uploaded images.
 - **Video Processing**: HTML5 Video API for metadata extraction and validation of uploaded MP4 videos (≤30s duration, ≤35 MB file size), with Base64 encoding via FileReader for Gemini API inlineData transmission.
-- **Build Tools**: `autoprefixer` for PostCSS, `firebase-tools` in devDependencies for potential future Firebase integration.
+- **Build Tools**: `autoprefixer` for PostCSS, `firebase-tools` in devDependencies for potential future Firebase hosting/deployment integration.
 
 ---
 
@@ -56,6 +56,7 @@ Key differentiators:
 │   ├── android-chrome-*.png         # Android Chrome web app icons
 │   └── apple-touch-icon.png         # Apple touch icon
 ├── /components
+│   ├── AddYouTubeModal.tsx          # Modal for adding YouTube video URL references
 │   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed)
 │   ├── ClearHistoryConfirmModal.tsx # Confirmation modal for clearing all history
 │   ├── EngineControlsModal.tsx      # Engine configuration modal (model, temperature, API key vault)
@@ -65,7 +66,8 @@ Key differentiators:
 │   ├── PresetExportDropdown.tsx     # Bulk export dropdown (All/Favorites/Selected) for user presets
 │   ├── VideoAssetCard.tsx           # Reusable video asset card with metadata and playback trigger
 │   ├── VideoPlayerModal.tsx         # Full-screen video playback modal for previewing uploaded videos
-│   └── VisualAssetCard.tsx          # Reusable image asset card with hover preview
+│   ├── VisualAssetCard.tsx          # Reusable image asset card with hover preview
+│   └── YouTubeIcon.tsx              # Custom SVG YouTube icon component (replaces lucide-react Youtube)
 ├── /lib
 │   ├── utils.ts                     # UI utility functions (cn(), diff engine, image compression)
 │   ├── indexeddb.ts                 # IndexedDB helper module (open, get, save, delete)
@@ -87,6 +89,20 @@ Key differentiators:
 ├── metadata.json                    # Platform capabilities and application metadata
 └── README.md                        # Project README
 ```
+
+### app/page.tsx Internal Structure
+
+The main workspace file (~3,300 lines) is organized into these major sections:
+
+- **State Declarations**: ~30+ `useState` hooks covering prompt config (system/prompt text, active presets, variables, inputs), engine parameters (model, temperature, reasoning/maxTokens), visual assets (uploaded images + videos, asset library sidebar), generation state (result, thinking trace, filled prompt, loading flags), history (items, favorites, filter tab), preset management (editing ID, loaded ID, new name, status banner), and modal visibility toggles.
+- **localStorage Persistence Effects**: `useEffect` hooks auto-load session state on mount (prompt config, engine params, variables, uploaded image metadata, collapsed sections). Additional effects persist changes back to localStorage as the user edits.
+- **Template Variable Extraction**: `extractVariables()` parses `{{ placeholder }}` tokens from the prompt template, excluding reserved keywords (`visual_references`, `cast`, `idea`). The dynamic form fields are rendered from this extracted list.
+- **Upload Handlers**: Image upload (drag-and-drop + file picker, canvas compression, IndexedDB storage), MP4 video upload (validation + Base64 encoding), YouTube URL addition (AddYouTubeModal → state update).
+- **Generation Pipeline**: `handleGenerate()` sends POST to `/api/generate` with variables, images, videos, prompts, and engine params. SSE stream parsing with custom chunk buffer reassembly separates thinking trace from output text.
+- **Configure Prompts Modal**: System prompt and prompt template editors, preset CRUD (save/update/load/delete), compare/diff viewer, search/filter tabs, import/export JSON, reset prompts. Manages `activeEditingPresetId`, `loadedPresetId`, and edited-state detection.
+- **History Save/Recall**: On generation completion, stores `HistoryItem` with decoupled image IDs and video metadata. History recall restores templates, variables, image blobs (from IndexedDB), video metadata, and generation output.
+- **Sidebar Toggles**: Asset library sidebar (`isLibraryOpen`), history viewer modal, history section collapse, engine controls modal, and YouTube modal — all controlled via boolean state.
+- **JSX Render Tree**: Left sidebar (Visual Assets header with YouTube/browse/library buttons → image/video asset cards → dynamic parameter forms → idea textarea → generate button → footer status) → Center output panel (generation result + character count + thinking trace) → Right panels (asset library sidebar, history section, modals for history viewer, engine controls, preset config, YouTube URL, clear confirm, preset compare).
 
 ---
 
@@ -143,7 +159,7 @@ The workspace reads dynamic template specifications from the currently configure
 ### Rule D: Multi-modal Reference Handling (Images & Video)
 
 - **Image References**: Visual reference images are uploaded by the user, processed through the Canvas compression pipeline (Rule H), and stored as Base64 in IndexedDB. Uploaded images are mapped in sequence order to `@imageN` label annotations (e.g. `@image1` as "Character Name", `@image2` as "Setting Background").
-- **Video References & YouTube URLs**: MP4 video files can be uploaded alongside images or added via YouTube URLs ("ADD YOUTUBE URL" modal). MP4 uploads are validated via `lib/video-utils.ts` and encoded as Base64. YouTube links are validated via regex and passed as `fileData` (`fileUri: youtubeUrl`) to the Gemini API. Both local videos and YouTube URLs map to `@videoN` label annotations (e.g. `@video1` as "Reference Clip"). Unlike images, videos are held in-memory/in-state during active sessions without IndexedDB blob caching.
+- **Video References & YouTube URLs**: MP4 video files can be uploaded alongside images or added via YouTube URLs ("ADD YOUTUBE URL" modal). MP4 uploads are validated via `lib/video-utils.ts` (`validateAndProcessVideo`) and encoded as Base64. YouTube links are validated via regex (`isYouTubeUrl`) and the video ID is extracted with `extractYouTubeVideoId`. Thumbnails are fetched with `getYouTubeThumbnailUrl`. YouTube URLs are passed as `fileData` (`fileUri: youtubeUrl`) to the Gemini API. Both local videos and YouTube URLs map to `@videoN` label annotations (e.g. `@video1` as "Reference Clip"). Unlike images, videos are held in-memory/in-state during active sessions without IndexedDB blob caching. The `UploadedVideo` interface includes optional `youtubeUrl`, `isYouTube`, and `base64` fields — YouTube references carry a URL but no Base64 data.
 - **Unified Reference Pipeline**: Images and videos (both file uploads and YouTube references) are combined into a single `referenceTags` array server-side in `/app/api/generate/route.ts`, producing a consolidated `{{ visual_references }}` template variable that lists all media assets with their labels (e.g. `@image1 as Character Name, @video1 as YouTube Clip`).
 - **API Transmission**: Image Base64 data is passed as `inlineData` parts, MP4 video Base64 as `inlineData` parts, and YouTube URLs as `fileData` (`fileUri`) parts to the Gemini API alongside the compiled prompt text.
 - **Video Preview**: Uploaded videos and YouTube references can be previewed in a full-screen `VideoPlayerModal` component (rendering HTML5 video or embedded YouTube iframe) before generation.
