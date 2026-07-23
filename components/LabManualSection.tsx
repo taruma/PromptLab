@@ -79,7 +79,7 @@ export default function LabManualSection({
           {/* Footer link to Repository */}
           <div className="border-t border-[#D1D1CF] pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#F4F4F2]/50 p-2.5 border-dashed">
             <span className="text-[10px] text-[#888884] font-medium leading-relaxed">
-              Looking for custom templates, default presets, or raw project files?
+              Need full project source code, developer guidelines, or documentation?
             </span>
             <a 
               href="https://github.com/taruma/PromptLab" 
@@ -88,7 +88,7 @@ export default function LabManualSection({
               className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#1A1A1A] hover:bg-[#333] text-white text-[10px] font-bold uppercase tracking-widest transition-all rounded-none self-start sm:self-auto shrink-0 cursor-pointer"
             >
               <BookOpen className="w-3.5 h-3.5" />
-              Open Docs Repo
+              Open Repo
             </a>
           </div>
         </div>
