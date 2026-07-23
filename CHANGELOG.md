@@ -6,6 +6,12 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ## [Unreleased]
 
+### History & Video UX
+
+- **Video asset history recall with base64 stream preservation.** History recall now restores `youtubeUrl`, `isYouTube`, and `base64` fields to active video objects, allowing local MP4 videos previously uploaded in the same session to be replayed from the workspace after history recall. MimeType detection correctly identifies YouTube references (`video/youtube`) for proper UI badge rendering.
+- **Three-state VideoAssetCard rendering with uncached MP4 handling.** `VideoAssetCard` now distinguishes three distinct states: YouTube (playable with thumbnail + iframe embed), local MP4 with cached Base64 stream (playable with HTML5 preview), and local MP4 from history without cached Base64. The third state displays a dedicated **MP4 REFERENCE / NO LOCAL STREAM** placeholder with a `Film` icon, an **UNCACHED MP4** badge, `cursor-default` pointer, and no click-to-play overlay — preventing broken play buttons on history-restored video references.
+- **YouTube thumbnail graceful degradation.** YouTube thumbnails that fail to load now hide the broken image element via an `onError` handler and fall back to a `YouTubeIcon` placeholder with the video ID, rather than rendering a broken image.
+
 ### Generation & Usability
 
 - **Optional Core Idea:** Unlocked generation without requiring the Main Objective / Idea field to be filled. Users can now synthesize sequences using only other prompt parameters or pure templates.

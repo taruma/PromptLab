@@ -14,6 +14,7 @@ export interface HistoryVideoRef {
   duration?: number;
   youtubeUrl?: string;
   isYouTube?: boolean;
+  base64?: string;
 }
 
 export interface HistoryItem {

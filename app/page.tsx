@@ -76,7 +76,7 @@ export interface HistoryItem {
   timestamp: string;
   variables: Record<string, string>;
   images: { id?: string; label: string; base64: string; mimeType: string }[];
-  videos?: { id?: string; label: string; mimeType?: string; duration?: number }[];
+  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; base64?: string }[];
   output: string;
   filledPrompt: string;
   promptTemplate?: string;
@@ -1092,9 +1092,11 @@ export default function PromptGeneratorPage() {
         item.videos.map((vid, idx) => ({
           id: vid.id || `vid-${Date.now()}-${idx}`,
           label: vid.label,
-          base64: "",
-          mimeType: vid.mimeType || "video/mp4",
+          base64: vid.base64 || "",
+          mimeType: vid.mimeType || (vid.youtubeUrl || vid.isYouTube ? "video/youtube" : "video/mp4"),
           duration: vid.duration,
+          youtubeUrl: vid.youtubeUrl,
+          isYouTube: vid.isYouTube,
         }))
       );
     } else {

@@ -28,7 +28,8 @@ export default function VideoAssetCard({
 }: VideoAssetCardProps) {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
-  const isYt = video.isYouTube || Boolean(video.youtubeUrl);
+  const isYt = Boolean(video.isYouTube || (video.youtubeUrl && video.youtubeUrl.trim().length > 0));
+  const isPlayable = isYt || Boolean(video.base64);
   const ytThumbnail = video.youtubeUrl ? getYouTubeThumbnailUrl(video.youtubeUrl) : null;
   const ytVideoId = video.youtubeUrl ? extractYouTubeVideoId(video.youtubeUrl) : null;
 
@@ -41,19 +42,44 @@ export default function VideoAssetCard({
         <div className="flex flex-col gap-2">
           {/* Video Thumbnail Box with Play Button Overlay */}
           <div
-            onClick={() => setIsPlayerOpen(true)}
-            className="aspect-square bg-[#1A1A1A] relative overflow-hidden flex items-center justify-center cursor-pointer group/vid"
-            title={isYt ? "Click to play YouTube video" : "Click to play video"}
+            onClick={() => {
+              if (isPlayable) {
+                setIsPlayerOpen(true);
+              }
+            }}
+            className={`aspect-square bg-[#1A1A1A] relative overflow-hidden flex items-center justify-center group/vid ${
+              isPlayable ? "cursor-pointer" : "cursor-default"
+            }`}
+            title={
+              isYt
+                ? "Click to play YouTube video"
+                : video.base64
+                ? "Click to play video"
+                : "MP4 reference from history (stream binary not stored in history)"
+            }
           >
-            {isYt && ytThumbnail ? (
-              // YouTube Thumbnail
-              <img
-                src={ytThumbnail}
-                alt={video.label}
-                className="w-full h-full object-cover opacity-85 group-hover/vid:opacity-100 transition-opacity"
-              />
+            {isYt ? (
+              ytThumbnail ? (
+                // YouTube Thumbnail
+                <img
+                  src={ytThumbnail}
+                  alt={video.label}
+                  className="w-full h-full object-cover opacity-85 group-hover/vid:opacity-100 transition-opacity"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                  }}
+                />
+              ) : (
+                // YouTube fallback placeholder when thumbnail unavailable
+                <div className="w-full h-full flex flex-col items-center justify-center bg-stone-900 text-stone-400 gap-1 p-2">
+                  <YouTubeIcon className="w-8 h-8 text-red-500" />
+                  <span className="text-[8px] font-mono uppercase text-stone-400 truncate max-w-full">
+                    {ytVideoId ? `YT: ${ytVideoId}` : "YOUTUBE VIDEO"}
+                  </span>
+                </div>
+              )
             ) : video.base64 ? (
-              // Local File Video
+              // Local File Video with Base64 Stream
               <video
                 src={video.base64}
                 muted
@@ -62,25 +88,34 @@ export default function VideoAssetCard({
                 className="w-full h-full object-cover opacity-85 group-hover/vid:opacity-100 transition-opacity"
               />
             ) : (
-              // Fallback YouTube placeholder
-              <div className="w-full h-full flex flex-col items-center justify-center bg-stone-900 text-stone-400 gap-1 p-2">
-                <YouTubeIcon className="w-8 h-8" />
-                <span className="text-[8px] font-mono uppercase text-stone-400 truncate max-w-full">
-                  {ytVideoId || "YouTube Video"}
+              // Local MP4 Video Reference Placeholder (loaded from history without Base64)
+              <div className="w-full h-full flex flex-col items-center justify-center bg-[#1A1A1A] text-stone-400 gap-1 p-2 text-center select-none">
+                <Film className="w-7 h-7 text-amber-400/90 mb-0.5" />
+                <span className="text-[9px] font-mono font-bold uppercase text-stone-200 truncate max-w-full">
+                  MP4 REFERENCE
+                </span>
+                <span className="text-[7px] font-mono uppercase text-stone-500 tracking-wider">
+                  (NO LOCAL STREAM)
                 </span>
               </div>
             )}
 
-            {/* Play Overlay Badge */}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/vid:bg-black/10 transition-colors">
-              <div className="w-9 h-9 bg-white/90 border border-[#1A1A1A] text-[#1A1A1A] flex items-center justify-center group-hover/vid:scale-110 transition-transform shadow-md">
-                {isYt ? (
-                  <YouTubeIcon className="w-5 h-5" />
-                ) : (
-                  <Play className="w-4 h-4 fill-[#1A1A1A] ml-0.5 text-[#1A1A1A]" />
-                )}
+            {/* Play Overlay Badge or Uncached MP4 Badge */}
+            {isPlayable ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/vid:bg-black/10 transition-colors">
+                <div className="w-9 h-9 bg-white/90 border border-[#1A1A1A] text-[#1A1A1A] flex items-center justify-center group-hover/vid:scale-110 transition-transform shadow-md">
+                  {isYt ? (
+                    <YouTubeIcon className="w-5 h-5 text-red-600" />
+                  ) : (
+                    <Play className="w-4 h-4 fill-[#1A1A1A] ml-0.5 text-[#1A1A1A]" />
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-black/80 border border-[#D1D1CF]/30 text-[7px] font-mono text-stone-400 whitespace-nowrap uppercase tracking-wider select-none pointer-events-none">
+                UNCACHED MP4
+              </div>
+            )}
 
             {/* Top-Left Video Index Identifier - Always retains @videoN mapping */}
             <div className="absolute top-1 left-1 bg-[#1A1A1A] text-white text-[8px] font-mono font-bold px-1.5 py-0.5 select-none flex items-center gap-1 z-10">
@@ -88,10 +123,14 @@ export default function VideoAssetCard({
               @video{index + 1}
             </div>
 
-            {/* Top-Right Badge for YouTube */}
-            {isYt && (
+            {/* Top-Right Badge for type */}
+            {isYt ? (
               <div className="absolute top-1 right-8 bg-red-600 text-white text-[7px] font-mono font-bold px-1.5 py-0.5 uppercase tracking-wider select-none z-10">
                 YT
+              </div>
+            ) : (
+              <div className="absolute top-1 right-8 bg-stone-700 text-stone-200 text-[7px] font-mono font-bold px-1.5 py-0.5 uppercase tracking-wider select-none z-10">
+                MP4
               </div>
             )}
 
