@@ -12,6 +12,8 @@ export interface HistoryVideoRef {
   label: string;
   mimeType?: string;
   duration?: number;
+  youtubeUrl?: string;
+  isYouTube?: boolean;
 }
 
 export interface HistoryItem {
@@ -192,8 +194,10 @@ export async function importHistoryFromJSON(
           videos.push({
             id: rawVid.id || `hist-vid-${now}-${idx}-${i}`,
             label: rawVid.label || `Video ${i + 1}`,
-            mimeType: rawVid.mimeType || "video/mp4",
+            mimeType: rawVid.mimeType || (rawVid.youtubeUrl ? "video/youtube" : "video/mp4"),
             duration: rawVid.duration,
+            youtubeUrl: rawVid.youtubeUrl,
+            isYouTube: rawVid.isYouTube || Boolean(rawVid.youtubeUrl),
           });
         }
       }

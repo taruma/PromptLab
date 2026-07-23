@@ -12,6 +12,7 @@ import {
   Sparkles, 
   Image as ImageIcon,
   Film,
+  Youtube,
   Settings,
   Copy,
   Star,
@@ -21,13 +22,14 @@ import {
 } from "lucide-react";
 import { getStoredImage } from "../lib/indexeddb";
 import { exportHistoryToJSON, importHistoryFromJSON } from "../lib/history-export";
+import VideoPlayerModal from "./VideoPlayerModal";
 
 interface HistoryItem {
   id: string;
   timestamp: string;
   variables: Record<string, string>;
   images: { id?: string; label: string; base64: string; mimeType: string }[];
-  videos?: { id?: string; label: string; mimeType?: string; duration?: number }[];
+  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean }[];
   output: string;
   filledPrompt: string;
   promptTemplate?: string;
@@ -75,6 +77,7 @@ export default function HistoryViewerModal({
   const [copied, setCopied] = useState(false);
   const [ideaCopied, setIdeaCopied] = useState(false);
   const [compiledCopied, setCompiledCopied] = useState(false);
+  const [previewVideo, setPreviewVideo] = useState<{ youtubeUrl: string; title: string; subLabel: string } | null>(null);
 
   // Export / Import UI states
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -763,13 +766,37 @@ export default function HistoryViewerModal({
                       })}
 
                       {selectedItem.videos?.map((vid, idx) => {
+                        const isYt = vid.isYouTube || Boolean(vid.youtubeUrl);
                         return (
-                          <div key={vid.id || idx} className="flex items-center gap-2.5 border border-purple-300 bg-purple-50 p-1.5 pr-3 text-[10px] font-mono shrink-0">
-                            <div className="w-9 h-9 relative shrink-0 border border-purple-200 bg-purple-100 flex items-center justify-center overflow-hidden">
-                              <Film className="w-4 h-4 text-purple-700" />
+                          <div
+                            key={vid.id || idx}
+                            onClick={() => {
+                              if (isYt && vid.youtubeUrl) {
+                                setPreviewVideo({
+                                  youtubeUrl: vid.youtubeUrl,
+                                  title: vid.label || `Video ${idx + 1}`,
+                                  subLabel: `@VIDEO${idx + 1}`,
+                                });
+                              }
+                            }}
+                            className={`flex items-center gap-2.5 border ${
+                              isYt
+                                ? 'border-red-300 bg-red-50 hover:bg-red-100 hover:border-red-400 cursor-pointer'
+                                : 'border-purple-300 bg-purple-50'
+                            } p-1.5 pr-3 text-[10px] font-mono shrink-0 transition-colors`}
+                            title={isYt ? "Click to play YouTube video" : undefined}
+                          >
+                            <div className={`w-9 h-9 relative shrink-0 border ${isYt ? 'border-red-200 bg-red-100' : 'border-purple-200 bg-purple-100'} flex items-center justify-center overflow-hidden`}>
+                              {isYt ? (
+                                <Youtube className="w-4 h-4 text-red-600 fill-red-600" />
+                              ) : (
+                                <Film className="w-4 h-4 text-purple-700" />
+                              )}
                             </div>
                             <div className="flex flex-col min-w-0">
-                              <span className="text-[8px] text-purple-700 font-black">@VIDEO{idx + 1}</span>
+                              <span className={`text-[8px] ${isYt ? 'text-red-700' : 'text-purple-700'} font-black flex items-center gap-1`}>
+                                @VIDEO{idx + 1} {isYt ? '[YT ▶ PLAY]' : ''}
+                              </span>
                               <span className="text-[#1A1A1A] font-bold truncate max-w-[140px] uppercase">
                                 {vid.label}
                               </span>
@@ -907,6 +934,14 @@ export default function HistoryViewerModal({
         </div>
 
       </div>
+
+      <VideoPlayerModal
+        isOpen={Boolean(previewVideo)}
+        youtubeUrl={previewVideo?.youtubeUrl}
+        title={previewVideo?.title || "Video Preview"}
+        subLabel={previewVideo?.subLabel}
+        onClose={() => setPreviewVideo(null)}
+      />
     </div>
   );
 }

@@ -27,7 +27,8 @@ import {
   Star,
   X,
   ArrowUpDown,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Youtube
 } from "lucide-react";
 
 import AssetLibrarySidebar from "../components/AssetLibrarySidebar";
@@ -38,6 +39,7 @@ import HistoryViewerModal from "../components/HistoryViewerModal";
 import HistorySection from "../components/HistorySection";
 import ClearHistoryConfirmModal from "../components/ClearHistoryConfirmModal";
 import PresetExportDropdown from "../components/PresetExportDropdown";
+import AddYouTubeModal from "../components/AddYouTubeModal";
 import {
   exportPresetsToJSON,
   importPresetsFromJSON,
@@ -95,6 +97,7 @@ export default function PromptGeneratorPage() {
   const [variables, setVariables] = useState<string[]>([]);
   const [isConfigLoaded, setIsConfigLoaded] = useState<boolean>(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState<boolean>(false);
+  const [isYouTubeModalOpen, setIsYouTubeModalOpen] = useState<boolean>(false);
 
   // User input states
   const [inputs, setInputs] = useState<Record<string, string>>({});
@@ -952,6 +955,18 @@ export default function PromptGeneratorPage() {
     }
   };
 
+  // Add YouTube video reference to workspace
+  const handleAddYouTubeVideo = (url: string, label: string) => {
+    const newVid: UploadedVideo = {
+      id: `yt-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      label: label || `YouTube Clip ${uploadedVideos.length + 1}`,
+      youtubeUrl: url,
+      isYouTube: true,
+      mimeType: "video/youtube",
+    };
+    setUploadedVideos(prev => [...prev, newVid]);
+  };
+
   // Update label of specific uploaded video
   const handleUpdateVideoLabel = (id: string, value: string) => {
     setUploadedVideos(prev =>
@@ -1508,6 +1523,7 @@ export default function PromptGeneratorPage() {
         videos: uploadedVideos.map(vid => ({
           label: vid.label,
           base64: vid.base64,
+          youtubeUrl: vid.youtubeUrl,
           mimeType: vid.mimeType,
         })),
         systemPrompt,
@@ -1620,6 +1636,8 @@ export default function PromptGeneratorPage() {
           label: vid.label,
           mimeType: vid.mimeType,
           duration: vid.duration,
+          youtubeUrl: vid.youtubeUrl,
+          isYouTube: vid.isYouTube || Boolean(vid.youtubeUrl),
         }));
 
         const activeTemplateVars = new Set(extractVariables(promptTemplate));
@@ -1880,6 +1898,15 @@ export default function PromptGeneratorPage() {
                 Visual Assets & Casting Maps
               </h2>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsYouTubeModalOpen(true)}
+                  className="px-2 py-0.5 border border-[#D1D1CF] hover:border-red-600 bg-white text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 text-[#1A1A1A] hover:text-red-600"
+                  id="add-youtube-url-btn"
+                >
+                  <Youtube className="w-3 h-3 text-red-600 fill-red-600" />
+                  Add YouTube URL
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsLibraryOpen(true)}
@@ -3213,6 +3240,13 @@ export default function PromptGeneratorPage() {
         onToggleFavoriteHistoryItem={handleToggleFavoriteHistoryItem}
         onImportHistory={handleImportHistory}
         onClearHistory={() => setIsHistoryClearConfirmOpen(true)}
+      />
+
+      <AddYouTubeModal
+        isOpen={isYouTubeModalOpen}
+        onClose={() => setIsYouTubeModalOpen(false)}
+        onAddYouTube={handleAddYouTubeVideo}
+        nextIndex={uploadedVideos.length + 1}
       />
     </div>
   );

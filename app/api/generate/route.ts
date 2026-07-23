@@ -21,8 +21,9 @@ interface UploadedImage {
 
 interface UploadedVideo {
   label: string;
-  base64: string; // potentially a dataURL
-  mimeType: string;
+  base64?: string; // potentially a dataURL
+  youtubeUrl?: string; // YouTube video URL
+  mimeType?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -142,18 +143,26 @@ export async function POST(req: NextRequest) {
     // Add the visual reference videos to the request parts
     for (let i = 0; i < videoList.length; i++) {
       const vid = videoList[i];
-      let cleanData = vid.base64;
-      const commaIndex = cleanData.indexOf(",");
-      if (commaIndex !== -1) {
-        cleanData = cleanData.substring(commaIndex + 1);
-      }
-
-      parts.push({
-        inlineData: {
-          mimeType: vid.mimeType || "video/mp4",
-          data: cleanData,
+      if (vid.youtubeUrl) {
+        parts.push({
+          fileData: {
+            fileUri: vid.youtubeUrl,
+          }
+        });
+      } else if (vid.base64) {
+        let cleanData = vid.base64;
+        const commaIndex = cleanData.indexOf(",");
+        if (commaIndex !== -1) {
+          cleanData = cleanData.substring(commaIndex + 1);
         }
-      });
+
+        parts.push({
+          inlineData: {
+            mimeType: vid.mimeType || "video/mp4",
+            data: cleanData,
+          }
+        });
+      }
     }
 
     // Add the filled template as the main prompt text

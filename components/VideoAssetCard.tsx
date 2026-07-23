@@ -1,15 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { Trash2, Play, Film } from "lucide-react";
+import { Trash2, Play, Film, Youtube } from "lucide-react";
 import VideoPlayerModal from "./VideoPlayerModal";
+import { getYouTubeThumbnailUrl, extractYouTubeVideoId } from "../lib/video-utils";
 
 interface VideoAssetCardProps {
   video: {
     id: string;
-    base64: string;
+    base64?: string;
+    youtubeUrl?: string;
+    isYouTube?: boolean;
     label: string;
-    mimeType: string;
+    mimeType?: string;
   };
   index: number;
   onUpdateLabel: (id: string, newLabel: string) => void;
@@ -24,6 +27,10 @@ export default function VideoAssetCard({
 }: VideoAssetCardProps) {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
+  const isYt = video.isYouTube || Boolean(video.youtubeUrl);
+  const ytThumbnail = video.youtubeUrl ? getYouTubeThumbnailUrl(video.youtubeUrl) : null;
+  const ytVideoId = video.youtubeUrl ? extractYouTubeVideoId(video.youtubeUrl) : null;
+
   return (
     <>
       <div
@@ -31,32 +38,62 @@ export default function VideoAssetCard({
         id={`video-asset-card-${video.id}`}
       >
         <div className="flex flex-col gap-2">
-          {/* Video Thumbnail Box with Play Button Overlay - Clicking triggers modal player */}
+          {/* Video Thumbnail Box with Play Button Overlay */}
           <div
             onClick={() => setIsPlayerOpen(true)}
             className="aspect-square bg-[#1A1A1A] relative overflow-hidden flex items-center justify-center cursor-pointer group/vid"
-            title="Click to play video"
+            title={isYt ? "Click to play YouTube video" : "Click to play video"}
           >
-            <video
-              src={video.base64}
-              muted
-              playsInline
-              preload="metadata"
-              className="w-full h-full object-cover opacity-85 group-hover/vid:opacity-100 transition-opacity"
-            />
+            {isYt && ytThumbnail ? (
+              // YouTube Thumbnail
+              <img
+                src={ytThumbnail}
+                alt={video.label}
+                className="w-full h-full object-cover opacity-85 group-hover/vid:opacity-100 transition-opacity"
+              />
+            ) : video.base64 ? (
+              // Local File Video
+              <video
+                src={video.base64}
+                muted
+                playsInline
+                preload="metadata"
+                className="w-full h-full object-cover opacity-85 group-hover/vid:opacity-100 transition-opacity"
+              />
+            ) : (
+              // Fallback YouTube placeholder
+              <div className="w-full h-full flex flex-col items-center justify-center bg-stone-900 text-stone-400 gap-1 p-2">
+                <Youtube className="w-8 h-8 text-red-500 fill-red-500" />
+                <span className="text-[8px] font-mono uppercase text-stone-400 truncate max-w-full">
+                  {ytVideoId || "YouTube Video"}
+                </span>
+              </div>
+            )}
 
             {/* Play Overlay Badge */}
             <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/vid:bg-black/10 transition-colors">
               <div className="w-9 h-9 bg-white/90 border border-[#1A1A1A] text-[#1A1A1A] flex items-center justify-center group-hover/vid:scale-110 transition-transform shadow-md">
-                <Play className="w-4 h-4 fill-[#1A1A1A] ml-0.5" />
+                {isYt ? (
+                  <Youtube className="w-4 h-4 fill-red-600 text-red-600" />
+                ) : (
+                  <Play className="w-4 h-4 fill-[#1A1A1A] ml-0.5 text-[#1A1A1A]" />
+                )}
               </div>
             </div>
 
-            {/* Top-Left Video Index Identifier */}
-            <div className="absolute top-1 left-1 bg-[#1A1A1A] text-white text-[8px] font-mono font-bold px-1.5 py-0.5 select-none flex items-center gap-1">
+            {/* Top-Left Video Index Identifier - Always retains @videoN mapping */}
+            <div className="absolute top-1 left-1 bg-[#1A1A1A] text-white text-[8px] font-mono font-bold px-1.5 py-0.5 select-none flex items-center gap-1 z-10">
               <Film className="w-2.5 h-2.5 text-amber-400" />
               @video{index + 1}
             </div>
+
+            {/* Top-Right Badge for YouTube */}
+            {isYt && (
+              <div className="absolute top-1 right-8 bg-red-600 text-white text-[7px] font-mono font-bold px-1 py-0.5 uppercase tracking-wider select-none z-10 flex items-center gap-0.5">
+                <Youtube className="w-2.5 h-2.5 fill-white" />
+                YT
+              </div>
+            )}
 
             {/* Delete Asset Button */}
             <button
@@ -72,9 +109,9 @@ export default function VideoAssetCard({
             </button>
           </div>
 
-          {/* Small Centered ID Caption below the video */}
-          <div className="text-center font-mono text-[7px] text-[#888884] select-all tracking-tighter leading-tight break-all">
-            ID: {video.id}
+          {/* ID or YouTube URL Caption */}
+          <div className="text-center font-mono text-[7px] text-[#888884] select-all tracking-tighter leading-tight break-all truncate" title={video.youtubeUrl || video.id}>
+            {isYt ? `YT: ${ytVideoId || video.youtubeUrl}` : `ID: ${video.id}`}
           </div>
 
           {/* Input Map To Label */}
@@ -101,6 +138,7 @@ export default function VideoAssetCard({
       <VideoPlayerModal
         isOpen={isPlayerOpen}
         videoUrl={video.base64}
+        youtubeUrl={video.youtubeUrl}
         title={video.label || `Video ${index + 1}`}
         subLabel={`@video${index + 1}`}
         onClose={() => setIsPlayerOpen(false)}

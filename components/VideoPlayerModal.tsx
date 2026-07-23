@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { X, Film } from "lucide-react";
+import { X, Film, Youtube, ExternalLink } from "lucide-react";
+import { extractYouTubeVideoId, isYouTubeUrl } from "../lib/video-utils";
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
-  videoUrl: string;
+  videoUrl?: string;
+  youtubeUrl?: string;
   title: string;
   subLabel?: string;
   onClose: () => void;
@@ -14,6 +16,7 @@ interface VideoPlayerModalProps {
 export default function VideoPlayerModal({
   isOpen,
   videoUrl,
+  youtubeUrl,
   title,
   subLabel,
   onClose,
@@ -32,7 +35,12 @@ export default function VideoPlayerModal({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen || !videoUrl) return null;
+  if (!isOpen) return null;
+
+  const effectiveYoutubeUrl = youtubeUrl || (videoUrl && isYouTubeUrl(videoUrl) ? videoUrl : undefined);
+  const ytVideoId = effectiveYoutubeUrl ? extractYouTubeVideoId(effectiveYoutubeUrl) : null;
+
+  if (!effectiveYoutubeUrl && !videoUrl) return null;
 
   return (
     <div
@@ -50,7 +58,11 @@ export default function VideoPlayerModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#D1D1CF] pb-2.5">
           <div className="flex items-center gap-2">
-            <Film className="w-4 h-4 text-[#1A1A1A]" />
+            {effectiveYoutubeUrl ? (
+              <Youtube className="w-4 h-4 text-red-600 fill-red-600" />
+            ) : (
+              <Film className="w-4 h-4 text-[#1A1A1A]" />
+            )}
             <span className="text-xs font-bold uppercase tracking-wider text-[#1A1A1A] font-sans truncate max-w-md">
               {title}
             </span>
@@ -58,6 +70,18 @@ export default function VideoPlayerModal({
               <span className="text-[10px] font-mono text-[#888884] uppercase shrink-0">
                 [{subLabel}]
               </span>
+            )}
+            {effectiveYoutubeUrl && (
+              <a
+                href={effectiveYoutubeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[9px] font-mono text-red-600 hover:underline flex items-center gap-1 ml-2 shrink-0"
+                title="Open directly on YouTube"
+              >
+                <span>YouTube</span>
+                <ExternalLink className="w-2.5 h-2.5" />
+              </a>
             )}
           </div>
           <button
@@ -71,15 +95,30 @@ export default function VideoPlayerModal({
         </div>
 
         {/* Video Player Box */}
-        <div className="relative bg-[#1A1A1A] max-h-[70vh] flex items-center justify-center overflow-hidden border border-[#D1D1CF]">
-          <video
-            src={videoUrl}
-            controls
-            autoPlay
-            loop
-            className="max-h-[70vh] w-auto max-w-full object-contain"
-            id="active-modal-video"
-          />
+        <div className="relative bg-[#1A1A1A] aspect-video w-full flex items-center justify-center overflow-hidden border border-[#D1D1CF]">
+          {ytVideoId ? (
+            <iframe
+              src={`https://www.youtube.com/embed/${ytVideoId}?autoplay=1`}
+              title={title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="w-full h-full border-0"
+              id="active-modal-youtube-iframe"
+            />
+          ) : videoUrl ? (
+            <video
+              src={videoUrl}
+              controls
+              autoPlay
+              loop
+              className="max-h-[70vh] w-auto max-w-full object-contain"
+              id="active-modal-video"
+            />
+          ) : (
+            <div className="p-8 text-center text-white font-mono text-xs">
+              Video source unavailable.
+            </div>
+          )}
         </div>
 
         {/* Footer info */}

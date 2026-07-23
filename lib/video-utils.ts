@@ -1,11 +1,13 @@
 export interface UploadedVideo {
   id: string;
   label: string;
-  base64: string;
-  mimeType: string;
+  base64?: string;
+  mimeType?: string;
   duration?: number;
   width?: number;
   height?: number;
+  youtubeUrl?: string;
+  isYouTube?: boolean;
 }
 
 export interface VideoValidationResult {
@@ -15,6 +17,35 @@ export interface VideoValidationResult {
   width?: number;
   height?: number;
   base64?: string;
+}
+
+/**
+ * Validates whether a string is a valid YouTube URL.
+ */
+export function isYouTubeUrl(url: string): boolean {
+  if (!url) return false;
+  const trimmed = url.trim();
+  return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/i.test(trimmed);
+}
+
+/**
+ * Extracts YouTube 11-character video ID from various YouTube URL formats.
+ */
+export function extractYouTubeVideoId(url: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = trimmed.match(regExp);
+  return match && match[2].length === 11 ? match[2] : null;
+}
+
+/**
+ * Returns YouTube video thumbnail image URL for a given YouTube URL.
+ */
+export function getYouTubeThumbnailUrl(url: string): string | null {
+  const videoId = extractYouTubeVideoId(url);
+  if (!videoId) return null;
+  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 }
 
 /**

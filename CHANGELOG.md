@@ -10,13 +10,24 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 - **Optional Core Idea:** Unlocked generation without requiring the Main Objective / Idea field to be filled. Users can now synthesize sequences using only other prompt parameters or pure templates.
 
-### Multi-Modal Video Support
+### Multi-Modal Video & YouTube Support
 
-- **Video upload with `@videoN` reference annotations.** Upload MP4 video files alongside images as reference assets, automatically mapped to `@videoN` labels in the prompt template. Videos are sent as `inlineData` parts to the Gemini API, enabling true multi-modal generation with motion and temporal context. **Note**: Video files are large and may exceed POST body size limits on hosted/serverless platforms (e.g., Vercel's 4.5 MB limit). For video workflows, running the app locally is recommended.
+- **YouTube URL video references.** Added an "ADD YOUTUBE URL" button to the left of "Browse Library" in the Visual Assets header. Users can enter any YouTube URL (e.g. `youtube.com/watch?v=...` or `youtu.be/...`) and map it to a custom label.
+- **Unified `@video` annotation mapping.** YouTube video references maintain standard `@videoN` tag mappings alongside local MP4 uploads, populating `{{ visual_references }}` as `@videoN as Label` without embedding raw links in prompt texts.
+- **Gemini API `fileData` streaming.** YouTube URLs are transmitted directly to the Gemini API as `fileData` parts (`fileUri: youtubeUrl`), allowing Gemini 3.5 Flash to process YouTube video context natively.
+- **YouTube thumbnail previews & iframe embed player.** `VideoAssetCard` renders auto-extracted high-resolution YouTube thumbnails with a red YouTube badge (`YT`), and `VideoPlayerModal` embeds the YouTube iframe player for instant in-app video previews.
+- **YouTube history persistence.** Generation history persists YouTube URLs and metadata across sessions, JSON exports, and imports, displaying red YouTube badges in `HistoryViewerModal`.
 - **Video validation and processing.** A dedicated `validateAndProcessVideo` utility in `lib/video-utils.ts` enforces format (MP4 only), duration (≤30 seconds), and file size (≤35 MB) constraints before Base64 encoding. Invalid files receive clear, specific error messages.
 - **VideoAssetCard component.** Reusable UI card (`components/VideoAssetCard.tsx`) for displaying uploaded videos in the workspace sidebar with metadata (duration, dimensions) and a playback trigger.
 - **VideoPlayerModal component.** Full-screen modal (`components/VideoPlayerModal.tsx`) for previewing uploaded reference videos before generation, with standard HTML5 video controls.
 - **Unified reference tag pipeline.** Images (`@imageN`) and videos (`@videoN`) are now combined into a single `referenceTags` array server-side, producing a consolidated `{{ visual_references }}` variable that lists all media assets with their labels in the prompt template.
+
+### History & Session Management
+
+- **Video history tracking.** The `HistoryItem` interface now includes an optional `videos` field, persisting video metadata (label, mimeType, duration) alongside image references in session history. History recall restores uploaded video metadata to the workspace, and history export/import preserves video references for cross-device migration.
+- **Video badges in history UI.** History cards in both the sidebar `HistorySection` and full-screen `HistoryViewerModal` display purple `{N} VID` badges alongside existing `{N} IMG` badges, giving at-a-glance visibility of video assets per entry.
+- **Video-aware visual reference search.** The history search scope "Visual References & Casting Maps" now matches against both image and video labels, ensuring video-labeled entries appear in filtered results.
+- **Video assets in detail view & interactive YouTube playback.** The HistoryViewerModal's detail panel renders video entries under "Visual References & Casting Maps". Clicking any YouTube video card (`[YT ▶ PLAY]`) in history immediately opens the embedded `VideoPlayerModal` iframe player to preview the referenced YouTube clip directly within the history viewer.
 
 ---
 
