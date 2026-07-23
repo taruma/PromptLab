@@ -22,6 +22,7 @@ Key differentiators:
 - **Styling**: Tailwind CSS v4 using modern `@tailwindcss/postcss` and native configuration. Includes `@tailwindcss/typography` and `tw-animate-css` plugins.
 - **Animation Support**: The `motion` package is in the dependency tree but is not currently utilized in any UI components.
 - **Icons**: `lucide-react` for simple, expressive visual indicators.
+- **Markdown Rendering**: `react-markdown` for client-side rendering of generation output with formatted/raw toggle view.
 - **AI Integration**: `@google/genai` TypeScript SDK (v2.4.0, server-side only via App Router API paths).
 - **Analytics**: `@vercel/analytics` integrated in the root layout for Vercel deployment observability.
 - **Utility Libraries**: `clsx` + `tailwind-merge` (via `lib/utils.ts` `cn()` helper), `class-variance-authority`, `@hookform/resolvers`.
@@ -67,6 +68,7 @@ Key differentiators:
 │   ├── DiscardChangesConfirmModal.tsx # Confirmation modal for discarding unsaved prompt config changes
 │   ├── EngineControlsModal.tsx      # Engine configuration modal (model, temperature, API key vault)
 │   ├── FooterStatusBar.tsx          # Bottom status bar showing engine, reasoning, and temperature
+│   ├── GenerationResultView.tsx     # Generation output panel with formatted markdown / raw toggle
 │   ├── HistorySection.tsx           # Collapsible history section in sidebar
 │   ├── HistoryViewerModal.tsx       # Full-screen history browser with import/export
 │   ├── LabManualSection.tsx         # Collapsible quick-start guide section in sidebar
@@ -75,6 +77,7 @@ Key differentiators:
 │   ├── ParameterInputsSection.tsx   # Dynamic parameter form inputs section
 │   ├── PresetCompareModal.tsx       # Full-screen diff viewer for preset comparison (unified/split views)
 │   ├── PresetExportDropdown.tsx     # Bulk export dropdown (All/Favorites/Selected) for user presets
+│   ├── PromptTemplateHelpTooltip.tsx # Contextual help tooltip for {{ variable }} syntax guidance
 │   ├── VideoAssetCard.tsx           # Reusable video asset card with metadata and playback trigger
 │   ├── VideoPlayerModal.tsx         # Full-screen video playback modal for previewing uploaded videos
 │   ├── VisualAssetCard.tsx          # Reusable image asset card with hover preview
@@ -104,7 +107,7 @@ Key differentiators:
 
 ### app/page.tsx Internal Structure
 
-The main workspace file (~2,900 lines) is organized into these major sections:
+The main workspace file (~2,780 lines) is organized into these major sections:
 
 - **State Declarations**: ~30+ `useState` hooks covering prompt config (system/prompt text, active presets, variables, inputs), engine parameters (model, temperature, reasoning/maxTokens), visual assets (uploaded images + videos, asset library sidebar), generation state (result, thinking trace, filled prompt, loading flags), history (items, favorites, filter tab), preset management (editing ID, loaded ID, new name, status banner), and modal visibility toggles.
 - **localStorage Persistence Effects**: `useEffect` hooks auto-load session state on mount (prompt config, engine params, variables, uploaded image metadata, collapsed sections). Additional effects persist changes back to localStorage as the user edits.
@@ -182,9 +185,13 @@ The workspace reads dynamic template specifications from the currently configure
 - **Reasoning Trace Dynamic Separation**: For models that support reasoning/thinking, the stream separates thinking/thought blocks dynamically from the main output. The UI displays these in a dedicated **Engine Reasoning Trace** console box so that reasoning flows and generation text stream concurrently but remain visually separated.
 - **Character Count Display**: When a generation result is present, a live character count badge (`{N} CHARS`) is displayed next to the "Generation Result" header in the output panel, providing immediate feedback on output length.
 
-### Rule F: Plain-Text Formatting Enforcement
-- The system instructions in `/prompts/system_prompt.txt` strictly mandate that the model output MUST be formatted as **pure, standard plain text** with zero Markdown symbols (no asterisks, hash signs, markdown tables, bold wraps, etc.).
-- The UI renders the output inside a serif paragraph element designed for plain text. If you modify formatting requirements, ensure you modify both `system_prompt.txt` and the rendering logic in `app/page.tsx` synchronously.
+### Rule F: Plain-Text Formatting & Dual-Mode Output Rendering
+- The system instructions in `/prompts/system_prompt.txt` strictly mandate that the model output MUST be formatted as **pure, standard plain text** with zero Markdown symbols (no asterisks, hash signs, markdown tables, bold wraps, etc.) at generation time. This constraint is enforced server-side in the Gemini API prompt configuration.
+- **Client-side dual-mode rendering**: The `GenerationResultView` component (`components/GenerationResultView.tsx`) renders output in two user-selectable modes:
+  - **Formatted Markdown**: Uses `react-markdown` with custom component overrides (headings, paragraphs, lists, inline code blocks, bold, italic, horizontal rules) styled in the PromptLab brutalist aesthetic.
+  - **Raw Monospace**: Traditional `pre`/`code` block with `whitespace-pre-wrap` and `font-mono`, matching the original plain-text output view.
+- The view mode toggle is displayed in the footer of the generation output panel as `VIEW: FORMATTED MARKDOWN` / `VIEW: RAW MONOSPACE`.
+- If you modify formatting requirements or output rendering, ensure you update both `system_prompt.txt` and the `GenerationResultView` component synchronously.
 
 ### Rule G: IndexedDB Image Persistence
 - **Image Blob Storage**: Raw Base64 image data is stored in IndexedDB (`promptlab_db` database, `images` object store with `id` keyPath) rather than localStorage, avoiding browser storage quota limits (~5-10MB for localStorage vs hundreds of MB for IndexedDB).
