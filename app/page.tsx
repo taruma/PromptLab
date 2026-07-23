@@ -40,6 +40,11 @@ import ClearHistoryConfirmModal from "../components/ClearHistoryConfirmModal";
 import PresetExportDropdown from "../components/PresetExportDropdown";
 import AddYouTubeModal from "../components/AddYouTubeModal";
 import YouTubeIcon from "../components/YouTubeIcon";
+import AppHeader from "../components/AppHeader";
+import LabManualSection from "../components/LabManualSection";
+import MainIdeaSection from "../components/MainIdeaSection";
+import ParameterInputsSection from "../components/ParameterInputsSection";
+import FooterStatusBar from "../components/FooterStatusBar";
 import {
   exportPresetsToJSON,
   importPresetsFromJSON,
@@ -1717,61 +1722,12 @@ export default function PromptGeneratorPage() {
   return (
     <div className="min-h-screen bg-[#F4F4F2] flex flex-col font-sans text-[#1A1A1A]" id="main-content">
       {/* Header */}
-      <header className="h-20 border-b border-[#D1D1CF] px-4 md:px-10 flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-30" id="app-header">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-xl md:text-2xl font-black tracking-tighter uppercase flex items-center gap-2">
-            <div className="w-8 h-8 flex items-center justify-center shrink-0">
-              <Image 
-                src="/logo_promptlab.png" 
-                alt="PromptLab Logo" 
-                width={28} 
-                height={28} 
-                className="object-contain invert"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            PromptLab
-          </h1>
-        </div>
-        
-        <div className="flex items-center gap-3 md:gap-4">
-          <button
-            onClick={() => setIsLibraryOpen(true)}
-            className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 bg-white"
-            title="Open Asset Library & Casting Bank"
-            id="open-library-header-btn"
-          >
-            <FolderOpen className="w-3.5 h-3.5 text-[#1A1A1A] shrink-0" />
-            Asset Library
-          </button>
-          <button
-            onClick={() => setIsEngineConfigOpen(true)}
-            className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 bg-white"
-            title="Configure Engine Model & Parameters"
-            id="engine-controls-btn"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            Engine Controls
-          </button>
-          <button
-            onClick={handleOpenPromptConfig}
-            className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 bg-white"
-            title="Configure System Prompt & Template"
-            id="configure-prompts-btn"
-          >
-            <Settings className="w-3.5 h-3.5 shrink-0" />
-            Configure Prompts
-          </button>
-          <button
-            onClick={() => setIsClearConfirmOpen(true)}
-            className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-[#F4F4F2] text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer"
-            title="Clear all active inputs, uploaded files, and generation results"
-            id="clear-session-btn"
-          >
-            Clear Session
-          </button>
-        </div>
-      </header>
+      <AppHeader
+        onOpenLibrary={() => setIsLibraryOpen(true)}
+        onOpenEngineConfig={() => setIsEngineConfigOpen(true)}
+        onOpenPromptConfig={handleOpenPromptConfig}
+        onClearSession={() => setIsClearConfirmOpen(true)}
+      />
 
       {/* Main Container Split */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 border-b border-[#D1D1CF]" id="workspace-layout">
@@ -1780,111 +1736,16 @@ export default function PromptGeneratorPage() {
         <div className="lg:col-span-7 p-6 md:p-10 flex flex-col gap-8 bg-[#F4F4F2] lg:border-r lg:border-[#D1D1CF]" id="input-controls-column">
           
           {/* Section: Lab Manual & Quick-Start */}
-          <section className="flex flex-col shrink-0" id="lab-manual-panel">
-            <div 
-              onClick={toggleLabManual}
-              className="flex justify-between items-center mb-1 cursor-pointer select-none group"
-            >
-              <div className="flex items-center gap-2">
-                <h2 className="text-[10px] uppercase tracking-[0.20em] text-[#888884] font-bold flex items-center gap-1.5">
-                  <HelpCircle className="w-3.5 h-3.5" />
-                  Lab Manual & Quick-Start Guide
-                </h2>
-                <span className="text-[#888884] group-hover:text-[#1A1A1A] transition-colors">
-                  {isLabManualOpen ? (
-                    <ChevronDown className="w-3.5 h-3.5 transform rotate-180 transition-transform" />
-                  ) : (
-                    <ChevronDown className="w-3.5 h-3.5 transition-transform" />
-                  )}
-                </span>
-              </div>
-            </div>
-
-            {isLabManualOpen && (
-              <div className="bg-white border border-[#D1D1CF] p-4 md:p-5 flex flex-col gap-4 text-xs" id="lab-manual-content">
-                {/* 1-4 Step instructions */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex gap-2.5">
-                    <span className="font-mono text-xs font-bold text-[#888884] bg-[#EAEAE8] border border-[#D1D1CF] w-5 h-5 flex items-center justify-center shrink-0">1</span>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-sans font-bold uppercase tracking-wider text-[10px] text-[#1A1A1A]">Configure Template</span>
-                      <p className="text-[#888884] text-[11px] leading-relaxed">
-                        Click <strong className="text-[#1A1A1A]">Configure Prompts</strong> in the top header to define your custom System Instructions and curly-brace variables (e.g. <code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">{"{{ variable }}"}</code>).
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2.5">
-                    <span className="font-mono text-xs font-bold text-[#888884] bg-[#EAEAE8] border border-[#D1D1CF] w-5 h-5 flex items-center justify-center shrink-0">2</span>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-sans font-bold uppercase tracking-wider text-[10px] text-[#1A1A1A]">Input Active Values</span>
-                      <p className="text-[#888884] text-[11px] leading-relaxed">
-                        Fill in your core concept under <strong className="text-[#1A1A1A]">Main Objective / Idea</strong>. Dynamic form inputs are automatically generated below for all other custom placeholders.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2.5">
-                    <span className="font-mono text-xs font-bold text-[#888884] bg-[#EAEAE8] border border-[#D1D1CF] w-5 h-5 flex items-center justify-center shrink-0">3</span>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-sans font-bold uppercase tracking-wider text-[10px] text-[#1A1A1A]">Upload References</span>
-                      <p className="text-[#888884] text-[11px] leading-relaxed">
-                        Upload reference images to map characters, backgrounds, or assets to sequential <code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">@imageX</code> variables used in your prompt templates.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2.5">
-                    <span className="font-mono text-xs font-bold text-[#888884] bg-[#EAEAE8] border border-[#D1D1CF] w-5 h-5 flex items-center justify-center shrink-0">4</span>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-sans font-bold uppercase tracking-wider text-[10px] text-[#1A1A1A]">Synthesize Sequence</span>
-                      <p className="text-[#888884] text-[11px] leading-relaxed">
-                        Choose your model and parameters in <strong className="text-[#1A1A1A]">Engine Controls</strong>, then hit <strong className="text-[#1A1A1A]">Generate Sequence</strong> to stream real-time results and thinking logs.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer link to Repository */}
-                <div className="border-t border-[#D1D1CF] pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#F4F4F2]/50 p-2.5 border-dashed">
-                  <span className="text-[10px] text-[#888884] font-medium leading-relaxed">
-                    Looking for custom templates, default presets, or raw project files?
-                  </span>
-                  <a 
-                    href="https://github.com/taruma/PromptLab" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#1A1A1A] hover:bg-[#333] text-white text-[10px] font-bold uppercase tracking-widest transition-all rounded-none self-start sm:self-auto shrink-0 cursor-pointer"
-                  >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    Open Docs Repo
-                  </a>
-                </div>
-              </div>
-            )}
-          </section>
+          <LabManualSection
+            isLabManualOpen={isLabManualOpen}
+            toggleLabManual={toggleLabManual}
+          />
 
           {/* Section: Main Idea / Core Objective */}
-          <section className="flex flex-col gap-3" id="main-idea-section">
-            <div className="flex justify-between items-end">
-              <h2 className="text-[10px] uppercase tracking-[0.20em] text-[#888884] font-bold">
-                Main Objective / Idea
-              </h2>
-              <span className="text-[9px] font-mono text-[#888884]">
-                {"{{ idea }}"}
-              </span>
-            </div>
-
-            <label htmlFor="variable-idea" className="sr-only">Core Creative Concept</label>
-            <textarea
-              id="variable-idea"
-              rows={4}
-              value={inputs["idea"] || ""}
-              onChange={(e) => setInputs(prev => ({ ...prev, idea: e.target.value }))}
-              placeholder="Describe the core creative scene requirements, conflict, or central idea here..."
-              className="w-full bg-white border border-[#D1D1CF] p-4 text-sm leading-relaxed outline-none focus:border-[#1A1A1A] transition-colors resize-y min-h-[120px] rounded-none font-sans text-[#1A1A1A] placeholder-stone-400"
-            />
-          </section>
+          <MainIdeaSection
+            ideaValue={inputs["idea"] || ""}
+            onIdeaChange={(val) => setInputs(prev => ({ ...prev, idea: val }))}
+          />
 
           {/* Section: Visual Reference Assets */}
           <section className="flex flex-col gap-3" id="images-reference-section">
@@ -2005,47 +1866,11 @@ export default function PromptGeneratorPage() {
           </section>
 
           {/* Section: Template Variables / Parameters */}
-          <section className="flex flex-col gap-3" id="parameter-inputs-card">
-            <div className="flex justify-between items-end">
-              <h2 className="text-[10px] uppercase tracking-[0.20em] text-[#888884] font-bold">
-                Template Specifications
-              </h2>
-              <span className="text-[9px] font-mono text-[#888884]">
-                Parameters Form
-              </span>
-            </div>
-
-            {displayVariables.length === 0 ? (
-              <div className="bg-white border border-[#D1D1CF] p-6 text-center">
-                <HelpCircle className="w-6 h-6 text-[#888884] mx-auto mb-1.5" />
-                <p className="text-xs text-[#888884] uppercase tracking-wider font-bold">Mapping dynamic variables...</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white border border-[#D1D1CF] p-6" id="parameter-inputs-container">
-                {displayVariables.map((v) => {
-                  const label = v.replace(/[_-]/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-                  return (
-                    <div key={v} className="flex flex-col gap-1.5">
-                      <div className="flex justify-between items-baseline">
-                        <label htmlFor={`input-${v}`} className="text-[10px] uppercase font-bold tracking-wider text-[#1A1A1A]">
-                          {label}
-                        </label>
-                        <span className="text-[8px] font-mono text-[#888884]">{"{{"} {v} {"}}"}</span>
-                      </div>
-                      <input
-                        id={`input-${v}`}
-                        type="text"
-                        value={inputs[v] || ""}
-                        onChange={(e) => setInputs(prev => ({ ...prev, [v]: e.target.value }))}
-                        placeholder={`Provide ${label.toLowerCase()}...`}
-                        className="bg-white border border-[#D1D1CF] p-3 text-xs outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A]"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+          <ParameterInputsSection
+            displayVariables={displayVariables}
+            inputs={inputs}
+            onInputChange={(v, val) => setInputs(prev => ({ ...prev, [v]: val }))}
+          />
 
           {/* Action Trigger Button */}
           <div className="mt-2">
@@ -2213,15 +2038,12 @@ export default function PromptGeneratorPage() {
       </div>
 
       {/* Footer Status Bar */}
-      <footer className="h-10 px-4 md:px-10 bg-[#1A1A1A] text-white flex items-center justify-between text-[9px] font-mono shrink-0">
-        <div className="flex flex-wrap gap-x-6 gap-y-1 uppercase">
-          <span>Engine: {selectedModel.toUpperCase()}</span>
-          <span>Reasoning: {thinkingLevel}</span>
-          <span>Temp: {temperature.toFixed(1)}</span>
-          <span>Key: {getActiveApiKeyLabel().toUpperCase()}</span>
-        </div>
-        <div className="uppercase opacity-50 tracking-wider">PromptLab by Taruma Sakti</div>
-      </footer>
+      <FooterStatusBar
+        selectedModel={selectedModel}
+        thinkingLevel={thinkingLevel}
+        temperature={temperature}
+        activeApiKeyLabel={getActiveApiKeyLabel()}
+      />
 
       {/* Prompt Configuration Modal */}
       {isPromptConfigOpen && (
