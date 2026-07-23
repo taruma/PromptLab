@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Film, Youtube, AlertCircle } from "lucide-react";
+import { X, Film, AlertCircle } from "lucide-react";
+import YouTubeIcon from "./YouTubeIcon";
 import { isYouTubeUrl } from "../lib/video-utils";
 
 interface AddYouTubeModalProps {
@@ -83,8 +84,8 @@ export default function AddYouTubeModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#D1D1CF] pb-3">
           <div className="flex items-center gap-2">
-            <div className="p-1 bg-red-100 border border-red-300 text-red-600">
-              <Youtube className="w-4 h-4 fill-red-600" />
+            <div className="p-1 bg-red-50 border border-red-200">
+              <YouTubeIcon className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#1A1A1A] font-sans">
@@ -170,7 +171,7 @@ export default function AddYouTubeModal({
               type="submit"
               className="px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white border border-[#1A1A1A] text-[10px] uppercase font-bold tracking-widest transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <Youtube className="w-3.5 h-3.5 fill-white" />
+              <YouTubeIcon className="w-3.5 h-3.5" />
               Add YouTube Reference
             </button>
           </div>

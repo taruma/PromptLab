@@ -27,8 +27,7 @@ import {
   Star,
   X,
   ArrowUpDown,
-  SlidersHorizontal,
-  Youtube
+  SlidersHorizontal
 } from "lucide-react";
 
 import AssetLibrarySidebar from "../components/AssetLibrarySidebar";
@@ -40,6 +39,7 @@ import HistorySection from "../components/HistorySection";
 import ClearHistoryConfirmModal from "../components/ClearHistoryConfirmModal";
 import PresetExportDropdown from "../components/PresetExportDropdown";
 import AddYouTubeModal from "../components/AddYouTubeModal";
+import YouTubeIcon from "../components/YouTubeIcon";
 import {
   exportPresetsToJSON,
   importPresetsFromJSON,
@@ -1904,7 +1904,7 @@ export default function PromptGeneratorPage() {
                   className="px-2 py-0.5 border border-[#D1D1CF] hover:border-red-600 bg-white text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 text-[#1A1A1A] hover:text-red-600"
                   id="add-youtube-url-btn"
                 >
-                  <Youtube className="w-3 h-3 text-red-600 fill-red-600" />
+                  <YouTubeIcon className="w-3.5 h-3.5" />
                   Add YouTube URL
                 </button>
                 <button

@@ -12,7 +12,6 @@ import {
   Sparkles, 
   Image as ImageIcon,
   Film,
-  Youtube,
   Settings,
   Copy,
   Star,
@@ -20,6 +19,7 @@ import {
   Upload,
   Loader2
 } from "lucide-react";
+import YouTubeIcon from "./YouTubeIcon";
 import { getStoredImage } from "../lib/indexeddb";
 import { exportHistoryToJSON, importHistoryFromJSON } from "../lib/history-export";
 import VideoPlayerModal from "./VideoPlayerModal";
@@ -788,7 +788,7 @@ export default function HistoryViewerModal({
                           >
                             <div className={`w-9 h-9 relative shrink-0 border ${isYt ? 'border-red-200 bg-red-100' : 'border-purple-200 bg-purple-100'} flex items-center justify-center overflow-hidden`}>
                               {isYt ? (
-                                <Youtube className="w-4 h-4 text-red-600 fill-red-600" />
+                                <YouTubeIcon className="w-4 h-4" />
                               ) : (
                                 <Film className="w-4 h-4 text-purple-700" />
                               )}

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { Trash2, Play, Film, Youtube } from "lucide-react";
+import { Trash2, Play, Film } from "lucide-react";
 import VideoPlayerModal from "./VideoPlayerModal";
+import YouTubeIcon from "./YouTubeIcon";
 import { getYouTubeThumbnailUrl, extractYouTubeVideoId } from "../lib/video-utils";
 
 interface VideoAssetCardProps {
@@ -63,7 +64,7 @@ export default function VideoAssetCard({
             ) : (
               // Fallback YouTube placeholder
               <div className="w-full h-full flex flex-col items-center justify-center bg-stone-900 text-stone-400 gap-1 p-2">
-                <Youtube className="w-8 h-8 text-red-500 fill-red-500" />
+                <YouTubeIcon className="w-8 h-8" />
                 <span className="text-[8px] font-mono uppercase text-stone-400 truncate max-w-full">
                   {ytVideoId || "YouTube Video"}
                 </span>
@@ -74,7 +75,7 @@ export default function VideoAssetCard({
             <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/vid:bg-black/10 transition-colors">
               <div className="w-9 h-9 bg-white/90 border border-[#1A1A1A] text-[#1A1A1A] flex items-center justify-center group-hover/vid:scale-110 transition-transform shadow-md">
                 {isYt ? (
-                  <Youtube className="w-4 h-4 fill-red-600 text-red-600" />
+                  <YouTubeIcon className="w-5 h-5" />
                 ) : (
                   <Play className="w-4 h-4 fill-[#1A1A1A] ml-0.5 text-[#1A1A1A]" />
                 )}
@@ -89,8 +90,7 @@ export default function VideoAssetCard({
 
             {/* Top-Right Badge for YouTube */}
             {isYt && (
-              <div className="absolute top-1 right-8 bg-red-600 text-white text-[7px] font-mono font-bold px-1 py-0.5 uppercase tracking-wider select-none z-10 flex items-center gap-0.5">
-                <Youtube className="w-2.5 h-2.5 fill-white" />
+              <div className="absolute top-1 right-8 bg-red-600 text-white text-[7px] font-mono font-bold px-1.5 py-0.5 uppercase tracking-wider select-none z-10">
                 YT
               </div>
             )}

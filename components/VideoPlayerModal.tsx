@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { X, Film, Youtube, ExternalLink } from "lucide-react";
+import { X, Film, ExternalLink } from "lucide-react";
+import YouTubeIcon from "./YouTubeIcon";
 import { extractYouTubeVideoId, isYouTubeUrl } from "../lib/video-utils";
 
 interface VideoPlayerModalProps {
@@ -59,7 +60,7 @@ export default function VideoPlayerModal({
         <div className="flex items-center justify-between border-b border-[#D1D1CF] pb-2.5">
           <div className="flex items-center gap-2">
             {effectiveYoutubeUrl ? (
-              <Youtube className="w-4 h-4 text-red-600 fill-red-600" />
+              <YouTubeIcon className="w-4 h-4" />
             ) : (
               <Film className="w-4 h-4 text-[#1A1A1A]" />
             )}
