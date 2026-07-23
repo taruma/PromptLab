@@ -1246,22 +1246,15 @@ export default function PromptGeneratorPage() {
     setIsPromptConfigOpen(true);
   };
 
-  // Revert/Re-fetch the default prompt files inside the configuration modal
-  const handleRestoreDefaultPrompts = async () => {
+  // Reset system prompt and prompt template inside the configuration modal
+  const handleResetPrompts = () => {
     setPresetStatusBanner(null);
-    try {
-      const res = await fetch("/api/prompt-config");
-      const data = await res.json();
-      if (res.ok) {
-        setTempSystemPrompt(data.systemPrompt || "");
-        setTempPromptTemplate(data.promptTemplate || "");
-        setPresetStatusBanner({ message: "Restored configurations to default TXT templates." });
-      } else {
-        setPresetStatusBanner({ message: "Failed to load original templates: " + data.error, isError: true });
-      }
-    } catch (err: any) {
-      setPresetStatusBanner({ message: "Error loading originals: " + err.message, isError: true });
-    }
+    setActiveEditingPresetId(null);
+    setLoadedPresetId(null);
+    setNewPresetName("");
+    setTempSystemPrompt("");
+    setTempPromptTemplate("{{ visual_references }}\n\n---\n\n{{ idea }}");
+    setPresetStatusBanner({ message: "Reset system prompt and prompt template." });
   };
 
   // Export user presets to JSON file using modular utility
@@ -2275,12 +2268,12 @@ export default function PromptGeneratorPage() {
                 />
 
                 <button
-                  onClick={handleRestoreDefaultPrompts}
+                  onClick={handleResetPrompts}
                   className="px-3 py-1.5 bg-white hover:bg-red-50 text-red-700 border border-[#D1D1CF] hover:border-red-300 text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  title="Reset configurations to original TXT defaults"
+                  title="Deselect active preset and reset system prompt and template"
                 >
                   <RefreshCw className="w-3.5 h-3.5 shrink-0 text-red-500" />
-                  <span className="hidden sm:inline">Reset to TXT</span>
+                  <span className="hidden sm:inline">Reset Prompts</span>
                 </button>
 
                 <button
