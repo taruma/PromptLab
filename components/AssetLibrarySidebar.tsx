@@ -351,8 +351,8 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
 
   const handleExportAllAssets = () => {
     try {
-      exportAssetLibraryJSON(libraryImages);
-      showToast("success", `Exported all ${libraryImages.length} assets as JSON.`);
+      const { filename } = exportAssetLibraryJSON(libraryImages, "all");
+      showToast("success", `Exported all ${libraryImages.length} assets (${filename}).`);
     } catch (err: any) {
       showToast("error", err?.message || "Failed to export assets.");
     }
@@ -362,8 +362,8 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
     try {
       const selectedAssets = libraryImages.filter((img) => selectedIds.has(img.id));
       if (selectedAssets.length === 0) return;
-      exportAssetLibraryJSON(selectedAssets, `promptlab_selected_assets_${selectedAssets.length}.json`);
-      showToast("success", `Exported ${selectedAssets.length} selected assets.`);
+      const { filename } = exportAssetLibraryJSON(selectedAssets, "selected");
+      showToast("success", `Exported ${selectedAssets.length} selected assets (${filename}).`);
     } catch (err: any) {
       showToast("error", err?.message || "Failed to export selected assets.");
     }

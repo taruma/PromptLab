@@ -22,30 +22,37 @@ export interface AssetImportParseResult {
 }
 
 /**
- * Downloads asset library items as a JSON file.
+ * Downloads asset library items as a JSON file with full timestamp, time, and unique identifier.
  */
 export function exportAssetLibraryJSON(
   assets: AssetExportItem[],
+  exportType: "all" | "selected" = "all",
   customFilename?: string
-): void {
+): { count: number; filename: string } {
   if (!assets || assets.length === 0) {
     throw new Error("No assets available to export.");
   }
 
+  const now = new Date();
+  const dateStr = now.toISOString().split("T")[0];
+  const timeStr = now.toTimeString().split(" ")[0].replace(/:/g, "");
+  const uniqueId = Math.random().toString(36).substring(2, 6);
+
+  const filename =
+    customFilename ||
+    `promptlab_asset_library_${exportType}_${dateStr}_${timeStr}_${uniqueId}.json`;
+
   const exportPayload: AssetLibraryExportData = {
     version: "1.0",
-    exportDate: new Date().toISOString(),
+    exportDate: now.toISOString(),
     type: "promptlab_asset_library",
     assets,
   };
 
-  const jsonString = JSON.stringify(exportPayload, null, 2);
+  // Compacted JSON serialization without whitespace to optimize Base64 file size
+  const jsonString = JSON.stringify(exportPayload);
   const blob = new Blob([jsonString], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-
-  const timestamp = new Date().toISOString().slice(0, 10);
-  const filename =
-    customFilename || `promptlab_asset_library_${timestamp}.json`;
 
   const link = document.createElement("a");
   link.href = url;
@@ -54,6 +61,8 @@ export function exportAssetLibraryJSON(
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+
+  return { count: assets.length, filename };
 }
 
 /**
