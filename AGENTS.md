@@ -107,7 +107,7 @@ Key differentiators:
 
 ### app/page.tsx Internal Structure
 
-The main workspace file (~2,780 lines) is organized into these major sections:
+The main workspace file (~2,815 lines) is organized into these major sections:
 
 - **State Declarations**: ~30+ `useState` hooks covering prompt config (system/prompt text, active presets, variables, inputs), engine parameters (model, temperature, reasoning/maxTokens), visual assets (uploaded images + videos, asset library sidebar), generation state (result, thinking trace, filled prompt, loading flags), history (items, favorites, filter tab), preset management (editing ID, loaded ID, new name, status banner), and modal visibility toggles.
 - **localStorage Persistence Effects**: `useEffect` hooks auto-load session state on mount (prompt config, engine params, variables, uploaded image metadata, collapsed sections). Additional effects persist changes back to localStorage as the user edits.
@@ -236,15 +236,16 @@ The workspace reads dynamic template specifications from the currently configure
 
 ### Rule L: Diff Visualization & Preset Compare
 - **Client-Side LCS Diff Engine**: A custom Longest Common Subsequence diff algorithm (`computeLineDiff`) generates line-by-line change data (added, removed, unchanged) with line number tracking. A companion `alignDiffLines` function pairs up added/removed lines for split-view display.
-- **Preset Compare Modal**: When browsing presets, a `GitCompare` button opens a full-screen modal showing the differences between the current editor content and the selected preset's configuration.
+- **Preset Compare Modal**: When browsing presets, a `GitCompare` button opens a full-screen modal showing the differences between the current editor content and the selected preset's configuration. The same modal is also shared by the `HistoryViewerModal` for history-item diff comparison (see Rule M), with its z-index raised to `z-[60]` when invoked from the history viewer.
 - **Unified vs. Split View**: The compare modal supports both unified (inline) and split (side-by-side) views with color-coded additions (green) and deletions (red).
 - **"Changes Only" Filter**: A Git-style context-window filter (`--show-only-changes`) collapses unchanged regions to 3-line context blocks with `<skipped N lines>` markers, toggleable to full file view.
 - **Tab Switching**: Separate tabs for comparing "System Instructions" vs. "Prompt Template," with add/delete line counts displayed per tab.
 - **Apply & Load**: The "Apply & Load Preset" button imports the selected preset's content into the editor, automatically setting `activeEditingPresetId` for custom presets or `loadedPresetId` for system presets.
 
 ### Rule M: History Management
-- **Session History Persistence**: Generation results are automatically archived to localStorage (`prompt_generator_history`), preserving the generated text, active variable states, image references, and video metadata for future recall.
-- **History Recall**: Clicking a history card restores the full workspace state (prompt templates, variables, image references — loading blobs from IndexedDB, and video metadata) and populates the output panel with the archived generation result.
+- **Session History Persistence**: Generation results are automatically archived to localStorage (`prompt_generator_history`), preserving the generated text, active variable states, image references, video metadata, and the current system prompt and prompt template for future recall. History items store `systemPrompt` and `promptTemplate` for archival, export, and diff comparison purposes.
+- **History Recall**: Clicking a history card restores variables, image references (loading blobs from IndexedDB), video metadata, and generation output to the workspace. System prompts and prompt templates are **stored** in history but **not restored** to the active workspace — they remain preserved for export, diff comparison, and referential use only.
+- **History Diff Compare**: A `[Diff]` button in the `HistoryViewerModal` detail panel (visible when a history item has stored `systemPrompt` or `promptTemplate`) opens the shared `PresetCompareModal` to show line-by-line differences between the saved history item's prompts and the current active workspace, enabling users to audit prompt configuration changes over time. The `PresetCompareModal` z-index is elevated to `z-[60]` when launched from the history viewer to stack correctly above the history modal.
 - **Favorite Toggle & Filter Tabs**: History items can be favorited for quick access, with filter tabs (All / Favorites / Recent) for browsing. The collapsible history section in the sidebar provides an inline view with expandable history cards.
 - **History Import/Export**: History data can be exported as JSON files (including date, compact timestamp, and unique 4-character suffix in the filename) and imported back via the HistoryViewerModal, enabling cross-device migration and backup.
 - **Clear History with Confirmation**: A "Clear All History" button triggers a confirmation modal warning that the operation deletes all saved history items and permanently purges their associated images from IndexedDB. This is irreversible.

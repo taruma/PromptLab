@@ -4,7 +4,7 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
-## [Unreleased]
+## [v2.1.0] — July 23, 2026
 
 ### Added
 
@@ -13,14 +13,12 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 ### Fixed
 
 - **Empty-string prompt inputs no longer overwritten by template files.** The server-side generation handler now uses explicit `undefined`/`null` checks instead of falsy checks (`!systemPrompt`), preventing empty strings from being silently replaced with filesystem template defaults.
+- **History card preset badges for custom prompts.** History entries with stored `systemPrompt` or `promptTemplate` but no explicit preset label now display a `CUSTOM` badge, ensuring all entries have visible source attribution in the history browser.
 
 ### Changed
 
+- **History diff compare.** A `[Diff]` button in the `HistoryViewerModal` detail panel opens the shared `PresetCompareModal` to show line-by-line differences between a saved history item's system prompt/prompt template and the current active workspace, enabling users to audit how their prompt configuration has evolved over time.
 - **Simplified history item loading logic.** Removed redundant `setState` and `localStorage.setItem` calls in `handleLoadHistoryItem`, allowing the centralized state management flow to handle prompt/template restoration during history recall.
-
----
-
-## [v2.1.0] — July 23, 2026
 
 ### UI & Configuration
 
