@@ -4,64 +4,32 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
-## [v2.1.0] — July 23, 2026
+## [v2.1.0] — July 24, 2026
 
 ### Added
 
 - **Markdown-enabled generation result view.** Extracted generation output into a dedicated `GenerationResultView` component and added `react-markdown` rendering with a Formatted Markdown / Raw Monospace toggle. Users can now switch between richly rendered markdown output (headings, lists, bold, inline code, etc.) and the traditional plain-text monospace view within the output panel.
+- **YouTube URL video references.** Added an "ADD YOUTUBE URL" button next to "Browse Library" in the Visual Assets header. Users can enter any YouTube URL (`youtube.com/watch?v=...` or `youtu.be/...`) and map it to a custom label. YouTube URLs are transmitted to the Gemini API as `fileData` parts (`fileUri`), mapped to unified `@videoN` annotations, and previewed via embedded iframe in `VideoPlayerModal`.
+- **Multi-modal video reference support.** Uploaded MP4 videos and YouTube URLs are now supported alongside images. Videos are validated (`validateAndProcessVideo` — MP4 only, ≤30 seconds, ≤35 MB), Base64-encoded, and combined with images into a single `referenceTags` array server-side, producing a consolidated `{{ visual_references }}` variable. Video metadata persists in history, JSON exports, and imports.
+- **VideoAssetCard component.** Reusable UI card (`components/VideoAssetCard.tsx`) with three-state rendering: YouTube (thumbnail + iframe embed), cached local MP4 (HTML5 preview), and uncached historical MP4 (**NO LOCAL STREAM** placeholder with `Film` icon and `UNCACHED MP4` badge). Video type badges (`YT` in red, `MP4` in stone) provide immediate visual identification.
+- **VideoPlayerModal component.** Full-screen modal (`components/VideoPlayerModal.tsx`) for previewing uploaded MP4 videos (HTML5 controls) and YouTube references (embedded iframe) before generation or from history.
+- **Video history tracking.** The `HistoryItem` interface now includes an optional `videos` field persisting video metadata (label, mimeType, duration, youtubeUrl). History recall restores videos with base64 stream preservation for same-session playback. History cards display purple `{N} VID` badges alongside `{N} IMG` badges. Video-aware search matches both image and video labels. YouTube cards in history detail view offer interactive `[YT ▶ PLAY]` previews.
+- **Custom YouTubeIcon SVG component.** Replaced all `lucide-react` `Youtube` icon imports with a dedicated inline SVG component (`components/YouTubeIcon.tsx`), ensuring consistent YouTube branding across `VideoAssetCard`, `VideoPlayerModal`, `AddYouTubeModal`, and `HistoryViewerModal`.
+- **Asset library JSON export and import.** A compact `AssetExportDropdown` supports exporting All or Selected images as versioned JSON files. An `AssetImportModal` handles importing previously exported library files with automatic duplicate detection and a processing summary.
+- **History diff compare.** A `[Diff]` button in the `HistoryViewerModal` detail panel opens the shared `PresetCompareModal` to show line-by-line differences between a saved history item's system prompt/prompt template and the current active workspace, enabling users to audit how their prompt configuration has evolved over time.
+- **Optional Core Idea.** Generation no longer requires the Main Objective / Idea field to be filled. Users can now synthesize sequences using only other prompt parameters or pure templates.
+- **PromptTemplateHelpTooltip component.** A contextual help tooltip (`components/PromptTemplateHelpTooltip.tsx`) provides inline guidance on `{{ variable }}` syntax for prompt templates, replacing the previous workspace-wide alert banner.
 
 ### Fixed
 
 - **Empty-string prompt inputs no longer overwritten by template files.** The server-side generation handler now uses explicit `undefined`/`null` checks instead of falsy checks (`!systemPrompt`), preventing empty strings from being silently replaced with filesystem template defaults.
 - **History card preset badges for custom prompts.** History entries with stored `systemPrompt` or `promptTemplate` but no explicit preset label now display a `CUSTOM` badge, ensuring all entries have visible source attribution in the history browser.
+- **YouTube thumbnail graceful degradation.** YouTube thumbnails that fail to load now hide the broken image element via an `onError` handler and fall back to a `YouTubeIcon` placeholder with the video ID, rather than rendering a broken image.
 
 ### Changed
 
-- **History diff compare.** A `[Diff]` button in the `HistoryViewerModal` detail panel opens the shared `PresetCompareModal` to show line-by-line differences between a saved history item's system prompt/prompt template and the current active workspace, enabling users to audit how their prompt configuration has evolved over time.
 - **Simplified history item loading logic.** Removed redundant `setState` and `localStorage.setItem` calls in `handleLoadHistoryItem`, allowing the centralized state management flow to handle prompt/template restoration during history recall.
-
-### UI & Configuration
-
-- **PromptTemplateHelpTooltip component.** A contextual help tooltip (`components/PromptTemplateHelpTooltip.tsx`) provides inline guidance on `{{ variable }}` syntax for prompt templates, replacing the previous workspace-wide alert banner.
-
-### History & Video UX
-
-- **Video asset history recall with base64 stream preservation.** History recall now restores `youtubeUrl`, `isYouTube`, and `base64` fields to active video objects, allowing local MP4 videos previously uploaded in the same session to be replayed from the workspace after history recall. MimeType detection correctly identifies YouTube references (`video/youtube`) for proper UI badge rendering.
-- **Three-state VideoAssetCard rendering with uncached MP4 handling.** `VideoAssetCard` now distinguishes three distinct states: YouTube (playable with thumbnail + iframe embed), local MP4 with cached Base64 stream (playable with HTML5 preview), and local MP4 from history without cached Base64. The third state displays a dedicated **MP4 REFERENCE / NO LOCAL STREAM** placeholder with a `Film` icon, an **UNCACHED MP4** badge, `cursor-default` pointer, and no click-to-play overlay — preventing broken play buttons on history-restored video references.
-- **YouTube thumbnail graceful degradation.** YouTube thumbnails that fail to load now hide the broken image element via an `onError` handler and fall back to a `YouTubeIcon` placeholder with the video ID, rather than rendering a broken image.
-
-### Generation & Usability
-
-- **Optional Core Idea:** Unlocked generation without requiring the Main Objective / Idea field to be filled. Users can now synthesize sequences using only other prompt parameters or pure templates.
-
-### Multi-Modal Video & YouTube Support
-
-- **YouTube URL video references.** Added an "ADD YOUTUBE URL" button to the left of "Browse Library" in the Visual Assets header. Users can enter any YouTube URL (e.g. `youtube.com/watch?v=...` or `youtu.be/...`) and map it to a custom label.
-- **Unified `@video` annotation mapping.** YouTube video references maintain standard `@videoN` tag mappings alongside local MP4 uploads, populating `{{ visual_references }}` as `@videoN as Label` without embedding raw links in prompt texts.
-- **Gemini API `fileData` streaming.** YouTube URLs are transmitted directly to the Gemini API as `fileData` parts (`fileUri: youtubeUrl`), allowing Gemini 3.5 Flash to process YouTube video context natively.
-- **YouTube thumbnail previews & iframe embed player.** `VideoAssetCard` renders auto-extracted high-resolution YouTube thumbnails with a red YouTube badge (`YT`), and `VideoPlayerModal` embeds the YouTube iframe player for instant in-app video previews.
-- **YouTube history persistence.** Generation history persists YouTube URLs and metadata across sessions, JSON exports, and imports, displaying red YouTube badges in `HistoryViewerModal`.
-- **Video validation and processing.** A dedicated `validateAndProcessVideo` utility in `lib/video-utils.ts` enforces format (MP4 only), duration (≤30 seconds), and file size (≤35 MB) constraints before Base64 encoding. Invalid files receive clear, specific error messages.
-- **VideoAssetCard component.** Reusable UI card (`components/VideoAssetCard.tsx`) for displaying uploaded videos in the workspace sidebar with metadata (duration, dimensions) and a playback trigger.
-- **VideoPlayerModal component.** Full-screen modal (`components/VideoPlayerModal.tsx`) for previewing uploaded reference videos before generation, with standard HTML5 video controls.
-- **Unified reference tag pipeline.** Images (`@imageN`) and videos (`@videoN`) are now combined into a single `referenceTags` array server-side, producing a consolidated `{{ visual_references }}` variable that lists all media assets with their labels in the prompt template.
-
-### History & Session Management
-
-- **Video history tracking.** The `HistoryItem` interface now includes an optional `videos` field, persisting video metadata (label, mimeType, duration) alongside image references in session history. History recall restores uploaded video metadata to the workspace, and history export/import preserves video references for cross-device migration.
-- **Video badges in history UI.** History cards in both the sidebar `HistorySection` and full-screen `HistoryViewerModal` display purple `{N} VID` badges alongside existing `{N} IMG` badges, giving at-a-glance visibility of video assets per entry.
-- **Video-aware visual reference search.** The history search scope "Visual References & Casting Maps" now matches against both image and video labels, ensuring video-labeled entries appear in filtered results.
-- **Video assets in detail view & interactive YouTube playback.** The HistoryViewerModal's detail panel renders video entries under "Visual References & Casting Maps". Clicking any YouTube video card (`[YT ▶ PLAY]`) in history immediately opens the embedded `VideoPlayerModal` iframe player to preview the referenced YouTube clip directly within the history viewer.
-
-### UI & Configuration
-
-- **Custom YouTubeIcon SVG component.** Replaced all `lucide-react` `Youtube` icon imports with a dedicated inline SVG component (`components/YouTubeIcon.tsx`), ensuring consistent YouTube branding across `VideoAssetCard`, `VideoPlayerModal`, `AddYouTubeModal`, and `HistoryViewerModal`.
-- **Simplified prompt reset.** The "Reset Prompts" action (formerly "Reset to TXT") now clears the preset editor client-side instead of fetching defaults from the API, providing instant feedback without a network round-trip. This also deselects any loaded preset.
-
-### Asset Library Import & Export
-
-- **Asset library JSON export.** A compact `AssetExportDropdown` in the asset library header supports exporting All or Selected images as a versioned JSON file (`promptlab_asset_library_{tag}_{date}_{time}_{uniqueId}.json`). The exported filename is displayed in a success toast for easy reference.
-- **Asset library JSON import.** An `AssetImportModal` allows importing previously exported asset library JSON files, with automatic duplicate detection — images matching existing entries by ID or label+content are skipped, and a summary reports total imported, duplicates, and errors after processing.
+- **Simplified prompt reset.** The "Reset Prompts" action now clears the preset editor client-side instead of fetching defaults from the API, providing instant feedback without a network round-trip. This also deselects any loaded preset.
 
 ### Architecture & Refactoring
 
