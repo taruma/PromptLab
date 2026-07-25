@@ -176,22 +176,19 @@ export async function POST(req: NextRequest) {
       temperature: temperature !== undefined ? Number(temperature) : 1.0,
     };
 
-    // Apply thinkingLevel configuration if using a Gemini 3 series model
-    if (model.startsWith("gemini-3")) {
-      let mappedThinkingLevel: ThinkingLevel | undefined;
-      if (thinkingLevel === "HIGH") mappedThinkingLevel = ThinkingLevel.HIGH;
-      else if (thinkingLevel === "MEDIUM") mappedThinkingLevel = ThinkingLevel.MEDIUM;
-      else if (thinkingLevel === "LOW") mappedThinkingLevel = ThinkingLevel.LOW;
-      else if (thinkingLevel === "MINIMAL" && model !== "gemini-3.1-pro-preview") {
-        mappedThinkingLevel = ThinkingLevel.MINIMAL;
-      }
-      
-      if (mappedThinkingLevel) {
-        config.thinkingConfig = {
-          thinkingLevel: mappedThinkingLevel,
-        };
-      }
+    // Apply thinkingLevel configuration for Gemini models supporting thinking features
+    let mappedThinkingLevel: ThinkingLevel | undefined;
+    if (thinkingLevel === "HIGH") mappedThinkingLevel = ThinkingLevel.HIGH;
+    else if (thinkingLevel === "MEDIUM") mappedThinkingLevel = ThinkingLevel.MEDIUM;
+    else if (thinkingLevel === "LOW") mappedThinkingLevel = ThinkingLevel.LOW;
+    else if (thinkingLevel === "MINIMAL" && !model.includes("pro-preview")) {
+      mappedThinkingLevel = ThinkingLevel.MINIMAL;
     }
+
+    config.thinkingConfig = {
+      includeThoughts: true,
+      ...(mappedThinkingLevel ? { thinkingLevel: mappedThinkingLevel } : {}),
+    };
 
     if (maxTokens) {
       config.maxOutputTokens = Number(maxTokens);

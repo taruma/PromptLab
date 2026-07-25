@@ -103,6 +103,7 @@ export interface HistoryItem {
   images: { id?: string; label: string; base64: string; mimeType: string }[];
   videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; base64?: string }[];
   output: string;
+  thinkingResult?: string;
   filledPrompt: string;
   promptTemplate?: string;
   systemPrompt?: string;
@@ -1257,7 +1258,7 @@ export default function PromptGeneratorPage() {
 
     setGenerationResult(item.output);
     setFilledPrompt(item.filledPrompt);
-    setThinkingResult("");
+    setThinkingResult(item.thinkingResult || "");
     setIsThinking(false);
     setError(null);
   };
@@ -1871,6 +1872,7 @@ export default function PromptGeneratorPage() {
           images: historyImages,
           videos: historyVideos,
           output: accumulatedText,
+          thinkingResult: accumulatedThought || undefined,
           filledPrompt: activeFilledPrompt || filledPrompt,
           promptTemplate: promptTemplate,
           systemPrompt: systemPrompt,

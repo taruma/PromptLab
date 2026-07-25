@@ -1,8 +1,90 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Markdown from "react-markdown";
 import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight } from "lucide-react";
+
+interface ReasoningSection {
+  id: string;
+  header?: string;
+  content: string;
+}
+
+function parseThinkingSections(text: string): ReasoningSection[] {
+  if (!text || !text.trim()) return [];
+
+  const regex = /(?=(?:\n|^)(?:\*\*[^*]+\*\*|#{1,3}\s+[^\n]+|\[[A-Z0-9_\s-]+\]))/g;
+  const rawBlocks = text.split(regex).map((b) => b.trim()).filter(Boolean);
+
+  if (rawBlocks.length === 0) {
+    return [{ id: "sec-0", content: text.trim() }];
+  }
+
+  return rawBlocks.map((block, idx) => {
+    const headerMatch = block.match(/^(?:\*\*([^*]+)\*\*|#{1,3}\s+([^\n]+)|\[([A-Z0-9_\s-]+)\])/);
+    if (headerMatch) {
+      const header = (headerMatch[1] || headerMatch[2] || headerMatch[3] || "").trim();
+      let content = block.replace(/^(?:\*\*[^*]+\*\*|#{1,3}\s+[^\n]+|\[[A-Z0-9_\s-]+\])/, "").trim();
+      return {
+        id: `section-${idx}-${header.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+        header,
+        content: content || block,
+      };
+    }
+    return {
+      id: `section-${idx}`,
+      content: block,
+    };
+  });
+}
+
+const reasoningMarkdownComponents = {
+  p: ({ children }: any) => (
+    <p className="mb-2 leading-relaxed text-[#444] font-mono text-[11px] italic">
+      {children}
+    </p>
+  ),
+  strong: ({ children }: any) => (
+    <strong className="font-bold text-[#1A1A1A] font-sans text-[11px] not-italic bg-amber-100/80 px-1 py-0.5">
+      {children}
+    </strong>
+  ),
+  h1: ({ children }: any) => (
+    <h1 className="text-[11px] font-bold font-sans uppercase tracking-wider text-[#1A1A1A] not-italic mt-2 mb-1 border-b border-[#D1D1CF] pb-0.5">
+      {children}
+    </h1>
+  ),
+  h2: ({ children }: any) => (
+    <h2 className="text-[11px] font-bold font-sans uppercase tracking-wider text-[#1A1A1A] not-italic mt-2 mb-1">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }: any) => (
+    <h3 className="text-[10px] font-bold font-sans uppercase tracking-wider text-[#1A1A1A] not-italic mt-1.5 mb-1">
+      {children}
+    </h3>
+  ),
+  ul: ({ children }: any) => (
+    <ul className="list-disc list-inside mb-2 space-y-0.5 font-mono text-[11px] italic text-[#444]">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }: any) => (
+    <ol className="list-decimal list-inside mb-2 space-y-0.5 font-mono text-[11px] italic text-[#444]">
+      {children}
+    </ol>
+  ),
+  li: ({ children }: any) => (
+    <li className="leading-relaxed font-mono text-[11px] italic inline-block w-full">
+      {children}
+    </li>
+  ),
+  code: ({ children }: any) => (
+    <code className="bg-[#EAEAE8] border border-[#D1D1CF] px-1 py-0.5 font-mono text-[10px] text-[#1A1A1A] not-italic">
+      {children}
+    </code>
+  ),
+};
 
 interface GenerationResultViewProps {
   generationResult: string;
@@ -31,6 +113,48 @@ export default function GenerationResultView({
 }: GenerationResultViewProps) {
   const [viewMode, setViewMode] = useState<"formatted" | "raw">("formatted");
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  const [isReasoningCollapsed, setIsReasoningCollapsed] = useState<boolean>(false);
+
+  const thinkingScrollRef = useRef<HTMLDivElement>(null);
+  const prevResultLengthRef = useRef<number>(0);
+  const prevIsThinkingRef = useRef<boolean>(false);
+
+  // Parse thinking sections for active slideshow mode
+  const sections = parseThinkingSections(thinkingResult);
+  const activeSection = sections.length > 0 ? sections[sections.length - 1] : null;
+
+  // Auto-scroll thinking trace container to bottom as new thinking content arrives
+  useEffect(() => {
+    if (thinkingScrollRef.current && !isReasoningCollapsed && !isThinking) {
+      thinkingScrollRef.current.scrollTo({
+        top: thinkingScrollRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [thinkingResult, isReasoningCollapsed, isThinking]);
+
+  // Auto-collapse reasoning trace when main output streams, and auto-expand on new generation
+  useEffect(() => {
+    // New generation started: expand reasoning trace so user sees thinking process
+    if (isLoading && isThinking && !generationResult) {
+      setTimeout(() => {
+        setIsReasoningCollapsed(false);
+      }, 0);
+    }
+
+    // Output starts streaming (length > 0) or thinking finishes while result exists -> auto-collapse
+    if (
+      (generationResult.length > 0 && prevResultLengthRef.current === 0) ||
+      (prevIsThinkingRef.current && !isThinking && generationResult.length > 0)
+    ) {
+      setTimeout(() => {
+        setIsReasoningCollapsed(true);
+      }, 0);
+    }
+
+    prevResultLengthRef.current = generationResult.length;
+    prevIsThinkingRef.current = isThinking;
+  }, [isLoading, isThinking, generationResult]);
 
   // Load saved view mode preference from localStorage after initial render to avoid SSR hydration mismatch
   useEffect(() => {
@@ -109,15 +233,6 @@ export default function GenerationResultView({
               )}
             </button>
           </div>
-
-          {generationResult && (
-            <span
-              className="text-[8px] font-mono text-[#888884] bg-white border border-[#D1D1CF] px-1.5 py-0.5 font-bold whitespace-nowrap"
-              id="char-counter"
-            >
-              {generationResult.length} CHARS
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
@@ -187,30 +302,94 @@ export default function GenerationResultView({
 
           {/* Model Thinking / Reasoning Box */}
           {(thinkingResult || (isLoading && isThinking)) && (
-            <div
-              className="mb-4 bg-[#F4F4F2] border border-dashed border-[#D1D1CF] p-4 flex flex-col gap-2 transition-all"
-              id="thinking-process-block"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-[#888884]">
+            <div className="mb-4 transition-all" id="thinking-process-block">
+              {/* Header / Toggle bar */}
+              <div
+                onClick={() => setIsReasoningCollapsed(!isReasoningCollapsed)}
+                className="flex items-center justify-between cursor-pointer select-none bg-[#EAEAE8] hover:bg-[#E2E2E0] border border-[#D1D1CF] px-3.5 py-2 transition-colors group"
+                title={isReasoningCollapsed ? "Expand Reasoning Trace" : "Collapse Reasoning Trace"}
+              >
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="text-[#1A1A1A] p-0.5 transition-transform cursor-pointer"
+                    aria-label={isReasoningCollapsed ? "Expand Reasoning Trace" : "Collapse Reasoning Trace"}
+                  >
+                    {isReasoningCollapsed ? (
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    )}
+                  </button>
                   <span
                     className={`w-2 h-2 rounded-full ${
-                      isThinking ? "bg-amber-500 animate-pulse" : "bg-stone-400"
+                      isThinking ? "bg-amber-500 animate-pulse" : "bg-emerald-600"
                     } inline-block`}
                   />
-                  Engine Reasoning Trace
-                </div>
-                <span className="text-[8px] font-mono text-[#888884]">
-                  {isThinking ? "PROCESSING" : "COMPLETED"}
-                </span>
-              </div>
-              <div className="text-[11px] font-mono text-[#555] leading-relaxed max-h-[140px] overflow-y-auto whitespace-pre-wrap custom-scrollbar">
-                {thinkingResult || (
-                  <span className="italic text-[#888884]">
-                    Engine is formulating reasoning path...
+                  <span className="text-[10px] uppercase font-mono font-bold tracking-widest text-[#1A1A1A]">
+                    Engine Reasoning Trace
                   </span>
-                )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className={`text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 ${
+                    isThinking ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-stone-200 text-stone-700 border border-stone-300"
+                  }`}>
+                    {isThinking ? "PROCESSING" : "COMPLETED"}
+                  </span>
+                </div>
               </div>
+
+              {/* Collapsible Content */}
+              {!isReasoningCollapsed && (
+                <div>
+                  {isThinking ? (
+                    /* Active Streaming Slideshow Card */
+                    <div className="bg-[#FAFAF9] border-x border-b border-[#D1D1CF] p-3.5">
+                      {activeSection ? (
+                        <div
+                          key={activeSection.id || sections.length}
+                          className="animate-slide-fade-in"
+                        >
+                          <div className="flex items-center justify-between border-b border-[#EAEAE8] pb-1.5 mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                              <span className="text-[10px] font-bold font-sans uppercase tracking-wider text-[#1A1A1A] bg-amber-100/80 px-1.5 py-0.5 border border-amber-300">
+                                {activeSection.header || `Reasoning Phase ${sections.length}`}
+                              </span>
+                            </div>
+                            <span className="text-[9px] font-mono text-[#888884] uppercase font-bold tracking-widest bg-[#EAEAE8] px-1.5 py-0.5">
+                              STEP {sections.length}
+                            </span>
+                          </div>
+                          <div className="text-[11px] font-mono italic text-[#444] leading-relaxed">
+                            <Markdown components={reasoningMarkdownComponents}>
+                              {activeSection.content}
+                            </Markdown>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 italic text-[#888884] py-2 font-mono text-xs">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                          <span>Engine is formulating reasoning path...</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Completed Full Log Textbox & Scroll */
+                    <div className="bg-[#FAFAF9] border-x border-b border-[#D1D1CF] p-3.5">
+                      <div
+                        ref={thinkingScrollRef}
+                        className="text-[11px] font-mono italic text-[#444] leading-relaxed max-h-[180px] overflow-y-auto custom-scrollbar pr-1"
+                      >
+                        <Markdown components={reasoningMarkdownComponents}>
+                          {thinkingResult}
+                        </Markdown>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
