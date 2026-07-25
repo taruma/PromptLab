@@ -165,7 +165,7 @@ export default function PromptGeneratorPage() {
   const [isPromptConfigOpen, setIsPromptConfigOpen] = useState<boolean>(false);
   const [tempSystemPrompt, setTempSystemPrompt] = useState<string>("");
   const [tempPromptTemplate, setTempPromptTemplate] = useState<string>("");
-  const [presets, setPresets] = useState<Array<{ id: string; name: string; systemPrompt: string; promptTemplate: string }>>([]);
+  const [presets, setPresets] = useState<Array<{ id: string; name: string; systemPrompt: string; promptTemplate: string; createdAt?: string; updatedAt?: string }>>([]);
   const [customPresets, setCustomPresets] = useState<UserPreset[]>([]);
   const [newPresetName, setNewPresetName] = useState<string>("");
   const [isSystemPresetsOpen, setIsSystemPresetsOpen] = useState<boolean>(true);
@@ -1344,11 +1344,14 @@ export default function PromptGeneratorPage() {
       return;
     }
     const newId = `custom-preset-${Date.now()}`;
-    const newPreset = {
+    const nowISO = new Date().toISOString();
+    const newPreset: UserPreset = {
       id: newId,
       name: newPresetName.trim(),
       systemPrompt: tempSystemPrompt,
-      promptTemplate: tempPromptTemplate
+      promptTemplate: tempPromptTemplate,
+      createdAt: nowISO,
+      updatedAt: nowISO
     };
     const updated = [...customPresets, newPreset];
     setCustomPresets(updated);
@@ -1363,13 +1366,16 @@ export default function PromptGeneratorPage() {
       alert("Please enter a name for your custom preset.");
       return;
     }
+    const nowISO = new Date().toISOString();
     const updated = customPresets.map(p => {
       if (p.id === activeEditingPresetId) {
         return {
           ...p,
           name: newPresetName.trim(),
           systemPrompt: tempSystemPrompt,
-          promptTemplate: tempPromptTemplate
+          promptTemplate: tempPromptTemplate,
+          createdAt: p.createdAt || nowISO,
+          updatedAt: nowISO
         };
       }
       return p;

@@ -18,7 +18,7 @@ export async function GET() {
     }
 
     // Load available presets
-    const presets: Array<{ id: string; name: string; systemPrompt: string; promptTemplate: string }> = [];
+    const presets: Array<{ id: string; name: string; systemPrompt: string; promptTemplate: string; createdAt?: string; updatedAt?: string }> = [];
     const presetsDir = path.join(process.cwd(), "prompts", "presets");
     try {
       const files = await fs.readdir(presetsDir);
@@ -33,6 +33,8 @@ export async function GET() {
                 name: parsed.name,
                 systemPrompt: parsed.systemPrompt,
                 promptTemplate: parsed.promptTemplate,
+                createdAt: parsed.createdAt,
+                updatedAt: parsed.updatedAt,
               });
             }
           } catch (e) {

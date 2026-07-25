@@ -14,6 +14,8 @@ export interface PresetConfig {
   name: string;
   systemPrompt: string;
   promptTemplate: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PresetCompareModalProps {

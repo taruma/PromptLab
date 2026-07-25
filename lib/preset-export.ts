@@ -4,6 +4,8 @@ export interface UserPreset {
   systemPrompt: string;
   promptTemplate: string;
   isFavorite?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PresetExportPayload {
@@ -189,12 +191,18 @@ export function importPresetsFromJSON(
       ? rawItem.id
       : `custom-preset-${now}-${idx}-${Math.random().toString(36).substring(2, 6)}`;
 
+    const nowISO = new Date(now).toISOString();
+    const createdAt = rawItem.createdAt ? String(rawItem.createdAt) : nowISO;
+    const updatedAt = rawItem.updatedAt ? String(rawItem.updatedAt) : createdAt;
+
     const newPreset: UserPreset = {
       id: newId,
       name: String(rawItem.name || "Imported Preset").trim(),
       systemPrompt,
       promptTemplate,
       isFavorite: isFav,
+      createdAt,
+      updatedAt,
     };
 
     if (isFav) {
