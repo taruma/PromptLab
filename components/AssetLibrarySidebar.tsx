@@ -35,6 +35,8 @@ import {
   AssetExportItem
 } from "../lib/asset-library-export";
 
+import { ProjectAsset } from "../lib/projects";
+
 interface LibraryImage {
   id: string;
   label: string;
@@ -47,8 +49,14 @@ interface AssetLibrarySidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onAddImageToWorkspace: (label: string, base64: string) => void;
+  onAssetLibraryUpdated?: (assets: ProjectAsset[]) => void;
 }
-export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorkspace }: AssetLibrarySidebarProps) {
+export default function AssetLibrarySidebar({
+  isOpen,
+  onClose,
+  onAddImageToWorkspace,
+  onAssetLibraryUpdated,
+}: AssetLibrarySidebarProps) {
   const [libraryImages, setLibraryImages] = useState<LibraryImage[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
@@ -140,40 +148,72 @@ export default function AssetLibrarySidebar({ isOpen, onClose, onAddImageToWorks
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load library on mount
-  useEffect(() => {
-    async function loadLibrary() {
-      try {
-        const savedMetadata = localStorage.getItem("prompt_generator_library_images");
-        if (savedMetadata) {
-          const parsed = JSON.parse(savedMetadata) as Omit<LibraryImage, "base64">[];
-          const resolved = await Promise.all(
-            parsed.map(async (img) => {
-              try {
-                const base64 = await getStoredImage(img.id);
-                return { ...img, base64: base64 || "" };
-              } catch (err) {
-                console.error(`Failed to load library image ${img.id} from IndexedDB:`, err);
-                return { ...img, base64: "" };
-              }
-            })
-          );
-          setLibraryImages(resolved.filter(img => img.base64 !== ""));
-        }
-      } catch (err) {
-        console.error("Failed to load asset library", err);
-      } finally {
-        setIsLoaded(true);
+  // Helper to load asset library from localStorage & IndexedDB
+  const loadLibrary = async () => {
+    try {
+      const savedMetadata = localStorage.getItem("prompt_generator_library_images");
+      if (savedMetadata) {
+        const parsed = JSON.parse(savedMetadata) as Omit<LibraryImage, "base64">[];
+        const resolved = await Promise.all(
+          parsed.map(async (img) => {
+            try {
+              const base64 = await getStoredImage(img.id);
+              return { ...img, base64: base64 || "" };
+            } catch (err) {
+              console.error(`Failed to load library image ${img.id} from IndexedDB:`, err);
+              return { ...img, base64: "" };
+            }
+          })
+        );
+        setLibraryImages(resolved.filter((img) => img.base64 !== ""));
+      } else {
+        setLibraryImages([]);
       }
+    } catch (err) {
+      console.error("Failed to load asset library", err);
+      setLibraryImages([]);
+    } finally {
+      setIsLoaded(true);
     }
-    loadLibrary();
+  };
+
+  // Load library on mount or when sidebar opens
+  useEffect(() => {
+    let isMounted = true;
+    async function initLibrary() {
+      if (!isMounted) return;
+      await loadLibrary();
+    }
+    initLibrary();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
+
+  // Listen to project switch events to reload project-specific asset library
+  useEffect(() => {
+    const handleProjectSwitched = () => {
+      void loadLibrary();
+    };
+    window.addEventListener("promptlab_project_switched", handleProjectSwitched);
+    return () => {
+      window.removeEventListener("promptlab_project_switched", handleProjectSwitched);
+    };
   }, []);
 
-  // Save library metadata to local storage when library state changes
+  const onAssetLibraryUpdatedRef = useRef(onAssetLibraryUpdated);
+  useEffect(() => {
+    onAssetLibraryUpdatedRef.current = onAssetLibraryUpdated;
+  });
+
+  // Save library metadata to local storage and update active project when library state changes
   useEffect(() => {
     if (isLoaded) {
       const stripped = libraryImages.map(({ base64, ...rest }) => rest);
       localStorage.setItem("prompt_generator_library_images", JSON.stringify(stripped));
+      if (onAssetLibraryUpdatedRef.current) {
+        onAssetLibraryUpdatedRef.current(stripped as ProjectAsset[]);
+      }
     }
   }, [libraryImages, isLoaded]);
 

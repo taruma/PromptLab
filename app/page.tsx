@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { 
   Sparkles, 
@@ -63,6 +63,7 @@ import {
 import ProjectManagerModal from "../components/ProjectManagerModal";
 import {
   Project,
+  ProjectAsset,
   initProjects,
   getProject,
   saveProject,
@@ -312,6 +313,7 @@ export default function PromptGeneratorPage() {
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
+  const isSwitchingProjectRef = useRef<boolean>(false);
 
   // Helper: extract variables dynamically on the client
   const extractVariables = (templateText: string): string[] => {
@@ -653,10 +655,24 @@ export default function PromptGeneratorPage() {
   const handleProjectsUpdated = async () => {
     try {
       const all = await getAllProjects();
+      if (all.length === 0) {
+        const { projects: reloadedProjects, activeProject: currentProj } = await initProjects(
+          defaultSystemPrompt,
+          defaultPromptTemplate
+        );
+        setProjects(reloadedProjects);
+        setActiveProject(currentProj);
+        return;
+      }
+
       setProjects(all);
       const currentId = getCurrentProjectId();
       const curr = all.find((p) => p.id === currentId);
-      if (curr) setActiveProject(curr);
+      if (curr) {
+        setActiveProject(curr);
+      } else if (all.length > 0) {
+        await handleSwitchProject(all[0].id);
+      }
     } catch (err) {
       console.error("Failed to reload projects list:", err);
     }
@@ -666,6 +682,8 @@ export default function PromptGeneratorPage() {
     try {
       const targetProject = await getProject(targetProjectId);
       if (!targetProject) return;
+
+      isSwitchingProjectRef.current = true;
 
       // Sync active project data to localStorage
       syncActiveProjectToLocalStorage(targetProject);
@@ -703,10 +721,16 @@ export default function PromptGeneratorPage() {
       // Broadcast project switch across tabs
       broadcastProjectChange("switch", targetProjectId);
 
-      // Refresh list
-      await handleProjectsUpdated();
+      // Refresh project list
+      const all = await getAllProjects();
+      setProjects(all);
+
+      setTimeout(() => {
+        isSwitchingProjectRef.current = false;
+      }, 150);
     } catch (err) {
       console.error("Failed to switch project:", err);
+      isSwitchingProjectRef.current = false;
     }
   };
 
@@ -718,22 +742,48 @@ export default function PromptGeneratorPage() {
       const currentId = getCurrentProjectId();
       const curr = all.find((p) => p.id === currentId);
       if (curr) {
-        setActiveProject(curr);
         if (action === "switch") {
+          isSwitchingProjectRef.current = true;
+          setActiveProject(curr);
           setSystemPrompt(curr.systemPrompt || "");
           setPromptTemplate(curr.promptTemplate || "");
           setCustomPresets(curr.customPresets || []);
           setHistory(curr.history || []);
           setVariables(extractVariables(curr.promptTemplate || ""));
+          setTimeout(() => {
+            isSwitchingProjectRef.current = false;
+          }, 150);
+        } else {
+          setActiveProject(curr);
         }
       }
     });
     return () => unsubscribe();
   }, []);
 
+  // Sync asset library modifications directly to active project
+  const handleAssetLibraryUpdated = useCallback((assets: ProjectAsset[]) => {
+    if (isSwitchingProjectRef.current) return;
+    setActiveProject((prev) => {
+      if (!prev) return prev;
+      if (JSON.stringify(prev.assetLibrary) === JSON.stringify(assets)) {
+        return prev;
+      }
+      const updated: Project = { ...prev, assetLibrary: assets };
+      saveProject(updated).catch((err) => {
+        console.error("Failed to update project asset library:", err);
+      });
+      return updated;
+    });
+  }, []);
+
   // Auto-save active project updates to IndexedDB
   useEffect(() => {
-    if (!activeProject || !isConfigLoaded) return;
+    if (!activeProject || !isConfigLoaded || isSwitchingProjectRef.current) return;
+
+    // Safety check: ensure activeProject matches currently selected project
+    const currentId = getCurrentProjectId();
+    if (activeProject.id !== currentId) return;
 
     const updatedProject: Project = {
       ...activeProject,
@@ -747,7 +797,7 @@ export default function PromptGeneratorPage() {
     saveProject(updatedProject).catch((err) => {
       console.error("Failed to auto-save project changes:", err);
     });
-  }, [systemPrompt, promptTemplate, customPresets, history, isConfigLoaded]);
+  }, [systemPrompt, promptTemplate, customPresets, history, activeProject, isConfigLoaded]);
 
   // Determine if current active workspace has session data
   const hasActiveSessionData = Boolean(
@@ -3003,6 +3053,7 @@ export default function PromptGeneratorPage() {
         isOpen={isLibraryOpen}
         onClose={() => setIsLibraryOpen(false)}
         onAddImageToWorkspace={handleAddImageFromLibrary}
+        onAssetLibraryUpdated={handleAssetLibraryUpdated}
       />
 
       <HistoryViewerModal

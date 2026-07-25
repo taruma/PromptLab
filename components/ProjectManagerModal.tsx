@@ -206,12 +206,26 @@ export default function ProjectManagerModal({
 
   const handleDeleteConfirm = async (id: string) => {
     try {
+      const isDeletingActive = activeProject && id === activeProject.id;
+      if (isDeletingActive) {
+        const remaining = projects.filter((p) => p.id !== id);
+        if (remaining.length > 0) {
+          await onSwitchProject(remaining[0].id);
+        } else {
+          const fresh = await createProject("Main Workspace", "Default project workspace", {
+            systemPrompt: defaultSystemPrompt,
+            promptTemplate: defaultPromptTemplate,
+          });
+          await onSwitchProject(fresh.id);
+        }
+      }
+
       await deleteProject(id);
       setPendingDeleteId(null);
       await onProjectsUpdated();
       showToast("success", "Project deleted");
     } catch (err: any) {
-      showToast("error", "Failed to delete project");
+      showToast("error", err?.message || "Failed to delete project");
     }
   };
 

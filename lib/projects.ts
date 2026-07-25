@@ -170,6 +170,7 @@ export function syncActiveProjectToLocalStorage(project: Project): void {
     }
     if (project.history) {
       localStorage.setItem("prompt_generator_history_v1", JSON.stringify(project.history));
+      localStorage.setItem("prompt_generator_history", JSON.stringify(project.history));
     }
     if (project.assetLibrary) {
       localStorage.setItem("prompt_generator_library_images", JSON.stringify(project.assetLibrary));
@@ -201,7 +202,7 @@ export async function initProjects(defaultSystemPrompt: string = "", defaultProm
     } catch (_) {}
 
     try {
-      const h = localStorage.getItem("prompt_generator_history_v1");
+      const h = localStorage.getItem("prompt_generator_history_v1") || localStorage.getItem("prompt_generator_history");
       if (h) existingHistory = JSON.parse(h);
     } catch (_) {}
 
