@@ -1,12 +1,22 @@
 import React from "react";
 import Image from "next/image";
 import { FolderOpen, Sparkles, Settings } from "lucide-react";
+import QuickPresetSelector, { PresetItem } from "./QuickPresetSelector";
+import { UserPreset } from "../lib/preset-export";
 
 interface AppHeaderProps {
   onOpenLibrary: () => void;
   onOpenEngineConfig: () => void;
   onOpenPromptConfig: () => void;
   onClearSession: () => void;
+  presets?: PresetItem[];
+  customPresets?: UserPreset[];
+  systemPrompt?: string;
+  promptTemplate?: string;
+  loadedPresetId?: string | null;
+  pinnedPresetIds?: string[];
+  onSelectPreset?: (preset: PresetItem) => void;
+  onTogglePinPreset?: (id: string, e?: React.MouseEvent) => void;
 }
 
 export default function AppHeader({
@@ -14,10 +24,18 @@ export default function AppHeader({
   onOpenEngineConfig,
   onOpenPromptConfig,
   onClearSession,
+  presets = [],
+  customPresets = [],
+  systemPrompt = "",
+  promptTemplate = "",
+  loadedPresetId = null,
+  pinnedPresetIds = [],
+  onSelectPreset,
+  onTogglePinPreset,
 }: AppHeaderProps) {
   return (
     <header className="h-20 border-b border-[#D1D1CF] px-4 md:px-10 flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-30" id="app-header">
-      <div className="flex items-baseline gap-3">
+      <div className="flex items-center gap-3 md:gap-4">
         <h1 className="text-xl md:text-2xl font-black tracking-tighter uppercase flex items-center gap-2">
           <div className="w-8 h-8 flex items-center justify-center shrink-0">
             <Image 
@@ -31,6 +49,20 @@ export default function AppHeader({
           </div>
           PromptLab
         </h1>
+
+        {onSelectPreset && (
+          <QuickPresetSelector
+            presets={presets}
+            customPresets={customPresets}
+            systemPrompt={systemPrompt}
+            promptTemplate={promptTemplate}
+            loadedPresetId={loadedPresetId}
+            pinnedPresetIds={pinnedPresetIds}
+            onSelectPreset={onSelectPreset}
+            onOpenPromptConfig={onOpenPromptConfig}
+            onTogglePinPreset={onTogglePinPreset}
+          />
+        )}
       </div>
       
       <div className="flex items-center gap-3 md:gap-4">
@@ -73,3 +105,4 @@ export default function AppHeader({
     </header>
   );
 }
+

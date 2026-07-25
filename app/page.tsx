@@ -1225,6 +1225,41 @@ export default function PromptGeneratorPage() {
 
   // We manage engine controls configuration via the external EngineControlsModal component.
 
+  // Quick preset selector handler for instant header preset switching
+  const handleSelectQuickPreset = (preset: { id: string; name: string; systemPrompt: string; promptTemplate: string }) => {
+    setSystemPrompt(preset.systemPrompt);
+    setPromptTemplate(preset.promptTemplate);
+    const vars = extractVariables(preset.promptTemplate);
+    setVariables(vars);
+
+    setInputs(prev => {
+      const updated: Record<string, string> = {};
+      if (prev["idea"] !== undefined) {
+        updated["idea"] = prev["idea"];
+      }
+      vars.forEach(v => {
+        if (v !== "visual_references" && v !== "cast") {
+          updated[v] = prev[v] !== undefined ? prev[v] : "";
+        }
+      });
+      return updated;
+    });
+
+    localStorage.setItem("prompt_generator_system_prompt", preset.systemPrompt);
+    localStorage.setItem("prompt_generator_prompt_template", preset.promptTemplate);
+
+    setLoadedPresetId(preset.id);
+
+    const isCustom = customPresets.some(p => p.id === preset.id);
+    if (isCustom) {
+      setActiveEditingPresetId(preset.id);
+      setNewPresetName(preset.name);
+    } else {
+      setActiveEditingPresetId(null);
+      setNewPresetName("");
+    }
+  };
+
   // Open the configuration modal
   const handleOpenPromptConfig = () => {
     setPresetStatusBanner(null);
@@ -1749,6 +1784,14 @@ export default function PromptGeneratorPage() {
         onOpenEngineConfig={() => setIsEngineConfigOpen(true)}
         onOpenPromptConfig={handleOpenPromptConfig}
         onClearSession={() => setIsClearConfirmOpen(true)}
+        presets={presets}
+        customPresets={customPresets}
+        systemPrompt={systemPrompt}
+        promptTemplate={promptTemplate}
+        loadedPresetId={loadedPresetId}
+        pinnedPresetIds={pinnedPresetIds}
+        onSelectPreset={handleSelectQuickPreset}
+        onTogglePinPreset={togglePinPreset}
       />
 
       {/* Main Container Split */}
