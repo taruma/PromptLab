@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Markdown from "react-markdown";
-import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight } from "lucide-react";
+import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
 
 interface ReasoningSection {
   id: string;
@@ -233,6 +233,15 @@ export default function GenerationResultView({
               )}
             </button>
           </div>
+
+          {generationResult ? (
+            <span
+              className="bg-[#EAEAE8] border border-[#D1D1CF] px-1.5 py-0.5 text-[8px] font-mono font-bold text-[#1A1A1A] uppercase tracking-wider shrink-0"
+              id="output-char-count"
+            >
+              {generationResult.length.toLocaleString()} CHARS
+            </span>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
@@ -273,17 +282,23 @@ export default function GenerationResultView({
             <button
               type="button"
               onClick={handleCopyOutput}
-              className={`px-2.5 py-1 border text-[9px] uppercase font-bold tracking-widest transition-all cursor-pointer flex items-center gap-1 ${
+              className={`px-2 text-[8px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 h-[22px] border ${
                 copied
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-[#1A1A1A] text-white border-[#1A1A1A] hover:bg-black"
+                  ? "bg-[#10B981] text-white border-[#10B981]"
+                  : "bg-[#1A1A1A] text-white border-[#1A1A1A] hover:bg-[#333333]"
               }`}
               id="copy-btn"
             >
               {copied ? (
-                <span>Copied!</span>
+                <>
+                  <Check className="w-2.5 h-2.5" />
+                  <span>Copied!</span>
+                </>
               ) : (
-                <span>Copy</span>
+                <>
+                  <Copy className="w-2.5 h-2.5" />
+                  <span>Copy</span>
+                </>
               )}
             </button>
           )}
