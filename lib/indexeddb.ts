@@ -1,7 +1,8 @@
 // --- IndexedDB Configuration & Helper functions ---
 export const DB_NAME = "promptlab_db";
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 export const STORE_NAME = "images";
+export const STORE_PROJECTS = "projects";
 
 export function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -16,6 +17,9 @@ export function openDB(): Promise<IDBDatabase> {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(STORE_PROJECTS)) {
+        db.createObjectStore(STORE_PROJECTS, { keyPath: "id" });
       }
     };
   });

@@ -60,6 +60,19 @@ import {
   PresetCompareModal,
   type PresetConfig,
 } from "../components/PresetCompareModal";
+import ProjectManagerModal from "../components/ProjectManagerModal";
+import {
+  Project,
+  initProjects,
+  getProject,
+  saveProject,
+  getAllProjects,
+  subscribeProjectChanges,
+  broadcastProjectChange,
+  syncActiveProjectToLocalStorage,
+  getCurrentProjectId,
+  setCurrentProjectId
+} from "../lib/projects";
 import {
   openDB,
   getStoredImage,
@@ -106,6 +119,8 @@ export default function PromptGeneratorPage() {
   // Config loaded from backend or local storage
   const [systemPrompt, setSystemPrompt] = useState<string>("");
   const [promptTemplate, setPromptTemplate] = useState<string>("");
+  const [defaultSystemPrompt, setDefaultSystemPrompt] = useState<string>("");
+  const [defaultPromptTemplate, setDefaultPromptTemplate] = useState<string>("");
   const [variables, setVariables] = useState<string[]>([]);
   const [isConfigLoaded, setIsConfigLoaded] = useState<boolean>(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState<boolean>(false);
@@ -255,6 +270,11 @@ export default function PromptGeneratorPage() {
     }
   };
   
+  // Projects states
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [isProjectManagerOpen, setIsProjectManagerOpen] = useState<boolean>(false);
+
   // Compare Preset states
   const [isCompareOpen, setIsCompareOpen] = useState<boolean>(false);
   const [comparePreset, setComparePreset] = useState<PresetConfig | null>(null);
@@ -310,8 +330,23 @@ export default function PromptGeneratorPage() {
         const data = await res.json();
         
         if (res.ok) {
+          if (data.systemPrompt) setDefaultSystemPrompt(data.systemPrompt);
+          if (data.promptTemplate) setDefaultPromptTemplate(data.promptTemplate);
+
           if (data.presets) {
             setPresets(data.presets);
+          }
+
+          // Initialize projects subsystem (migrations & project loading)
+          try {
+            const { projects: loadedProjects, activeProject: currentProj } = await initProjects(
+              data.systemPrompt || "",
+              data.promptTemplate || ""
+            );
+            setProjects(loadedProjects);
+            setActiveProject(currentProj);
+          } catch (projErr) {
+            console.error("Failed to initialize projects subsystem:", projErr);
           }
 
           // Load custom presets from local storage
@@ -612,6 +647,115 @@ export default function PromptGeneratorPage() {
       console.error("Failed to parse generation history", e);
     }
   }, []);
+
+  // Project Helper Methods & Sync Effects
+  const handleProjectsUpdated = async () => {
+    try {
+      const all = await getAllProjects();
+      setProjects(all);
+      const currentId = getCurrentProjectId();
+      const curr = all.find((p) => p.id === currentId);
+      if (curr) setActiveProject(curr);
+    } catch (err) {
+      console.error("Failed to reload projects list:", err);
+    }
+  };
+
+  const handleSwitchProject = async (targetProjectId: string) => {
+    try {
+      const targetProject = await getProject(targetProjectId);
+      if (!targetProject) return;
+
+      // Sync active project data to localStorage
+      syncActiveProjectToLocalStorage(targetProject);
+      setActiveProject(targetProject);
+      setCurrentProjectId(targetProjectId);
+
+      // Load target project configurations into page state
+      setSystemPrompt(targetProject.systemPrompt || "");
+      setPromptTemplate(targetProject.promptTemplate || "");
+      setCustomPresets(targetProject.customPresets || []);
+      setHistory(targetProject.history || []);
+
+      const vars = extractVariables(targetProject.promptTemplate || "");
+      setVariables(vars);
+
+      // Reset active session workspace inputs & media assets
+      setInputs({});
+      localStorage.removeItem("prompt_generator_active_inputs");
+      setUploadedImages([]);
+      localStorage.removeItem("prompt_generator_uploaded_images");
+      setUploadedVideos([]);
+      localStorage.removeItem("prompt_generator_uploaded_videos");
+      setGenerationResult("");
+      localStorage.removeItem("prompt_generator_generation_result");
+      setThinkingResult("");
+      localStorage.removeItem("prompt_generator_thinking_result");
+      setFilledPrompt("");
+      localStorage.removeItem("prompt_generator_filled_prompt");
+
+      // Reset preset editing state
+      setActiveEditingPresetId(null);
+      setLoadedPresetId(null);
+      setNewPresetName("");
+
+      // Broadcast project switch across tabs
+      broadcastProjectChange("switch", targetProjectId);
+
+      // Refresh list
+      await handleProjectsUpdated();
+    } catch (err) {
+      console.error("Failed to switch project:", err);
+    }
+  };
+
+  // Subscribe to multi-tab project changes
+  useEffect(() => {
+    const unsubscribe = subscribeProjectChanges(async ({ action }) => {
+      const all = await getAllProjects();
+      setProjects(all);
+      const currentId = getCurrentProjectId();
+      const curr = all.find((p) => p.id === currentId);
+      if (curr) {
+        setActiveProject(curr);
+        if (action === "switch") {
+          setSystemPrompt(curr.systemPrompt || "");
+          setPromptTemplate(curr.promptTemplate || "");
+          setCustomPresets(curr.customPresets || []);
+          setHistory(curr.history || []);
+          setVariables(extractVariables(curr.promptTemplate || ""));
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Auto-save active project updates to IndexedDB
+  useEffect(() => {
+    if (!activeProject || !isConfigLoaded) return;
+
+    const updatedProject: Project = {
+      ...activeProject,
+      systemPrompt,
+      promptTemplate,
+      customPresets,
+      history,
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveProject(updatedProject).catch((err) => {
+      console.error("Failed to auto-save project changes:", err);
+    });
+  }, [systemPrompt, promptTemplate, customPresets, history, isConfigLoaded]);
+
+  // Determine if current active workspace has session data
+  const hasActiveSessionData = Boolean(
+    (inputs["idea"] && inputs["idea"].trim().length > 0) ||
+    Object.keys(inputs).some((k) => k !== "idea" && inputs[k] && inputs[k].trim().length > 0) ||
+    uploadedImages.length > 0 ||
+    uploadedVideos.length > 0 ||
+    generationResult.trim().length > 0
+  );
 
   // Save active inputs to localStorage whenever they change
   useEffect(() => {
@@ -1784,6 +1928,8 @@ export default function PromptGeneratorPage() {
         onOpenEngineConfig={() => setIsEngineConfigOpen(true)}
         onOpenPromptConfig={handleOpenPromptConfig}
         onClearSession={() => setIsClearConfirmOpen(true)}
+        onOpenProjects={() => setIsProjectManagerOpen(true)}
+        currentProjectName={activeProject?.name || "Main Workspace"}
         presets={presets}
         customPresets={customPresets}
         systemPrompt={systemPrompt}
@@ -2875,6 +3021,18 @@ export default function PromptGeneratorPage() {
         onClose={() => setIsYouTubeModalOpen(false)}
         onAddYouTube={handleAddYouTubeVideo}
         nextIndex={uploadedVideos.length + 1}
+      />
+
+      <ProjectManagerModal
+        isOpen={isProjectManagerOpen}
+        onClose={() => setIsProjectManagerOpen(false)}
+        projects={projects}
+        activeProject={activeProject}
+        hasActiveSessionData={hasActiveSessionData}
+        defaultSystemPrompt={defaultSystemPrompt}
+        defaultPromptTemplate={defaultPromptTemplate}
+        onSwitchProject={handleSwitchProject}
+        onProjectsUpdated={handleProjectsUpdated}
       />
     </div>
   );

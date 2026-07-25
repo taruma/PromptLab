@@ -1,6 +1,6 @@
 import React from "react";
 import Image from "next/image";
-import { FolderOpen, Sparkles, Settings } from "lucide-react";
+import { FolderOpen, Sparkles, Settings, FolderKanban, ExternalLink } from "lucide-react";
 import QuickPresetSelector, { PresetItem } from "./QuickPresetSelector";
 import { UserPreset } from "../lib/preset-export";
 
@@ -9,6 +9,8 @@ interface AppHeaderProps {
   onOpenEngineConfig: () => void;
   onOpenPromptConfig: () => void;
   onClearSession: () => void;
+  onOpenProjects?: () => void;
+  currentProjectName?: string;
   presets?: PresetItem[];
   customPresets?: UserPreset[];
   systemPrompt?: string;
@@ -24,6 +26,8 @@ export default function AppHeader({
   onOpenEngineConfig,
   onOpenPromptConfig,
   onClearSession,
+  onOpenProjects,
+  currentProjectName = "Main Workspace",
   presets = [],
   customPresets = [],
   systemPrompt = "",
@@ -49,6 +53,22 @@ export default function AppHeader({
           </div>
           PromptLab
         </h1>
+
+        {onOpenProjects && (
+          <button
+            type="button"
+            onClick={onOpenProjects}
+            className="h-8.5 px-3 bg-amber-50/90 hover:bg-amber-100/90 border border-amber-300 hover:border-amber-600 transition-all cursor-pointer flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-amber-950 shadow-2xs rounded-none"
+            title="Manage Project Workspaces"
+            id="project-manager-btn"
+          >
+            <FolderKanban className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span className="max-w-[110px] sm:max-w-[150px] md:max-w-[200px] truncate font-black text-amber-950">
+              {currentProjectName}
+            </span>
+            <FolderOpen className="w-3.5 h-3.5 text-amber-600 shrink-0 ml-0.5" />
+          </button>
+        )}
 
         {onSelectPreset && (
           <QuickPresetSelector
