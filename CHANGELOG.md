@@ -8,6 +8,8 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Added
 
+- **Quick Preset Selector in AppHeader.** A new `QuickPresetSelector` component (`components/QuickPresetSelector.tsx`) provides rapid switching between system and custom prompt presets directly from the top navigation bar, reducing the need to open the Configure Prompts modal for preset changes. Includes state management for template variables, preset persistence, and active preset tracking within the main application flow.
+- **Collapsible generation result section.** The generation output panel in `GenerationResultView` (`components/GenerationResultView.tsx`) now supports collapsible sections, allowing users to collapse the output area for a tidier workspace. The collapsed/expanded state is persisted in localStorage for session-to-session continuity.
 - **Preset timestamp metadata.** Presets now include `createdAt` and `updatedAt` timestamp fields, enabling users to track when each preset was first saved and last modified. This applies to both system presets (loaded via `/api/prompt-config`) and custom user presets (stored in localStorage), with corresponding updates to the `UserPreset` interface in `lib/preset-export.ts` and the `PresetCompareModal`.
 - **Date-based preset sorting.** The preset list in the Configure Prompts modal now supports date-based sorting options in addition to alphabetical sorting. A new `formatDate` helper function in `lib/utils.ts` provides consistent date formatting across the workspace.
 
