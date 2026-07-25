@@ -214,3 +214,18 @@ export const compressImageToJpeg = (file: File, quality = 0.9): Promise<string> 
     reader.onerror = (err) => reject(err);
   });
 };
+
+export const formatPresetDateShort = (dateStr?: string): string | null => {
+  if (!dateStr) return null;
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    });
+  } catch {
+    return null;
+  }
+};

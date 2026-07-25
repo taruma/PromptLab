@@ -68,7 +68,8 @@ import {
 } from "../lib/indexeddb";
 import {
   getRawUrl,
-  compressImageToJpeg
+  compressImageToJpeg,
+  formatPresetDateShort
 } from "../lib/utils";
 import {
   validateAndProcessVideo,
@@ -179,7 +180,7 @@ export default function PromptGeneratorPage() {
   const [presetSearch, setPresetSearch] = useState<string>("");
   const [activePresetTab, setActivePresetTab] = useState<"all" | "system" | "custom">("all");
   const [pinnedPresetIds, setPinnedPresetIds] = useState<string[]>([]);
-  const [presetSortMode, setPresetSortMode] = useState<"pinned" | "name-asc" | "name-desc">("pinned");
+  const [presetSortMode, setPresetSortMode] = useState<"date-new" | "date-old" | "name-asc" | "name-desc">("date-new");
 
   const togglePinPreset = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -210,7 +211,7 @@ export default function PromptGeneratorPage() {
     });
   };
 
-  const handleSortChange = (mode: "pinned" | "name-asc" | "name-desc") => {
+  const handleSortChange = (mode: "date-new" | "date-old" | "name-asc" | "name-desc") => {
     setPresetSortMode(mode);
     try {
       localStorage.setItem("prompt_generator_preset_sort", mode);
@@ -219,7 +220,7 @@ export default function PromptGeneratorPage() {
     }
   };
 
-  const sortAndFilterPresets = <T extends { id: string; name: string; systemPrompt: string; promptTemplate: string }>(presetList: T[]): T[] => {
+  const sortAndFilterPresets = <T extends { id: string; name: string; systemPrompt: string; promptTemplate: string; createdAt?: string; updatedAt?: string }>(presetList: T[]): T[] => {
     const filtered = presetList.filter(p => p.name.toLowerCase().includes(presetSearch.toLowerCase()));
     
     return [...filtered].sort((a, b) => {
@@ -230,7 +231,15 @@ export default function PromptGeneratorPage() {
       if (aPinned && !bPinned) return -1;
       if (!aPinned && bPinned) return 1;
       
-      if (presetSortMode === "name-desc") {
+      if (presetSortMode === "date-new") {
+        const aTime = Date.parse(a.updatedAt || a.createdAt || "") || 0;
+        const bTime = Date.parse(b.updatedAt || b.createdAt || "") || 0;
+        if (bTime !== aTime) return bTime - aTime;
+      } else if (presetSortMode === "date-old") {
+        const aTime = Date.parse(a.updatedAt || a.createdAt || "") || 0;
+        const bTime = Date.parse(b.updatedAt || b.createdAt || "") || 0;
+        if (bTime !== aTime) return aTime - bTime;
+      } else if (presetSortMode === "name-desc") {
         return b.name.localeCompare(a.name);
       }
       return a.name.localeCompare(b.name);
@@ -482,7 +491,7 @@ export default function PromptGeneratorPage() {
             setPinnedPresetIds(JSON.parse(savedPinnedPresets));
           } catch (e) {}
         }
-        if (savedPresetSort === "pinned" || savedPresetSort === "name-asc" || savedPresetSort === "name-desc") {
+        if (savedPresetSort === "name-asc" || savedPresetSort === "name-desc" || savedPresetSort === "date-new" || savedPresetSort === "date-old") {
           setPresetSortMode(savedPresetSort);
         }
         if (savedLabManualOpen !== null) {
@@ -2042,73 +2051,74 @@ export default function PromptGeneratorPage() {
                   
                   {/* Preset Search, Filter & Sort Controls */}
                   <div className="flex flex-col gap-2 shrink-0">
-                    <div className="relative flex items-center">
-                      <Search className="w-3.5 h-3.5 text-[#888884] absolute left-2.5 pointer-events-none" />
-                      <input
-                        type="text"
-                        placeholder="Search presets..."
-                        value={presetSearch}
-                        onChange={(e) => setPresetSearch(e.target.value)}
-                        className="w-full bg-[#F4F4F2] border border-[#D1D1CF] pl-8 pr-7 py-1.5 text-[10px] uppercase font-bold tracking-wider outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A]"
-                      />
-                      {presetSearch && (
-                        <button
-                          onClick={() => setPresetSearch("")}
-                          className="absolute right-2 text-[#888884] hover:text-[#1A1A1A] cursor-pointer p-0.5 transition-colors"
-                          title="Instant clear search filter"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                    
                     <div className="flex items-center gap-1.5">
-                      <div className="grid grid-cols-3 flex-1 border border-[#D1D1CF] bg-[#F4F4F2] p-0.5">
-                        <button
-                          onClick={() => handlePresetTabChange("all")}
-                          className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
-                            activePresetTab === "all" 
-                              ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
-                              : "text-[#888884] hover:text-[#1A1A1A]"
-                          }`}
-                        >
-                          All ({presets.length + customPresets.length})
-                        </button>
-                        <button
-                          onClick={() => handlePresetTabChange("system")}
-                          className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
-                            activePresetTab === "system" 
-                              ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
-                              : "text-[#888884] hover:text-[#1A1A1A]"
-                          }`}
-                        >
-                          Sys ({presets.length})
-                        </button>
-                        <button
-                          onClick={() => handlePresetTabChange("custom")}
-                          className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
-                            activePresetTab === "custom" 
-                              ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
-                              : "text-[#888884] hover:text-[#1A1A1A]"
-                          }`}
-                        >
-                          User ({customPresets.length})
-                        </button>
+                      <div className="relative flex-1 flex items-center">
+                        <Search className="w-3.5 h-3.5 text-[#888884] absolute left-2.5 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Search presets..."
+                          value={presetSearch}
+                          onChange={(e) => setPresetSearch(e.target.value)}
+                          className="w-full bg-[#F4F4F2] border border-[#D1D1CF] pl-8 pr-7 py-1.5 text-[10px] uppercase font-bold tracking-wider outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A]"
+                        />
+                        {presetSearch && (
+                          <button
+                            onClick={() => setPresetSearch("")}
+                            className="absolute right-2 text-[#888884] hover:text-[#1A1A1A] cursor-pointer p-0.5 transition-colors"
+                            title="Instant clear search filter"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
 
                       {/* Compact Symbol Sorter */}
-                      <div className="relative flex items-center border border-[#D1D1CF] bg-[#F4F4F2] hover:bg-white px-1.5 py-0.5 transition-colors shrink-0" title="Sort presets (Fav / A-Z / Z-A)">
+                      <div className="relative flex items-center border border-[#D1D1CF] bg-[#F4F4F2] hover:bg-white px-1.5 py-1.5 transition-colors shrink-0" title="Sort presets (NEW / OLD / A-Z / Z-A)">
                         <ArrowUpDown className="w-3 h-3 text-[#888884] shrink-0 mr-0.5 pointer-events-none" />
                         <select
                           value={presetSortMode}
-                          onChange={(e) => handleSortChange(e.target.value as "pinned" | "name-asc" | "name-desc")}
+                          onChange={(e) => handleSortChange(e.target.value as "date-new" | "date-old" | "name-asc" | "name-desc")}
                           className="bg-transparent text-[8px] font-black uppercase tracking-wider outline-none text-[#1A1A1A] cursor-pointer py-0.5"
                         >
-                          <option value="pinned">★ Fav</option>
+                          <option value="date-new">NEW</option>
+                          <option value="date-old">OLD</option>
                           <option value="name-asc">A-Z</option>
                           <option value="name-desc">Z-A</option>
                         </select>
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 w-full border border-[#D1D1CF] bg-[#F4F4F2] p-0.5">
+                      <button
+                        onClick={() => handlePresetTabChange("all")}
+                        className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
+                          activePresetTab === "all" 
+                            ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
+                            : "text-[#888884] hover:text-[#1A1A1A]"
+                        }`}
+                      >
+                        All ({presets.length + customPresets.length})
+                      </button>
+                      <button
+                        onClick={() => handlePresetTabChange("system")}
+                        className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
+                          activePresetTab === "system" 
+                            ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
+                            : "text-[#888884] hover:text-[#1A1A1A]"
+                        }`}
+                      >
+                        Sys ({presets.length})
+                      </button>
+                      <button
+                        onClick={() => handlePresetTabChange("custom")}
+                        className={`text-[8px] font-black uppercase tracking-wider py-1 text-center transition-all cursor-pointer ${
+                          activePresetTab === "custom" 
+                            ? "bg-white text-[#1A1A1A] border border-[#D1D1CF]/30 shadow-xs" 
+                            : "text-[#888884] hover:text-[#1A1A1A]"
+                        }`}
+                      >
+                        User ({customPresets.length})
+                      </button>
                     </div>
                   </div>
 
@@ -2119,33 +2129,37 @@ export default function PromptGeneratorPage() {
                     {/* System Presets */}
                     {(activePresetTab === "all" || activePresetTab === "system") && (
                       <div>
-                        <button 
-                          onClick={() => {
-                            const newVal = !isSystemPresetsOpen;
-                            setIsSystemPresetsOpen(newVal);
-                            localStorage.setItem("prompt_generator_sys_presets_open", String(newVal));
-                          }}
-                          className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span>System Presets</span>
-                            <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5 font-mono">
-                              {presetSearch 
-                                ? `${sortAndFilterPresets(presets).length}/${presets.length}` 
-                                : presets.length
-                              }
-                            </span>
-                          </div>
-                          <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isSystemPresetsOpen ? "rotate-180" : ""}`} />
-                        </button>
+                        {activePresetTab === "all" && (
+                          <button 
+                            onClick={() => {
+                              const newVal = !isSystemPresetsOpen;
+                              setIsSystemPresetsOpen(newVal);
+                              localStorage.setItem("prompt_generator_sys_presets_open", String(newVal));
+                            }}
+                            className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>System Presets</span>
+                              <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5 font-mono">
+                                {presetSearch 
+                                  ? `${sortAndFilterPresets(presets).length}/${presets.length}` 
+                                  : presets.length
+                                }
+                              </span>
+                            </div>
+                            <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isSystemPresetsOpen ? "rotate-180" : ""}`} />
+                          </button>
+                        )}
                         
-                        {isSystemPresetsOpen && (
+                        {(activePresetTab === "system" || isSystemPresetsOpen) && (
                           <div className="flex flex-col gap-1 transition-all">
                             {sortAndFilterPresets(presets)
                               .map((preset) => {
                                 const isLoaded = loadedPresetId === preset.id;
                                 const isModified = isLoaded && (tempSystemPrompt !== preset.systemPrompt || tempPromptTemplate !== preset.promptTemplate);
                                 const isPinned = pinnedPresetIds.includes(preset.id);
+                                const updatedDate = formatPresetDateShort(preset.updatedAt || preset.createdAt);
+                                const hoverTitle = updatedDate ? `${preset.name} (Updated: ${updatedDate})` : preset.name;
 
                                 return (
                                   <div 
@@ -2179,7 +2193,7 @@ export default function PromptGeneratorPage() {
                                         setLoadedPresetId(preset.id);
                                       }}
                                       className="flex-1 text-left cursor-pointer truncate flex items-center gap-1.5 justify-between min-w-0 px-2 py-1"
-                                      title={preset.name}
+                                      title={hoverTitle}
                                     >
                                       <span className="truncate">{preset.name}</span>
                                       {isModified && (
@@ -2223,33 +2237,37 @@ export default function PromptGeneratorPage() {
                     {/* Custom Presets */}
                     {(activePresetTab === "all" || activePresetTab === "custom") && (
                       <div>
-                        <button 
-                          onClick={() => {
-                            const newVal = !isCustomPresetsOpen;
-                            setIsCustomPresetsOpen(newVal);
-                            localStorage.setItem("prompt_generator_custom_presets_open", String(newVal));
-                          }}
-                          className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span>Your Presets</span>
-                            <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5 font-mono">
-                              {presetSearch 
-                                ? `${sortAndFilterPresets(customPresets).length}/${customPresets.length}` 
-                                : customPresets.length
-                              }
-                            </span>
-                          </div>
-                          <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isCustomPresetsOpen ? "rotate-180" : ""}`} />
-                        </button>
+                        {activePresetTab === "all" && (
+                          <button 
+                            onClick={() => {
+                              const newVal = !isCustomPresetsOpen;
+                              setIsCustomPresetsOpen(newVal);
+                              localStorage.setItem("prompt_generator_custom_presets_open", String(newVal));
+                            }}
+                            className="w-full flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#1A1A1A] mb-2 cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span>Your Presets</span>
+                              <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5 font-mono">
+                                {presetSearch 
+                                  ? `${sortAndFilterPresets(customPresets).length}/${customPresets.length}` 
+                                  : customPresets.length
+                                }
+                              </span>
+                            </div>
+                            <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isCustomPresetsOpen ? "rotate-180" : ""}`} />
+                          </button>
+                        )}
                         
-                        {isCustomPresetsOpen && (
+                        {(activePresetTab === "custom" || isCustomPresetsOpen) && (
                           <div className="flex flex-col gap-1 transition-all">
                             {sortAndFilterPresets(customPresets)
                               .map((preset) => {
                                 const isLoaded = loadedPresetId === preset.id;
                                 const isModified = isLoaded && (tempSystemPrompt !== preset.systemPrompt || tempPromptTemplate !== preset.promptTemplate);
                                 const isPinned = pinnedPresetIds.includes(preset.id);
+                                const updatedDate = formatPresetDateShort(preset.updatedAt || preset.createdAt);
+                                const hoverTitle = updatedDate ? `${preset.name} (Updated: ${updatedDate})` : preset.name;
 
                                 return (
                                   <div 
@@ -2283,7 +2301,7 @@ export default function PromptGeneratorPage() {
                                         setLoadedPresetId(preset.id);
                                       }}
                                       className="flex-1 text-left cursor-pointer truncate flex items-center gap-1.5 justify-between min-w-0 px-2 py-1"
-                                      title={preset.name}
+                                      title={hoverTitle}
                                     >
                                       <span className="truncate">{preset.name}</span>
                                       {isModified && (
