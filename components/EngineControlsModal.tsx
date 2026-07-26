@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Sparkles, Info, EyeOff, Eye, RefreshCw, Trash2, KeyRound, ChevronDown, ChevronUp, Calendar, Database } from "lucide-react";
+import { getModelPricingSummary } from "@/lib/pricing";
 
 interface EngineControlsModalProps {
   isOpen: boolean;
@@ -489,6 +490,26 @@ export default function EngineControlsModal({
                           </span>
                         </div>
                       </div>
+
+                      {/* Row 3: Pricing Rates */}
+                      {(() => {
+                        const pricing = getModelPricingSummary(model.id);
+                        if (!pricing) return null;
+                        return (
+                          <div className={`flex items-center justify-between pt-1.5 mt-0.5 border-t text-[9px] font-mono ${
+                            isSelected ? "border-stone-700 text-stone-300" : "border-[#D1D1CF]/60 text-[#888884]"
+                          }`}>
+                            <span className="flex items-center gap-1">
+                              <span className="font-bold opacity-75">IN:</span>
+                              <span className="font-semibold">{pricing.inputRate}</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className="font-bold opacity-75">OUT:</span>
+                              <span className="font-semibold">{pricing.outputRate}</span>
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </button>
                   );
                 })}
@@ -563,6 +584,26 @@ export default function EngineControlsModal({
                               </span>
                             </div>
                           </div>
+
+                          {/* Row 3: Pricing Rates */}
+                          {(() => {
+                            const pricing = getModelPricingSummary(model.id);
+                            if (!pricing) return null;
+                            return (
+                              <div className={`flex items-center justify-between pt-1.5 mt-0.5 border-t text-[9px] font-mono ${
+                                isSelected ? "border-stone-700 text-stone-300" : "border-[#D1D1CF]/60 text-[#888884]"
+                              }`}>
+                                <span className="flex items-center gap-1">
+                                  <span className="font-bold opacity-75">IN:</span>
+                                  <span className="font-semibold">{pricing.inputRate}</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="font-bold opacity-75">OUT:</span>
+                                  <span className="font-semibold">{pricing.outputRate}</span>
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </button>
                       );
                     })}

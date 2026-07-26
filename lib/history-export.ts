@@ -34,6 +34,12 @@ export interface HistoryItem {
   temperature?: number;
   maxTokens?: string;
   isFavorite?: boolean;
+  tokenUsage?: {
+    promptTokens?: number;
+    candidatesTokens?: number;
+    totalTokens?: number;
+    cachedTokens?: number;
+  };
 }
 
 export interface HistoryExportPayload {

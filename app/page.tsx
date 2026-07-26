@@ -110,6 +110,12 @@ export interface HistoryItem {
   temperature?: number;
   maxTokens?: string;
   isFavorite?: boolean;
+  tokenUsage?: {
+    promptTokens?: number;
+    candidatesTokens?: number;
+    totalTokens?: number;
+    cachedTokens?: number;
+  };
 }
 
 export default function PromptGeneratorPage() {
@@ -133,6 +139,7 @@ export default function PromptGeneratorPage() {
   const [generationResult, setGenerationResult] = useState<string>("");
   const [filledPrompt, setFilledPrompt] = useState<string>("");
   const [thinkingResult, setThinkingResult] = useState<string>("");
+  const [tokenUsage, setTokenUsage] = useState<{ promptTokens?: number; candidatesTokens?: number; totalTokens?: number; cachedTokens?: number } | null>(null);
   const [isThinking, setIsThinking] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -1317,6 +1324,7 @@ export default function PromptGeneratorPage() {
     setGenerationResult(item.output);
     setFilledPrompt(item.filledPrompt);
     setThinkingResult(item.thinkingResult || "");
+    setTokenUsage(item.tokenUsage || null);
     setIsThinking(false);
     setError(null);
   };
@@ -1355,6 +1363,7 @@ export default function PromptGeneratorPage() {
     setGenerationResult("");
     setFilledPrompt("");
     setThinkingResult("");
+    setTokenUsage(null);
     setIsThinking(false);
     setError(null);
   };
@@ -1767,11 +1776,13 @@ export default function PromptGeneratorPage() {
     setIsLoading(true);
     setGenerationResult("");
     setThinkingResult("");
+    setTokenUsage(null);
     setIsThinking(true);
     const startTime = performance.now();
     let accumulatedText = "";
     let accumulatedThought = "";
     let activeFilledPrompt = "";
+    let capturedUsage: { promptTokens?: number; candidatesTokens?: number; totalTokens?: number; cachedTokens?: number } | null = null;
 
     try {
       const payload = {
@@ -1825,6 +1836,10 @@ export default function PromptGeneratorPage() {
               const data = JSON.parse(jsonStr);
               if (data.error) {
                 throw new Error(data.error);
+              }
+              if (data.usage) {
+                capturedUsage = data.usage;
+                setTokenUsage(data.usage);
               }
               if (data.filledPrompt) {
                 activeFilledPrompt = data.filledPrompt;
@@ -1941,6 +1956,7 @@ export default function PromptGeneratorPage() {
           thinkingLevel: thinkingLevel,
           temperature: temperature,
           maxTokens: maxTokens || undefined,
+          tokenUsage: capturedUsage || undefined,
         };
 
         setHistory(prev => {
@@ -2104,6 +2120,8 @@ export default function PromptGeneratorPage() {
             setShowCompiled={setShowCompiled}
             copied={copied}
             handleCopyOutput={handleCopyOutput}
+            tokenUsage={tokenUsage}
+            selectedModel={selectedModel}
           />
 
         </div>

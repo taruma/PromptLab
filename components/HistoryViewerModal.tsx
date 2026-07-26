@@ -23,6 +23,7 @@ import {
 import YouTubeIcon from "./YouTubeIcon";
 import { getStoredImage } from "../lib/indexeddb";
 import { exportHistoryToJSON, importHistoryFromJSON } from "../lib/history-export";
+import { calculateEstimatedCost } from "../lib/pricing";
 import { matchesSearchQuery } from "../lib/search-utils";
 import VideoPlayerModal from "./VideoPlayerModal";
 
@@ -43,6 +44,12 @@ interface HistoryItem {
   temperature?: number;
   maxTokens?: string;
   isFavorite?: boolean;
+  tokenUsage?: {
+    promptTokens?: number;
+    candidatesTokens?: number;
+    totalTokens?: number;
+    cachedTokens?: number;
+  };
 }
 
 interface HistoryViewerModalProps {
@@ -773,6 +780,25 @@ export default function HistoryViewerModal({
                       {selectedItem.maxTokens || "UNLIMITED"}
                     </span>
                   </div>
+                  {selectedItem.tokenUsage && (
+                    <div className="flex items-center gap-1.5 bg-[#F4F4F2] border border-[#D1D1CF] px-2 py-0.5" title={`${selectedItem.tokenUsage.promptTokens ?? "-"} in ${selectedItem.tokenUsage.cachedTokens ? `(${selectedItem.tokenUsage.cachedTokens.toLocaleString()} cached) ` : ""}/ ${selectedItem.tokenUsage.candidatesTokens ?? "-"} out`}>
+                      <span className="text-[8px] text-[#888884] uppercase font-bold">Tokens</span>
+                      <span className="text-[#1A1A1A] font-extrabold uppercase text-[9px]">
+                        {selectedItem.tokenUsage.totalTokens?.toLocaleString() ?? "-"}
+                      </span>
+                    </div>
+                  )}
+                  {selectedItem.tokenUsage && (() => {
+                    const cost = calculateEstimatedCost(selectedItem.model || "gemini-3.6-flash", selectedItem.tokenUsage);
+                    return cost ? (
+                      <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-900 px-2 py-0.5" title={`Estimated API Cost (${cost.modelName}): ${cost.formattedTotalCost}`}>
+                        <span className="text-[8px] text-emerald-700 uppercase font-bold">Est. Cost</span>
+                        <span className="font-extrabold text-[9px]">
+                          {cost.formattedTotalCost}
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
                   {(selectedItem.presetLabel || selectedItem.systemPrompt || selectedItem.promptTemplate) && (
                     <div className="flex items-center gap-1.5 bg-[#F4F4F2] border border-[#D1D1CF] px-2 py-0.5">
                       <span className="text-[8px] text-[#888884] uppercase font-bold">Preset</span>

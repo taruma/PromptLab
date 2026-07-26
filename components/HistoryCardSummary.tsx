@@ -3,6 +3,7 @@
 import React from "react";
 import { HistoryItem } from "./HistorySection";
 import { Calendar, Cpu, Bookmark, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
+import { calculateEstimatedCost } from "@/lib/pricing";
 
 interface HistoryCardSummaryProps {
   item: HistoryItem;
@@ -54,6 +55,19 @@ export default function HistoryCardSummary({ item, className = "" }: HistoryCard
               {modelName}
             </span>
           )}
+          {item.tokenUsage?.totalTokens !== undefined && (
+            <span className="bg-[#EAEAE8] text-[#1A1A1A] border border-[#D1D1CF] px-1.5 py-0.5 font-mono uppercase font-bold text-[8px] tracking-wider leading-none flex items-center gap-1" title={`${item.tokenUsage.promptTokens ?? "-"} in ${item.tokenUsage.cachedTokens ? `(${item.tokenUsage.cachedTokens.toLocaleString()} cached) ` : ""}/ ${item.tokenUsage.candidatesTokens ?? "-"} out`}>
+              {item.tokenUsage.totalTokens.toLocaleString()} TKS
+            </span>
+          )}
+          {item.tokenUsage && (() => {
+            const cost = calculateEstimatedCost(item.model || "gemini-3.6-flash", item.tokenUsage);
+            return cost ? (
+              <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-1.5 py-0.5 font-mono font-bold text-[8px] tracking-wider leading-none flex items-center gap-1" title={`Estimated Cost (${cost.modelName}): ${cost.formattedTotalCost}`}>
+                {cost.formattedTotalCost}
+              </span>
+            ) : null;
+          })()}
           {presetName && (
             <span className="bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.5 font-mono uppercase font-bold text-[8px] tracking-wider leading-none flex items-center gap-1 max-w-[130px] truncate" title={presetName}>
               <Bookmark className="w-2.5 h-2.5 text-amber-700 shrink-0" />

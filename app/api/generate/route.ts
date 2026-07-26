@@ -209,7 +209,21 @@ export async function POST(req: NextRequest) {
             encoder.encode(`data: ${JSON.stringify({ filledPrompt: filledTemplate })}\n\n`)
           );
 
+          let latestUsage: { promptTokens?: number; candidatesTokens?: number; totalTokens?: number; cachedTokens?: number } | null = null;
+
           for await (const chunk of responseStream) {
+            if (chunk.usageMetadata) {
+              latestUsage = {
+                promptTokens: chunk.usageMetadata.promptTokenCount,
+                candidatesTokens: chunk.usageMetadata.candidatesTokenCount,
+                totalTokens: chunk.usageMetadata.totalTokenCount,
+                cachedTokens: chunk.usageMetadata.cachedContentTokenCount,
+              };
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ usage: latestUsage })}\n\n`)
+              );
+            }
+
             const chunkParts = chunk.candidates?.[0]?.content?.parts || [];
             let text = "";
             let thought = "";
@@ -227,6 +241,12 @@ export async function POST(req: NextRequest) {
                 encoder.encode(`data: ${JSON.stringify({ text, thought })}\n\n`)
               );
             }
+          }
+
+          if (latestUsage) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ usage: latestUsage })}\n\n`)
+            );
           }
         } catch (streamError: any) {
           console.error("Error in generate stream:", streamError);

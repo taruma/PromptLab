@@ -86,6 +86,15 @@ const reasoningMarkdownComponents = {
   ),
 };
 
+import { calculateEstimatedCost } from "@/lib/pricing";
+
+export interface TokenUsage {
+  promptTokens?: number;
+  candidatesTokens?: number;
+  totalTokens?: number;
+  cachedTokens?: number;
+}
+
 interface GenerationResultViewProps {
   generationResult: string;
   thinkingResult: string;
@@ -97,6 +106,8 @@ interface GenerationResultViewProps {
   setShowCompiled: (show: boolean) => void;
   copied: boolean;
   handleCopyOutput: () => void;
+  tokenUsage?: TokenUsage | null;
+  selectedModel?: string;
 }
 
 export default function GenerationResultView({
@@ -110,6 +121,8 @@ export default function GenerationResultView({
   setShowCompiled,
   copied,
   handleCopyOutput,
+  tokenUsage,
+  selectedModel = "gemini-3.6-flash",
 }: GenerationResultViewProps) {
   const [viewMode, setViewMode] = useState<"formatted" | "raw">("formatted");
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
@@ -235,12 +248,26 @@ export default function GenerationResultView({
           </div>
 
           {generationResult ? (
-            <span
-              className="bg-[#EAEAE8] border border-[#D1D1CF] px-1.5 py-0.5 text-[8px] font-mono font-bold text-[#1A1A1A] uppercase tracking-wider shrink-0"
-              id="output-char-count"
-            >
-              {generationResult.length.toLocaleString()} CHARS
-            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span
+                className="bg-[#EAEAE8] border border-[#D1D1CF] px-1.5 py-0.5 text-[8px] font-mono font-bold text-[#1A1A1A] uppercase tracking-wider shrink-0"
+                id="output-char-count"
+              >
+                {generationResult.length.toLocaleString()} CHARS
+              </span>
+              {(() => {
+                const cost = tokenUsage ? calculateEstimatedCost(selectedModel, tokenUsage) : null;
+                return cost ? (
+                  <span
+                    className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 shadow-2xs"
+                    id="output-cost-estimate"
+                    title={`Estimated API Cost (${cost.modelName}): ${cost.formattedTotalCost}`}
+                  >
+                    {cost.formattedTotalCost}
+                  </span>
+                ) : null;
+              })()}
+            </div>
           ) : null}
         </div>
 
@@ -521,7 +548,15 @@ export default function GenerationResultView({
                         Streaming...
                       </span>
                     )}
-                    <span>PromptLab Output</span>
+                    <span>
+                      {tokenUsage && (tokenUsage.totalTokens !== undefined || tokenUsage.promptTokens !== undefined) ? (
+                        <span>
+                          TOKENS: {tokenUsage.totalTokens?.toLocaleString() ?? "-"} ({tokenUsage.promptTokens?.toLocaleString() ?? "-"} IN{tokenUsage.cachedTokens ? ` [${tokenUsage.cachedTokens.toLocaleString()} CACHED]` : ""} / {tokenUsage.candidatesTokens?.toLocaleString() ?? "-"} OUT)
+                        </span>
+                      ) : (
+                        "PromptLab Output"
+                      )}
+                    </span>
                   </span>
                 </div>
               </div>
