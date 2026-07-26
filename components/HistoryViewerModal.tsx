@@ -23,6 +23,7 @@ import {
 import YouTubeIcon from "./YouTubeIcon";
 import { getStoredImage } from "../lib/indexeddb";
 import { exportHistoryToJSON, importHistoryFromJSON } from "../lib/history-export";
+import { matchesSearchQuery } from "../lib/search-utils";
 import VideoPlayerModal from "./VideoPlayerModal";
 
 interface HistoryItem {
@@ -157,38 +158,31 @@ export default function HistoryViewerModal({
   const filteredHistory = history.filter(item => {
     if (activeTab === "favorites" && !item.isFavorite) return false;
     if (!searchQuery.trim()) return true;
-    const query = searchQuery.trim().toLowerCase();
 
     if (searchScope === "default") {
       const title = item.name || item.variables["idea"] || "Untitled Outline";
-      const timestamp = item.timestamp;
-      const model = item.model || "";
-      return (
-        title.toLowerCase().includes(query) ||
-        timestamp.toLowerCase().includes(query) ||
-        model.toLowerCase().includes(query)
-      );
+      return matchesSearchQuery(title, searchQuery);
     }
 
     if (searchScope === "visual_reference") {
-      const imgMatch = item.images && item.images.some(img => img.label.toLowerCase().includes(query));
-      const vidMatch = item.videos && item.videos.some(vid => vid.label.toLowerCase().includes(query));
-      return Boolean(imgMatch || vidMatch);
+      const imageLabels = (item.images || []).map(img => img.label);
+      const videoLabels = (item.videos || []).map(vid => vid.label);
+      return matchesSearchQuery([...imageLabels, ...videoLabels], searchQuery);
     }
 
     if (searchScope === "idea") {
       const ideaVal = item.variables["idea"] || "";
-      return ideaVal.toLowerCase().includes(query);
+      return matchesSearchQuery(ideaVal, searchQuery);
     }
 
     if (searchScope === "output") {
       const outputVal = item.output || "";
-      return outputVal.toLowerCase().includes(query);
+      return matchesSearchQuery(outputVal, searchQuery);
     }
 
     if (searchScope === "compiled_prompt") {
       const filledVal = item.filledPrompt || "";
-      return filledVal.toLowerCase().includes(query);
+      return matchesSearchQuery(filledVal, searchQuery);
     }
 
     return true;
@@ -482,8 +476,18 @@ export default function HistoryViewerModal({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search history slots..."
-                    className="w-full bg-[#FAF9F6] border border-[#D1D1CF] py-1.5 pl-9 pr-3 text-[10px] uppercase tracking-wider font-bold outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A] placeholder-stone-400"
+                    className="w-full bg-[#FAF9F6] border border-[#D1D1CF] py-1.5 pl-9 pr-8 text-[10px] uppercase tracking-wider font-bold outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A] placeholder-stone-400"
                   />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-[#888884] hover:text-[#1A1A1A] transition-colors cursor-pointer"
+                      title="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
                 
                 {/* Search Scope Selector */}
@@ -494,7 +498,7 @@ export default function HistoryViewerModal({
                     onChange={(e) => setSearchScope(e.target.value as any)}
                     className="flex-1 bg-[#FAF9F6] border border-[#D1D1CF] text-[9px] uppercase tracking-wider font-bold py-1 px-2 outline-none focus:border-[#1A1A1A] text-[#1A1A1A] cursor-pointer rounded-none h-7"
                   >
-                    <option value="default">Default (Title / Model)</option>
+                    <option value="default">Default (Title)</option>
                     <option value="visual_reference">Visual Reference Labels</option>
                     <option value="idea">Main Objective / Idea</option>
                     <option value="output">Saved Output Text</option>
