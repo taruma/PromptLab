@@ -87,6 +87,7 @@ export default function HistoryViewerModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusBanner, setStatusBanner] = useState<{ message: string; isError?: boolean } | null>(null);
   const historyFileInputRef = useRef<HTMLInputElement>(null);
+  const selectedItemRef = useRef<HTMLDivElement | null>(null);
 
   // Derive selectedItem from history and selectedItemId
   const selectedItem = React.useMemo(() => {
@@ -97,6 +98,19 @@ export default function HistoryViewerModal({
     }
     return history[0];
   }, [history, selectedItemId]);
+
+  // Scroll selected item into view when modal opens or selected item changes
+  useEffect(() => {
+    if (isOpen && selectedItem) {
+      const timer = setTimeout(() => {
+        selectedItemRef.current?.scrollIntoView({
+          block: "nearest",
+          behavior: "smooth"
+        });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, selectedItem]);
 
   // Resolve images asynchronously whenever the selected item changes
   useEffect(() => {
@@ -504,83 +518,96 @@ export default function HistoryViewerModal({
                     const defaultTitle = item.variables["idea"] || "Untitled Outline";
                     const displayTitle = item.name || (defaultTitle.length > 50 ? defaultTitle.slice(0, 50) + "..." : defaultTitle);
 
+                    const rawOutput = item.output || "";
+                    const cleanedText = rawOutput
+                      ? rawOutput.replace(/[#*`_>~-]/g, " ").replace(/\s+/g, " ").trim()
+                      : "No output generated.";
+                    const outputExcerpt = cleanedText.length > 140
+                      ? cleanedText.slice(0, 137) + "..."
+                      : cleanedText;
+
                     return (
                       <div
                         key={item.id}
+                        ref={isSelected ? selectedItemRef : null}
                         onClick={() => setSelectedItemId(item.id)}
-                        className={`p-3.5 cursor-pointer transition-all flex flex-col group relative ${
+                        className={`px-3 py-2.5 cursor-pointer transition-all flex flex-col gap-1 group relative ${
                           isSelected
-                            ? "bg-white border-l-4 border-l-[#1A1A1A]"
+                            ? "bg-[#FEF3C7] border-l-4 border-l-[#1A1A1A]"
                             : item.isFavorite
                             ? "bg-[#FFFDF5] hover:bg-[#FFF9E6] border-l-2 border-l-amber-400"
-                            : "hover:bg-[#F4F4F2]"
+                            : "bg-white hover:bg-[#F4F4F2] border-l-2 border-l-transparent"
                         }`}
                       >
-                        {/* Row 1: Favorite toggle on left, Timestamp, image count, and hover action controls */}
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <div className="flex items-center gap-1.5 font-mono text-[8px] text-[#888884]">
+                        {/* Row 1: Star, Timestamp, Media Badges, Action Buttons (Rename/Delete) */}
+                        <div className="flex items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-1.5 font-mono text-[9px] text-[#888884] min-w-0">
                             {onToggleFavoriteHistoryItem && (
                               <button
                                 type="button"
                                 onClick={(e) => onToggleFavoriteHistoryItem(item.id, e)}
-                                className={`p-0.5 -ml-1 transition-colors cursor-pointer ${
-                                  item.isFavorite ? "text-amber-500 hover:text-amber-600" : "text-[#888884] hover:text-amber-500 opacity-60 group-hover:opacity-100"
+                                className={`p-0.5 -ml-1 transition-colors cursor-pointer shrink-0 ${
+                                  item.isFavorite
+                                    ? "text-amber-500 hover:text-amber-600"
+                                    : "text-[#888884] hover:text-amber-500 opacity-60 group-hover:opacity-100"
                                 }`}
                                 title={item.isFavorite ? "Remove from favorites" : "Add to favorites"}
                               >
                                 <Star className={`w-3.5 h-3.5 ${item.isFavorite ? "fill-amber-400 text-amber-500" : ""}`} />
                               </button>
                             )}
-                            <span>{item.timestamp}</span>
+                            <span className="shrink-0 text-[#1A1A1A] font-semibold">{item.timestamp}</span>
+
                             {item.images && item.images.length > 0 && (
-                              <span className="bg-[#1A1A1A] text-white px-1 py-0.5 font-bold uppercase shrink-0">
+                              <span className="bg-[#1A1A1A] text-white px-1 py-0.5 font-bold uppercase text-[7.5px] leading-none shrink-0">
                                 {item.images.length} IMG
                               </span>
                             )}
                             {item.videos && item.videos.length > 0 && (
-                              <span className="bg-purple-900 text-purple-100 px-1 py-0.5 font-bold uppercase shrink-0">
+                              <span className="bg-purple-900 text-purple-100 px-1 py-0.5 font-bold uppercase text-[7.5px] leading-none shrink-0">
                                 {item.videos.length} VID
                               </span>
                             )}
                           </div>
 
-                          <div className="flex items-center gap-1 shrink-0">
-                            {renamingId !== item.id && (
-                              <div className="flex items-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={(e) => startRename(item, e)}
-                                  className="text-[#888884] hover:text-[#1A1A1A] p-0.5 transition-colors cursor-pointer"
-                                  title="Rename history slot"
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDeleteHistoryItem(item.id);
-                                  }}
-                                  className="text-[#888884] hover:text-red-500 p-0.5 transition-colors cursor-pointer"
-                                  title="Delete history slot"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          {renamingId !== item.id && (
+                            <div className="flex items-center gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => startRename(item, e)}
+                                className="text-[#888884] hover:text-[#1A1A1A] p-0.5 transition-colors cursor-pointer"
+                                title="Rename history slot"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteHistoryItem(item.id);
+                                }}
+                                className="text-[#888884] hover:text-red-500 p-0.5 transition-colors cursor-pointer"
+                                title="Delete history slot"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                         {/* Row 2: Title / Rename input */}
                         {renamingId === item.id ? (
-                          <div className="flex items-center gap-1.5 w-full" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1.5 w-full my-0.5" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="text"
                               value={renameValue}
                               onChange={(e) => setRenameValue(e.target.value)}
                               onKeyDown={(e) => handleRenameKeyDown(item.id, e)}
                               autoFocus
-                              className="w-full bg-white border border-[#1A1A1A] px-2 py-1 text-[10px] font-bold text-[#1A1A1A] rounded-none outline-none"
+                              className="w-full bg-white border border-[#1A1A1A] px-2 py-0.5 text-[10px] font-bold text-[#1A1A1A] rounded-none outline-none"
                             />
                             <button
+                              type="button"
                               onClick={(e) => saveRename(item.id, e)}
                               className="p-1 hover:text-emerald-600 transition-colors shrink-0 cursor-pointer"
                               title="Save Name"
@@ -588,6 +615,7 @@ export default function HistoryViewerModal({
                               <Check className="w-3.5 h-3.5" />
                             </button>
                             <button
+                              type="button"
                               onClick={cancelRename}
                               className="p-1 hover:text-red-500 transition-colors shrink-0 cursor-pointer"
                               title="Cancel"
@@ -596,26 +624,39 @@ export default function HistoryViewerModal({
                             </button>
                           </div>
                         ) : (
-                          <h4 className={`text-[10px] font-bold uppercase tracking-tight break-words leading-relaxed w-full ${
-                            isSelected ? "text-[#1A1A1A]" : "text-[#555552] group-hover:text-[#1A1A1A]"
-                          }`}>
+                          <h4
+                            className={`text-[11px] font-bold uppercase tracking-tight line-clamp-1 leading-snug w-full ${
+                              isSelected ? "text-[#1A1A1A] font-black" : "text-[#333330] group-hover:text-[#1A1A1A]"
+                            }`}
+                            title={displayTitle}
+                          >
                             {displayTitle}
                           </h4>
                         )}
 
                         {/* Row 3: Model & Preset Badges */}
-                        <div className="flex items-center gap-1.5 mt-1.5 font-mono text-[8px] text-[#888884] w-full flex-wrap">
+                        <div className="flex items-center gap-1 font-mono text-[8px] text-[#888884] w-full flex-wrap">
                           {item.model && (
-                            <span className="border border-[#D1D1CF] bg-white text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase">
+                            <span className="border border-[#D1D1CF] bg-white text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold leading-none">
                               {item.model.replace("gemini-", "")}
                             </span>
                           )}
                           {(item.presetLabel || item.systemPrompt || item.promptTemplate) && (
-                            <span className="border border-[#D1D1CF] bg-[#EAEAE8] text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold truncate max-w-[140px]">
+                            <span className="border border-[#D1D1CF] bg-[#EAEAE8] text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold truncate max-w-[130px] leading-none" title={item.presetLabel || "CUSTOM"}>
                               {item.presetLabel || "CUSTOM"}
                             </span>
                           )}
                         </div>
+
+                        {/* Row 4: Output Excerpt */}
+                        <p
+                          className={`text-[10px] font-sans italic line-clamp-2 overflow-hidden text-ellipsis leading-tight transition-colors ${
+                            isSelected ? "text-[#444440]" : "text-[#888884] group-hover:text-[#555552]"
+                          }`}
+                          title={outputExcerpt}
+                        >
+                          {outputExcerpt}
+                        </p>
                       </div>
                     );
                   })}
