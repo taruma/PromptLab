@@ -3,7 +3,7 @@
 import React from "react";
 import { Trash2 } from "lucide-react";
 import { HistoryItem } from "./HistorySection";
-import { truncateText } from "@/lib/utils";
+import HistoryCardSummary from "./HistoryCardSummary";
 
 interface DeleteHistoryConfirmModalProps {
   pendingDeleteId: string | null;
@@ -24,7 +24,7 @@ export default function DeleteHistoryConfirmModal({
 
   return (
     <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in" id="delete-history-item-confirm-modal">
-      <div className="bg-white border border-[#D1D1CF] w-full max-w-md flex flex-col justify-between shadow-2xl relative rounded-none animate-scale-up">
+      <div className="bg-white border border-[#D1D1CF] w-full max-w-lg flex flex-col justify-between shadow-2xl relative rounded-none animate-scale-up">
         
         {/* Modal Header */}
         <div className="h-14 border-b border-[#D1D1CF] px-6 flex items-center justify-between bg-[#F4F4F2]">
@@ -43,10 +43,14 @@ export default function DeleteHistoryConfirmModal({
         </div>
 
         {/* Modal Content */}
-        <div className="p-6 bg-[#F4F4F2]/30 flex flex-col gap-4 text-xs leading-relaxed text-[#555]">
+        <div className="p-6 bg-[#F4F4F2]/30 flex flex-col gap-4 text-xs leading-relaxed text-[#555] max-h-[80vh] overflow-y-auto">
           <p>
-            Are you sure you want to delete the history slot <strong className="text-[#1A1A1A] uppercase">“{truncateText(itemToDelete?.name || itemToDelete?.variables["idea"] || "Untitled Outline", 100)}”</strong>?
+            Are you sure you want to delete this history slot from your record?
           </p>
+
+          {/* Detailed Summary Card */}
+          {itemToDelete && <HistoryCardSummary item={itemToDelete} />}
+
           <div className="bg-red-50 border border-red-200 p-3.5 text-[10px] text-red-800 leading-normal border-l-4 border-l-red-500 font-mono uppercase tracking-wider font-black leading-snug">
             <span>⚠️ Warning: This will permanently delete this generation record and all its associated image assets from IndexedDB. This operation is completely irreversible.</span>
           </div>

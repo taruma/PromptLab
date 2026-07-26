@@ -35,6 +35,40 @@ interface HistorySectionProps {
   onDeleteHistoryItem: (id: string, e: React.MouseEvent) => void;
 }
 
+function parseTimestamp(rawTimestamp: string) {
+  if (!rawTimestamp) return { dateKey: "", full24: "", time24: "" };
+
+  // Match pattern like "Jul 26, 05:22 AM", "Jul 26, 05:22", "Jul 26, 17:22", etc.
+  const regex = /^([A-Za-z]{3}\s+\d{1,2}),?\s+(\d{1,2}):(\d{2})(?:\s*([AP]M))?$/i;
+  const match = rawTimestamp.trim().match(regex);
+
+  if (match) {
+    const dateKey = match[1]; // e.g. "Jul 26"
+    let hour = parseInt(match[2], 10);
+    const minute = match[3];
+    const ampm = match[4];
+
+    if (ampm) {
+      const upper = ampm.toUpperCase();
+      if (upper === "PM" && hour < 12) hour += 12;
+      if (upper === "AM" && hour === 12) hour = 0;
+    }
+
+    const time24 = `${String(hour).padStart(2, "0")}:${minute}`;
+    return {
+      dateKey,
+      full24: `${dateKey}, ${time24}`,
+      time24,
+    };
+  }
+
+  return {
+    dateKey: rawTimestamp.split(",")[0]?.trim() || "",
+    full24: rawTimestamp,
+    time24: rawTimestamp,
+  };
+}
+
 export default function HistorySection({
   history,
   isHistoryOpen,
@@ -48,7 +82,7 @@ export default function HistorySection({
   onDeleteHistoryItem,
 }: HistorySectionProps) {
   return (
-    <section className={`flex flex-col ${isHistoryOpen ? "h-52 shrink-0" : "shrink-0"}`} id="history-panel">
+    <section className={`flex flex-col ${isHistoryOpen ? "h-[260px] shrink-0" : "shrink-0"}`} id="history-panel">
       <div 
         onClick={toggleHistory}
         className="flex justify-between items-center mb-3 cursor-pointer select-none group flex-wrap gap-y-2"
@@ -140,27 +174,42 @@ export default function HistorySection({
 
             return (
               <div className="flex flex-col divide-y divide-[#D1D1CF]" id="history-items-list">
-                {displayedHistory.map((item) => {
-                  const defaultTitle = item.variables["idea"] || "Untitled Outline";
-                  const snippet = item.name || (defaultTitle.length > 50 ? defaultTitle.slice(0, 50) + "..." : defaultTitle);
-                  
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => setPendingLoadItem(item)}
-                      className={`p-3.5 cursor-pointer transition-all flex flex-col group border-l-2 ${
-                        item.isFavorite
-                          ? "bg-[#FFFDF5] hover:bg-[#FFF9E6] border-l-amber-400"
-                          : "hover:bg-[#F4F4F2] border-l-transparent"
-                      }`}
-                    >
-                      {/* Row 1: Favorite toggle on left, Timestamp, image count, and delete control */}
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="flex items-center gap-1.5 font-mono text-[9px] text-[#888884]">
+                {(() => {
+                  let lastDateKey = "";
+                  return displayedHistory.map((item) => {
+                    const defaultTitle = item.variables["idea"] || "Untitled Outline";
+                    const snippet = item.name || (defaultTitle.length > 50 ? defaultTitle.slice(0, 50) + "..." : defaultTitle);
+                    
+                    const { dateKey, full24, time24 } = parseTimestamp(item.timestamp);
+                    let displayTimestamp = full24;
+                    if (dateKey && dateKey === lastDateKey) {
+                      displayTimestamp = time24;
+                    } else if (dateKey) {
+                      lastDateKey = dateKey;
+                    }
+
+                    const rawOutput = item.output || "";
+                    const outputExcerpt = rawOutput
+                      ? rawOutput.replace(/[#*`_>~-]/g, " ").replace(/\s+/g, " ").trim()
+                      : "No output preview";
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => setPendingLoadItem(item)}
+                        className={`px-2.5 py-2 cursor-pointer transition-all flex flex-col gap-0.5 group border-l-2 ${
+                          item.isFavorite
+                            ? "bg-[#FFFDF5] hover:bg-[#FFF9E6] border-l-amber-400"
+                            : "hover:bg-[#F4F4F2] border-l-transparent"
+                        }`}
+                      >
+                        {/* Row 1: Star, Timestamp, Media Badges, Title, Delete */}
+                        <div className="flex items-center gap-2 min-w-0">
+                          {/* Star Button */}
                           <button
                             type="button"
                             onClick={(e) => onToggleFavorite(item.id, e)}
-                            className={`p-0.5 -ml-1 transition-colors cursor-pointer ${
+                            className={`p-0.5 -ml-1 transition-colors cursor-pointer shrink-0 ${
                               item.isFavorite
                                 ? "text-amber-500 hover:text-amber-600"
                                 : "text-[#888884] hover:text-amber-500 opacity-60 group-hover:opacity-100"
@@ -169,52 +218,54 @@ export default function HistorySection({
                           >
                             <Star className={`w-3.5 h-3.5 ${item.isFavorite ? "fill-amber-400 text-amber-500" : ""}`} />
                           </button>
-                          <span>{item.timestamp}</span>
+
+                          {/* Timestamp */}
+                          <span className="font-mono text-[9px] text-[#888884] whitespace-nowrap shrink-0">
+                            {displayTimestamp}
+                          </span>
+
+                          {/* Media Badges */}
                           {item.images && item.images.length > 0 && (
-                            <span className="text-[8px] bg-[#1A1A1A] text-white px-1 font-mono uppercase font-bold">
+                            <span className="bg-[#1A1A1A] text-white px-1 py-0.5 font-mono uppercase font-bold text-[7.5px] shrink-0 leading-none">
                               {item.images.length} IMG
                             </span>
                           )}
                           {item.videos && item.videos.length > 0 && (
-                            <span className="text-[8px] bg-purple-900 text-purple-100 px-1 font-mono uppercase font-bold">
+                            <span className="bg-purple-900 text-purple-100 px-1 py-0.5 font-mono uppercase font-bold text-[7.5px] shrink-0 leading-none">
                               {item.videos.length} VID
                             </span>
                           )}
-                        </div>
-                        
-                        <div className="flex items-center gap-1 shrink-0">
+
+                          {/* Headline / Title Snippet */}
+                          <h4 
+                            className="text-[11px] font-bold uppercase text-[#1A1A1A] truncate tracking-tight flex-1 min-w-0"
+                            title={snippet}
+                          >
+                            {snippet}
+                          </h4>
+
+                          {/* Delete Action */}
                           <button
                             type="button"
                             onClick={(e) => onDeleteHistoryItem(item.id, e)}
-                            className="text-[#888884] hover:text-red-500 opacity-0 group-hover:opacity-100 p-0.5 transition-all cursor-pointer shrink-0"
+                            className="text-[#888884] hover:text-red-500 opacity-0 group-hover:opacity-100 p-0.5 transition-all cursor-pointer shrink-0 ml-0.5"
                             title="Delete history slot"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                      </div>
 
-                      {/* Row 2: Title */}
-                      <h4 className="text-[11px] font-bold uppercase text-[#1A1A1A] truncate tracking-tight w-full">
-                        {snippet}
-                      </h4>
-
-                      {/* Row 3: Model & Preset Badges */}
-                      <div className="flex items-center gap-1.5 mt-1 font-mono text-[8px] text-[#888884] w-full flex-wrap">
-                        {item.model && (
-                          <span className="border border-[#D1D1CF] bg-white text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase">
-                            {item.model.replace("gemini-", "")}
-                          </span>
-                        )}
-                        {(item.presetLabel || item.systemPrompt || item.promptTemplate) && (
-                          <span className="border border-[#D1D1CF] bg-[#EAEAE8] text-[#1A1A1A] px-1 py-0.5 shrink-0 uppercase font-bold truncate max-w-[140px]">
-                            {item.presetLabel || "CUSTOM"}
-                          </span>
-                        )}
+                        {/* Row 2: Output Excerpt */}
+                        <p 
+                          className="text-[10px] text-[#888884] font-sans italic truncate pl-[22px] tracking-normal leading-tight group-hover:text-[#333330] transition-colors"
+                          title={outputExcerpt}
+                        >
+                          {outputExcerpt}
+                        </p>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             );
           })()}
