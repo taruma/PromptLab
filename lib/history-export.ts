@@ -40,6 +40,7 @@ export interface HistoryItem {
     totalTokens?: number;
     cachedTokens?: number;
   };
+  estimatedCost?: string;
 }
 
 export interface HistoryExportPayload {

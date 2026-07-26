@@ -60,11 +60,11 @@ export default function HistoryCardSummary({ item, className = "" }: HistoryCard
               {item.tokenUsage.totalTokens.toLocaleString()} TKS
             </span>
           )}
-          {item.tokenUsage && (() => {
-            const cost = calculateEstimatedCost(item.model || "gemini-3.6-flash", item.tokenUsage);
-            return cost ? (
-              <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-1.5 py-0.5 font-mono font-bold text-[8px] tracking-wider leading-none flex items-center gap-1" title={`Estimated Cost (${cost.modelName}): ${cost.formattedTotalCost}`}>
-                {cost.formattedTotalCost}
+          {(item.estimatedCost || item.tokenUsage) && (() => {
+            const displayCost = item.estimatedCost || (item.tokenUsage ? calculateEstimatedCost(item.model || "gemini-3.6-flash", item.tokenUsage)?.formattedTotalCost : null);
+            return displayCost ? (
+              <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-1.5 py-0.5 font-mono font-bold text-[8px] tracking-wider leading-none flex items-center gap-1" title={`Cost: ${displayCost}`}>
+                {displayCost}
               </span>
             ) : null;
           })()}

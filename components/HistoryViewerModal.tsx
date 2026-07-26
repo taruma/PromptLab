@@ -50,6 +50,7 @@ interface HistoryItem {
     totalTokens?: number;
     cachedTokens?: number;
   };
+  estimatedCost?: string;
 }
 
 interface HistoryViewerModalProps {
@@ -788,13 +789,13 @@ export default function HistoryViewerModal({
                       </span>
                     </div>
                   )}
-                  {selectedItem.tokenUsage && (() => {
-                    const cost = calculateEstimatedCost(selectedItem.model || "gemini-3.6-flash", selectedItem.tokenUsage);
-                    return cost ? (
-                      <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-900 px-2 py-0.5" title={`Estimated API Cost (${cost.modelName}): ${cost.formattedTotalCost}`}>
-                        <span className="text-[8px] text-emerald-700 uppercase font-bold">Est. Cost</span>
+                  {(selectedItem.estimatedCost || selectedItem.tokenUsage) && (() => {
+                    const displayCost = selectedItem.estimatedCost || (selectedItem.tokenUsage ? calculateEstimatedCost(selectedItem.model || "gemini-3.6-flash", selectedItem.tokenUsage)?.formattedTotalCost : null);
+                    return displayCost ? (
+                      <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-900 px-2 py-0.5" title={`Cost: ${displayCost}`}>
+                        <span className="text-[8px] text-emerald-700 uppercase font-bold">Cost</span>
                         <span className="font-extrabold text-[9px]">
-                          {cost.formattedTotalCost}
+                          {displayCost}
                         </span>
                       </div>
                     ) : null;

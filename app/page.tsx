@@ -53,6 +53,7 @@ import ParameterInputsSection from "../components/ParameterInputsSection";
 import FooterStatusBar from "../components/FooterStatusBar";
 import PromptTemplateHelpTooltip from "../components/PromptTemplateHelpTooltip";
 import GenerationResultView from "../components/GenerationResultView";
+import { calculateEstimatedCost } from "../lib/pricing";
 import {
   exportPresetsToJSON,
   importPresetsFromJSON,
@@ -116,6 +117,7 @@ export interface HistoryItem {
     totalTokens?: number;
     cachedTokens?: number;
   };
+  estimatedCost?: string;
 }
 
 export default function PromptGeneratorPage() {
@@ -1957,6 +1959,7 @@ export default function PromptGeneratorPage() {
           temperature: temperature,
           maxTokens: maxTokens || undefined,
           tokenUsage: capturedUsage || undefined,
+          estimatedCost: capturedUsage ? calculateEstimatedCost(selectedModel, capturedUsage)?.formattedTotalCost : undefined,
         };
 
         setHistory(prev => {

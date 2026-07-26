@@ -26,6 +26,7 @@ export interface HistoryItem {
     totalTokens?: number;
     cachedTokens?: number;
   };
+  estimatedCost?: string;
 }
 
 interface HistorySectionProps {
