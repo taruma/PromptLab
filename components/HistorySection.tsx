@@ -29,7 +29,7 @@ interface HistorySectionProps {
   historyTab: "all" | "favorites";
   setHistoryTab: (tab: "all" | "favorites") => void;
   setIsHistoryViewerOpen: (open: boolean) => void;
-  setIsHistoryClearConfirmOpen: (open: boolean) => void;
+  setIsHistoryClearConfirmOpen?: (open: boolean) => void;
   setPendingLoadItem: (item: HistoryItem) => void;
   onToggleFavorite: (id: string, e?: React.MouseEvent) => void;
   onDeleteHistoryItem: (id: string, e: React.MouseEvent) => void;
@@ -85,9 +85,9 @@ export default function HistorySection({
     <section className={`flex flex-col ${isHistoryOpen ? "h-[260px] shrink-0" : "shrink-0"}`} id="history-panel">
       <div 
         onClick={toggleHistory}
-        className="flex justify-between items-center mb-3 cursor-pointer select-none group flex-wrap gap-y-2"
+        className="flex justify-between items-center mb-3 cursor-pointer select-none group flex-wrap gap-2"
       >
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
           <h2 className="text-[10px] uppercase tracking-[0.20em] text-[#888884] font-bold flex items-center gap-1.5">
             <History className="w-3.5 h-3.5" />
             History
@@ -95,9 +95,18 @@ export default function HistorySection({
           <span className="text-[8px] font-mono text-[#888884] bg-white/60 border border-[#D1D1CF] px-1.5 py-0.5 font-bold">
             {history.length}
           </span>
+          <span className="text-[#888884] group-hover:text-[#1A1A1A] transition-colors">
+            {isHistoryOpen ? (
+              <ChevronDown className="w-3.5 h-3.5 transition-transform" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5 transition-transform" />
+            )}
+          </span>
+        </div>
 
+        <div className="flex items-center gap-2 flex-wrap justify-end" onClick={(e) => e.stopPropagation()}>
           {/* Sub-tab filter buttons */}
-          <div className="flex items-center gap-0.5 bg-[#FAF9F6] border border-[#D1D1CF] p-0.5" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-0.5 bg-[#FAF9F6] border border-[#D1D1CF] p-0.5">
             <button
               type="button"
               onClick={() => setHistoryTab("all")}
@@ -125,8 +134,7 @@ export default function HistorySection({
 
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={() => {
               setIsHistoryViewerOpen(true);
             }}
             className="px-2 py-0.5 border border-[#D1D1CF] hover:border-[#1A1A1A] bg-white text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 text-[#1A1A1A] rounded-none shadow-sm shrink-0"
@@ -135,26 +143,7 @@ export default function HistorySection({
             <Eye className="w-3 h-3 text-[#1A1A1A]" />
             Expand
           </button>
-          <span className="text-[#888884] group-hover:text-[#1A1A1A] transition-colors">
-            {isHistoryOpen ? (
-              <ChevronDown className="w-3.5 h-3.5 transition-transform" />
-            ) : (
-              <ChevronRight className="w-3.5 h-3.5 transition-transform" />
-            )}
-          </span>
         </div>
-        {history.length > 0 && isHistoryOpen && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsHistoryClearConfirmOpen(true);
-            }}
-            className="text-[9px] font-bold text-red-500 hover:text-red-700 tracking-wider font-mono uppercase cursor-pointer"
-            id="clear-all-history"
-          >
-            Clear All
-          </button>
-        )}
       </div>
 
       {isHistoryOpen && (
