@@ -137,7 +137,7 @@ export default function VisualAssetsSection({
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 mt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 mt-1">
             {/* Drag and Drop Uploader */}
             <div
               onDragEnter={handleDrag}
@@ -145,7 +145,7 @@ export default function VisualAssetsSection({
               onDragLeave={handleDrag}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className={`min-h-[140px] border-2 border-dashed flex flex-col items-center justify-center p-4 gap-2 cursor-pointer transition-all ${
+              className={`min-h-[120px] border-2 border-dashed flex flex-col items-center justify-center p-2.5 gap-1.5 cursor-pointer transition-all ${
                 dragActive 
                   ? "border-[#1A1A1A] bg-[#EAEAE8]" 
                   : "border-[#D1D1CF] bg-white hover:border-[#1A1A1A]"

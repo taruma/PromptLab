@@ -36,10 +36,10 @@ export default function VideoAssetCard({
   return (
     <>
       <div
-        className="bg-white border border-[#D1D1CF] p-2.5 flex flex-col justify-between gap-2.5 group relative transition-all hover:border-[#1A1A1A]"
+        className="bg-white border border-[#D1D1CF] p-2 flex flex-col justify-between gap-1.5 group relative transition-all hover:border-[#1A1A1A]"
         id={`video-asset-card-${video.id}`}
       >
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           {/* Video Thumbnail Box with Play Button Overlay */}
           <div
             onClick={() => {

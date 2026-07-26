@@ -74,9 +74,9 @@ export default function VisualAssetCard({
       ref={cardRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="bg-white border border-[#D1D1CF] p-2.5 flex flex-col justify-between gap-2.5 group relative transition-all hover:border-[#1A1A1A]"
+      className="bg-white border border-[#D1D1CF] p-2 flex flex-col justify-between gap-1.5 group relative transition-all hover:border-[#1A1A1A]"
     >
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5">
         {/* Thumbnail Box */}
         <div className="aspect-square bg-[#EAEAE8] relative overflow-hidden flex items-center justify-center">
           <img
