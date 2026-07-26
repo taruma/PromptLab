@@ -1,5 +1,5 @@
 import React from "react";
-import { HelpCircle, ChevronDown, BookOpen } from "lucide-react";
+import { HelpCircle, ChevronDown, ChevronRight, BookOpen } from "lucide-react";
 
 interface LabManualSectionProps {
   isLabManualOpen: boolean;
@@ -23,9 +23,9 @@ export default function LabManualSection({
           </h2>
           <span className="text-[#888884] group-hover:text-[#1A1A1A] transition-colors">
             {isLabManualOpen ? (
-              <ChevronDown className="w-3.5 h-3.5 transform rotate-180 transition-transform" />
-            ) : (
               <ChevronDown className="w-3.5 h-3.5 transition-transform" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5 transition-transform" />
             )}
           </span>
         </div>

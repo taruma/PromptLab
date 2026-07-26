@@ -20,6 +20,7 @@ import {
   Info,
   Download,
   ChevronDown,
+  ChevronRight,
   BookOpen,
   Search,
   GitCompare,
@@ -147,6 +148,7 @@ export default function PromptGeneratorPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(true);
   const [isHistoryViewerOpen, setIsHistoryViewerOpen] = useState<boolean>(false);
   const [isLabManualOpen, setIsLabManualOpen] = useState<boolean>(true);
+  const [isVisualAssetsOpen, setIsVisualAssetsOpen] = useState<boolean>(true);
   const [storageWarningMessage, setStorageWarningMessage] = useState<string | null>(null);
   const [pendingLoadItem, setPendingLoadItem] = useState<HistoryItem | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -163,6 +165,14 @@ export default function PromptGeneratorPage() {
     setIsLabManualOpen(prev => {
       const newVal = !prev;
       localStorage.setItem("prompt_generator_lab_manual_open", String(newVal));
+      return newVal;
+    });
+  };
+
+  const toggleVisualAssets = () => {
+    setIsVisualAssetsOpen(prev => {
+      const newVal = !prev;
+      localStorage.setItem("prompt_generator_visual_assets_open", String(newVal));
       return newVal;
     });
   };
@@ -513,6 +523,7 @@ export default function PromptGeneratorPage() {
       const savedSysPresetsOpen = localStorage.getItem("prompt_generator_sys_presets_open");
       const savedCustomPresetsOpen = localStorage.getItem("prompt_generator_custom_presets_open");
       const savedLabManualOpen = localStorage.getItem("prompt_generator_lab_manual_open");
+      const savedVisualAssetsOpen = localStorage.getItem("prompt_generator_visual_assets_open");
       const savedPresetFilterTab = localStorage.getItem("prompt_generator_preset_filter_tab");
       const savedPinnedPresets = localStorage.getItem("prompt_generator_pinned_presets");
       const savedPresetSort = localStorage.getItem("prompt_generator_preset_sort");
@@ -528,6 +539,9 @@ export default function PromptGeneratorPage() {
         }
         if (savedLabManualOpen !== null) {
           setIsLabManualOpen(savedLabManualOpen === "true");
+        }
+        if (savedVisualAssetsOpen !== null) {
+          setIsVisualAssetsOpen(savedVisualAssetsOpen === "true");
         }
         if (savedModel) {
           setSelectedModel(savedModel);
@@ -2007,6 +2021,8 @@ export default function PromptGeneratorPage() {
 
           {/* Section: Visual Reference Assets */}
           <VisualAssetsSection
+            isVisualAssetsOpen={isVisualAssetsOpen}
+            onToggleVisualAssets={toggleVisualAssets}
             onOpenYouTubeModal={() => setIsYouTubeModalOpen(true)}
             onOpenLibrary={() => setIsLibraryOpen(true)}
             videoError={videoError}
@@ -2286,7 +2302,11 @@ export default function PromptGeneratorPage() {
                                 }
                               </span>
                             </div>
-                            <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isSystemPresetsOpen ? "rotate-180" : ""}`} />
+                            {isSystemPresetsOpen ? (
+                              <ChevronDown className="w-3.5 h-3.5 text-[#888884]" />
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5 text-[#888884]" />
+                            )}
                           </button>
                         )}
                         
@@ -2394,7 +2414,11 @@ export default function PromptGeneratorPage() {
                                 }
                               </span>
                             </div>
-                            <ChevronDown className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 ${isCustomPresetsOpen ? "rotate-180" : ""}`} />
+                            {isCustomPresetsOpen ? (
+                              <ChevronDown className="w-3.5 h-3.5 text-[#888884]" />
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5 text-[#888884]" />
+                            )}
                           </button>
                         )}
                         

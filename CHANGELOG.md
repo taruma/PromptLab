@@ -25,11 +25,12 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Fixed
 
+- **Standardized section collapsible chevrons.** Standardized accordion/section chevron icons across `VisualAssetsSection`, `LabManualSection`, `HistorySection`, and prompt preset list accordions to follow standard UI conventions: pointing Right (`ChevronRight` `>`) when collapsed and Down (`ChevronDown` `v`) when expanded.
 - **Project management stability and sync.** Added an `isSwitchingProjectRef` guard in `app/page.tsx` to prevent auto-save and asset-library callbacks from firing during active project switches, eliminating state race conditions. Added fallback initialization in `handleProjectsUpdated()` to auto-create a default workspace when zero projects exist. Enhanced project deletion flow in `ProjectManagerModal` to ensure the active project correctly falls back to the next available project. Updated the persistence layer in `lib/projects.ts` to support both legacy and current history storage keys. Refined `AssetLibrarySidebar` state synchronization during project switches to prevent stale asset references.
 
 ### Architecture & Refactoring
 
-- **Extracted VisualAssetsSection component.** Extracted the visual reference assets, casting maps, drag-and-drop uploader, YouTube URL trigger, library browser, error/warning alerts, image cards, and video cards from `app/page.tsx` into a modular, standalone component (`components/VisualAssetsSection.tsx`).
+- **Extracted VisualAssetsSection component.** Extracted the visual reference assets, casting maps, drag-and-drop uploader, YouTube URL trigger, library browser, error/warning alerts, image cards, and video cards from `app/page.tsx` into a modular, standalone component (`components/VisualAssetsSection.tsx`). Added section collapsibility with a `ChevronDown` toggle icon beside the title and persistent open/collapsed state saved in localStorage (`prompt_generator_visual_assets_open`).
 - **IndexedDB schema upgrade.** The database version was bumped from v1 to v2, adding a new `projects` object store alongside the existing `images` store. Project data (configuration, presets, history, and asset metadata) is persisted in IndexedDB rather than localStorage, removing the ~5–10MB quota constraint for session data.
 
 ---

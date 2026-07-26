@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { History, Star, Eye, ChevronDown, FolderOpen, Trash2 } from "lucide-react";
+import { History, Star, Eye, ChevronDown, ChevronRight, FolderOpen, Trash2 } from "lucide-react";
 
 export interface HistoryItem {
   id: string;
@@ -137,9 +137,9 @@ export default function HistorySection({
           </button>
           <span className="text-[#888884] group-hover:text-[#1A1A1A] transition-colors">
             {isHistoryOpen ? (
-              <ChevronDown className="w-3.5 h-3.5 transform rotate-180 transition-transform" />
-            ) : (
               <ChevronDown className="w-3.5 h-3.5 transition-transform" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5 transition-transform" />
             )}
           </span>
         </div>

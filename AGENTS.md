@@ -84,7 +84,7 @@ Key differentiators:
 │   ├── VideoAssetCard.tsx           # Reusable video asset card with metadata and playback trigger
 │   ├── VideoPlayerModal.tsx         # Full-screen video playback modal for previewing uploaded videos
 │   ├── VisualAssetCard.tsx          # Reusable image asset card with hover preview
-│   ├── VisualAssetsSection.tsx       # Extracted visual assets & casting maps reference section
+│   ├── VisualAssetsSection.tsx       # Collapsible visual assets & casting maps reference section
 │   └── YouTubeIcon.tsx              # Custom SVG YouTube icon component (replaces lucide-react Youtube)
 ├── /lib
 │   ├── utils.ts                     # UI utility functions (cn(), diff engine, image compression, date formatting)
