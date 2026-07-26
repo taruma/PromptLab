@@ -335,13 +335,13 @@ export async function exportProjectJSON(projectId: string): Promise<void> {
   const sanitizeName = project.name
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9_-]+/g, "_")
-    .replace(/^_+|_+$/g, "") || "project";
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "main_workspace";
   const now = new Date();
   const dateStr = now.toISOString().split("T")[0];
   const timeStr = now.toTimeString().split(" ")[0].replace(/:/g, "");
   const uniqueId = Math.random().toString(36).substring(2, 6);
-  const filename = `PromptLab-Project-${sanitizeName}_${dateStr}_${timeStr}_${uniqueId}.json`;
+  const filename = `promptlab_${sanitizeName}_project_backup_${dateStr}_${timeStr}_${uniqueId}.json`;
 
   const link = document.createElement("a");
   link.href = url;

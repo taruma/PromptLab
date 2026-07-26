@@ -45,13 +45,24 @@ export interface HistoryExportPayload {
   items: HistoryItem[];
 }
 
+function slugify(str?: string): string {
+  if (!str) return "main_workspace";
+  const slug = str
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return slug || "main_workspace";
+}
+
 /**
   Export history items to a JSON file containing embedded Base64 image data.
  */
 export async function exportHistoryToJSON(
   history: HistoryItem[],
   exportType: "all" | "favorites" | "selected",
-  selectedItem?: HistoryItem | null
+  selectedItem?: HistoryItem | null,
+  projectName?: string
 ): Promise<{ count: number; filename: string }> {
   let itemsToExport: HistoryItem[] = [];
 
@@ -100,11 +111,25 @@ export async function exportHistoryToJSON(
     })
   );
 
+  let featureSpecific = exportType as string;
+  if (exportType === "selected" && selectedItem) {
+    const itemTitle = selectedItem.name || selectedItem.presetLabel || "item";
+    const slugified = itemTitle
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+    if (slugified) {
+      featureSpecific = slugified;
+    }
+  }
+
   const now = new Date();
   const dateStr = now.toISOString().split("T")[0];
   const timeStr = now.toTimeString().split(" ")[0].replace(/:/g, "");
   const uniqueId = Math.random().toString(36).substring(2, 6);
-  const filename = `promptlab_history_${exportType}_${dateStr}_${timeStr}_${uniqueId}.json`;
+  const projectSlug = slugify(projectName);
+  const filename = `promptlab_${projectSlug}_history_${featureSpecific}_${dateStr}_${timeStr}_${uniqueId}.json`;
 
   const payload: HistoryExportPayload = {
     version: "1.0",

@@ -56,6 +56,7 @@ interface HistoryViewerModalProps {
   onImportHistory?: (newHistory: HistoryItem[]) => void;
   onClearHistory?: () => void;
   onCompareHistoryItem?: (item: HistoryItem) => void;
+  projectName?: string;
 }
 
 export default function HistoryViewerModal({
@@ -68,7 +69,8 @@ export default function HistoryViewerModal({
   onToggleFavoriteHistoryItem,
   onImportHistory,
   onClearHistory,
-  onCompareHistoryItem
+  onCompareHistoryItem,
+  projectName
 }: HistoryViewerModalProps) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -233,7 +235,7 @@ export default function HistoryViewerModal({
     setIsProcessing(true);
     setStatusBanner(null);
     try {
-      const result = await exportHistoryToJSON(history, type, selectedItem);
+      const result = await exportHistoryToJSON(history, type, selectedItem, projectName);
       setStatusBanner({
         message: `Successfully exported ${result.count} history item(s) to "${result.filename}"`
       });

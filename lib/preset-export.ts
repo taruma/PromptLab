@@ -17,6 +17,16 @@ export interface PresetExportPayload {
   presets: UserPreset[];
 }
 
+function slugify(str?: string): string {
+  if (!str) return "main_workspace";
+  const slug = str
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return slug || "main_workspace";
+}
+
 /**
  * Export user presets to a JSON file.
  */
@@ -24,7 +34,8 @@ export function exportPresetsToJSON(
   customPresets: UserPreset[],
   exportType: "all" | "favorites" | "selected",
   activePreset?: UserPreset | null,
-  pinnedPresetIds: string[] = []
+  pinnedPresetIds: string[] = [],
+  projectName?: string
 ): { count: number; filename: string } {
   let presetsToExport: UserPreset[] = [];
 
@@ -74,7 +85,8 @@ export function exportPresetsToJSON(
     }
   }
 
-  const filename = `promptlab_presets_${exportTag}_${dateStr}_${timeStr}_${uniqueId}.json`;
+  const projectSlug = slugify(projectName);
+  const filename = `promptlab_${projectSlug}_preset_${exportTag}_${dateStr}_${timeStr}_${uniqueId}.json`;
 
   const payload: PresetExportPayload = {
     version: "1.0",

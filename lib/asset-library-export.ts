@@ -21,13 +21,24 @@ export interface AssetImportParseResult {
   error?: string;
 }
 
+function slugify(str?: string): string {
+  if (!str) return "main_workspace";
+  const slug = str
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return slug || "main_workspace";
+}
+
 /**
  * Downloads asset library items as a JSON file with full timestamp, time, and unique identifier.
  */
 export function exportAssetLibraryJSON(
   assets: AssetExportItem[],
   exportType: "all" | "selected" = "all",
-  customFilename?: string
+  customFilename?: string,
+  projectName?: string
 ): { count: number; filename: string } {
   if (!assets || assets.length === 0) {
     throw new Error("No assets available to export.");
@@ -37,10 +48,11 @@ export function exportAssetLibraryJSON(
   const dateStr = now.toISOString().split("T")[0];
   const timeStr = now.toTimeString().split(" ")[0].replace(/:/g, "");
   const uniqueId = Math.random().toString(36).substring(2, 6);
+  const projectSlug = slugify(projectName);
 
   const filename =
     customFilename ||
-    `promptlab_asset_library_${exportType}_${dateStr}_${timeStr}_${uniqueId}.json`;
+    `promptlab_${projectSlug}_asset_${exportType}_${dateStr}_${timeStr}_${uniqueId}.json`;
 
   const exportPayload: AssetLibraryExportData = {
     version: "1.0",
@@ -49,8 +61,8 @@ export function exportAssetLibraryJSON(
     assets,
   };
 
-  // Compacted JSON serialization without whitespace to optimize Base64 file size
-  const jsonString = JSON.stringify(exportPayload);
+  // Formatted readable JSON serialization
+  const jsonString = JSON.stringify(exportPayload, null, 2);
   const blob = new Blob([jsonString], { type: "application/json" });
   const url = URL.createObjectURL(blob);
 

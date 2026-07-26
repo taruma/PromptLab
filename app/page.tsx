@@ -1519,7 +1519,8 @@ export default function PromptGeneratorPage() {
         customPresets,
         exportType,
         activePreset,
-        pinnedPresetIds
+        pinnedPresetIds,
+        activeProject?.name
       );
       setPresetStatusBanner({
         message: `Successfully exported ${count} preset(s) to "${filename}"`
@@ -2976,6 +2977,7 @@ export default function PromptGeneratorPage() {
         onClose={() => setIsLibraryOpen(false)}
         onAddImageToWorkspace={handleAddImageFromLibrary}
         onAssetLibraryUpdated={handleAssetLibraryUpdated}
+        projectName={activeProject?.name}
       />
 
       <HistoryViewerModal
@@ -2989,6 +2991,7 @@ export default function PromptGeneratorPage() {
         onImportHistory={handleImportHistory}
         onClearHistory={() => setIsHistoryClearConfirmOpen(true)}
         onCompareHistoryItem={handleCompareHistoryItem}
+        projectName={activeProject?.name}
       />
 
       <AddYouTubeModal

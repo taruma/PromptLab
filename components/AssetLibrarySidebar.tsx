@@ -50,12 +50,14 @@ interface AssetLibrarySidebarProps {
   onClose: () => void;
   onAddImageToWorkspace: (label: string, base64: string) => void;
   onAssetLibraryUpdated?: (assets: ProjectAsset[]) => void;
+  projectName?: string;
 }
 export default function AssetLibrarySidebar({
   isOpen,
   onClose,
   onAddImageToWorkspace,
   onAssetLibraryUpdated,
+  projectName,
 }: AssetLibrarySidebarProps) {
   const [libraryImages, setLibraryImages] = useState<LibraryImage[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -391,7 +393,7 @@ export default function AssetLibrarySidebar({
 
   const handleExportAllAssets = () => {
     try {
-      const { filename } = exportAssetLibraryJSON(libraryImages, "all");
+      const { filename } = exportAssetLibraryJSON(libraryImages, "all", undefined, projectName);
       showToast("success", `Exported all ${libraryImages.length} assets (${filename}).`);
     } catch (err: any) {
       showToast("error", err?.message || "Failed to export assets.");
@@ -402,7 +404,7 @@ export default function AssetLibrarySidebar({
     try {
       const selectedAssets = libraryImages.filter((img) => selectedIds.has(img.id));
       if (selectedAssets.length === 0) return;
-      const { filename } = exportAssetLibraryJSON(selectedAssets, "selected");
+      const { filename } = exportAssetLibraryJSON(selectedAssets, "selected", undefined, projectName);
       showToast("success", `Exported ${selectedAssets.length} selected assets (${filename}).`);
     } catch (err: any) {
       showToast("error", err?.message || "Failed to export selected assets.");
