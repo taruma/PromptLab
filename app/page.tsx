@@ -1476,6 +1476,9 @@ export default function PromptGeneratorPage() {
     localStorage.setItem("prompt_generator_prompt_template", preset.promptTemplate);
 
     setLoadedPresetId(preset.id);
+    try {
+      localStorage.setItem("prompt_generator_loaded_preset_id", preset.id);
+    } catch (e) {}
 
     const isCustom = customPresets.some(p => p.id === preset.id);
     if (isCustom) {
@@ -1505,14 +1508,41 @@ export default function PromptGeneratorPage() {
       setActiveEditingPresetId(matchingCustom.id);
       setNewPresetName(matchingCustom.name);
       setLoadedPresetId(matchingCustom.id);
+      try {
+        localStorage.setItem("prompt_generator_loaded_preset_id", matchingCustom.id);
+      } catch (e) {}
     } else if (matchingSys) {
       setActiveEditingPresetId(null);
       setNewPresetName("");
       setLoadedPresetId(matchingSys.id);
+      try {
+        localStorage.setItem("prompt_generator_loaded_preset_id", matchingSys.id);
+      } catch (e) {}
     } else {
-      setActiveEditingPresetId(null);
-      setNewPresetName("");
-      setLoadedPresetId(null);
+      // Current prompts don't match any preset exactly (e.g. user applied edits).
+      // Check if previously loaded preset still exists so we preserve its selection with [EDIT] badge.
+      const currentLoadedPreset = loadedPresetId
+        ? (customPresets.find(p => p.id === loadedPresetId) || presets.find(p => p.id === loadedPresetId) || null)
+        : null;
+
+      if (currentLoadedPreset) {
+        const isCustom = customPresets.some(p => p.id === currentLoadedPreset.id);
+        if (isCustom) {
+          setActiveEditingPresetId(currentLoadedPreset.id);
+          setNewPresetName(currentLoadedPreset.name);
+        } else {
+          setActiveEditingPresetId(null);
+          setNewPresetName("");
+        }
+        // Preserve loadedPresetId so modified preset remains selected with [EDIT] indicator
+      } else {
+        setActiveEditingPresetId(null);
+        setNewPresetName("");
+        setLoadedPresetId(null);
+        try {
+          localStorage.removeItem("prompt_generator_loaded_preset_id");
+        } catch (e) {}
+      }
     }
     
     setIsPromptConfigOpen(true);
@@ -1523,6 +1553,9 @@ export default function PromptGeneratorPage() {
     setPresetStatusBanner(null);
     setActiveEditingPresetId(null);
     setLoadedPresetId(null);
+    try {
+      localStorage.removeItem("prompt_generator_loaded_preset_id");
+    } catch (e) {}
     setNewPresetName("");
     setTempSystemPrompt("");
     setTempPromptTemplate("{{ visual_references }}\n\n---\n\n{{ idea }}");
@@ -1629,6 +1662,10 @@ export default function PromptGeneratorPage() {
     setCustomPresets(updated);
     localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(updated));
     setActiveEditingPresetId(newId);
+    setLoadedPresetId(newId);
+    try {
+      localStorage.setItem("prompt_generator_loaded_preset_id", newId);
+    } catch (e) {}
   };
 
   // Update an existing custom preset in local storage
@@ -1665,6 +1702,12 @@ export default function PromptGeneratorPage() {
     if (activeEditingPresetId === id) {
       setActiveEditingPresetId(null);
       setNewPresetName("");
+    }
+    if (loadedPresetId === id) {
+      setLoadedPresetId(null);
+      try {
+        localStorage.removeItem("prompt_generator_loaded_preset_id");
+      } catch (e) {}
     }
   };
 
@@ -2385,6 +2428,9 @@ export default function PromptGeneratorPage() {
                                         setActiveEditingPresetId(null);
                                         setNewPresetName("");
                                         setLoadedPresetId(preset.id);
+                                        try {
+                                          localStorage.setItem("prompt_generator_loaded_preset_id", preset.id);
+                                        } catch (e) {}
                                       }}
                                       className="flex-1 text-left cursor-pointer truncate flex items-center gap-1.5 justify-between min-w-0 px-2 py-1"
                                       title={hoverTitle}
@@ -2497,6 +2543,9 @@ export default function PromptGeneratorPage() {
                                         setActiveEditingPresetId(preset.id);
                                         setNewPresetName(preset.name);
                                         setLoadedPresetId(preset.id);
+                                        try {
+                                          localStorage.setItem("prompt_generator_loaded_preset_id", preset.id);
+                                        } catch (e) {}
                                       }}
                                       className="flex-1 text-left cursor-pointer truncate flex items-center gap-1.5 justify-between min-w-0 px-2 py-1"
                                       title={hoverTitle}
@@ -2557,12 +2606,15 @@ export default function PromptGeneratorPage() {
                       <h4 className="text-[10px] font-black uppercase tracking-wider text-[#1A1A1A]">
                         {activeEditingPresetId ? "Preset Workspace" : "Save Current As Preset"}
                       </h4>
-                      {activeEditingPresetId && (
+                      {loadedPresetId && (
                         <button
                           onClick={() => {
                             setActiveEditingPresetId(null);
                             setNewPresetName("");
                             setLoadedPresetId(null);
+                            try {
+                              localStorage.removeItem("prompt_generator_loaded_preset_id");
+                            } catch (e) {}
                           }}
                           className="text-[9px] font-mono font-bold text-red-500 hover:text-red-700 uppercase cursor-pointer"
                           title="Deselect loaded preset to start a new workspace"
