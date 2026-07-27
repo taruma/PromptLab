@@ -203,6 +203,7 @@ export async function POST(req: NextRequest) {
       async start(controller) {
         try {
           if (engineMode === "interaction_beta") {
+            console.log(">>> [POST /api/generate] Delegating to Interaction API Beta Adapter...");
             await createInteractionStreamResponse(
               {
                 variables,
@@ -224,6 +225,7 @@ export async function POST(req: NextRequest) {
             return;
           }
 
+          console.log(">>> [POST /api/generate] Executing Standard generateContentStream pipeline...");
           const responseStream = await activeAi.models.generateContentStream({
             model: model || "gemini-3.5-flash",
             contents: { parts },

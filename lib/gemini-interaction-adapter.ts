@@ -128,25 +128,41 @@ export async function createInteractionStreamResponse(
   };
 
   try {
-    // Check if aiClient supports interactions API (aiClient.interactions or aiClient.chats)
     const clientAny = aiClient as any;
     let responseStream: any;
 
-    if (clientAny.interactions && typeof clientAny.interactions.createStream === "function") {
-      responseStream = await clientAny.interactions.createStream({
+    if (clientAny.interactions && typeof clientAny.interactions.create === "function") {
+      console.log("[Engine Mode: INTERACTION BETA] Calling client.interactions.create({ stream: true })");
+      responseStream = await clientAny.interactions.create({
         model: model || "gemini-3.5-flash",
-        input: {
-          systemInstruction: systemPrompt,
-          parts: parts,
-        },
+        input: parts,
+        stream: true,
         config: {
+          systemInstruction: systemPrompt,
           temperature: temperature !== undefined ? Number(temperature) : 1.0,
           thinkingConfig,
           ...(maxTokens ? { maxOutputTokens: Number(maxTokens) } : {}),
         },
       });
+    } else if (clientAny.chats && typeof clientAny.chats.create === "function") {
+      console.log("[Engine Mode: INTERACTION BETA] Creating Interaction Session via client.chats.create");
+      const chatSession = clientAny.chats.create({
+        model: model || "gemini-3.5-flash",
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: temperature !== undefined ? Number(temperature) : 1.0,
+          thinkingConfig,
+          ...(maxTokens ? { maxOutputTokens: Number(maxTokens) } : {}),
+        },
+      });
+
+      try {
+        responseStream = await chatSession.sendMessageStream(parts);
+      } catch (err) {
+        responseStream = await chatSession.sendMessageStream({ message: parts });
+      }
     } else {
-      // Fallback for current SDK interface if interactions property is under models or chats
+      console.log("[Engine Mode: INTERACTION BETA] SDK fallback to models.generateContentStream adapter");
       const config: any = {
         systemInstruction: systemPrompt,
         temperature: temperature !== undefined ? Number(temperature) : 1.0,
@@ -207,9 +223,9 @@ export async function createInteractionStreamResponse(
       );
     }
   } catch (error: any) {
-    console.error("Error in Interaction API Stream:", error);
+    console.error("Error in Interaction API Stream execution:", error);
     controller.enqueue(
-      encoder.encode(`data: ${JSON.stringify({ error: error.message })}\n\n`)
+      encoder.encode(`data: ${JSON.stringify({ error: error.message || String(error) })}\n\n`)
     );
   }
 }
