@@ -299,6 +299,7 @@ export default function PromptGeneratorPage() {
   const [thinkingLevel, setThinkingLevel] = useState<string>("MEDIUM");
   const [temperature, setTemperature] = useState<number>(1.0);
   const [maxTokens, setMaxTokens] = useState<string>("");
+  const [engineMode, setEngineMode] = useState<"standard" | "interaction_beta">("standard");
   
   // Engine Controls Modal states
   const [isEngineConfigOpen, setIsEngineConfigOpen] = useState<boolean>(false);
@@ -572,6 +573,10 @@ export default function PromptGeneratorPage() {
         }
         if (savedMaxTokens) {
           setMaxTokens(savedMaxTokens);
+        }
+        const savedEngineMode = localStorage.getItem("prompt_generator_engine_mode");
+        if (savedEngineMode === "interaction_beta" || savedEngineMode === "standard") {
+          setEngineMode(savedEngineMode);
         }
 
         // Migrate or load custom API keys from vault
@@ -1820,6 +1825,7 @@ export default function PromptGeneratorPage() {
         temperature,
         maxTokens: maxTokens ? Number(maxTokens) : undefined,
         customApiKey: customApiKey ? customApiKey : undefined,
+        engineMode,
       };
 
       const res = await fetch("/api/generate", {
@@ -2150,6 +2156,7 @@ export default function PromptGeneratorPage() {
         thinkingLevel={thinkingLevel}
         temperature={temperature}
         activeApiKeyLabel={getActiveApiKeyLabel()}
+        engineMode={engineMode}
       />
 
       {/* Prompt Configuration Modal */}
@@ -2764,6 +2771,8 @@ export default function PromptGeneratorPage() {
         setMaxTokens={setMaxTokens}
         customApiKey={customApiKey}
         setCustomApiKey={setCustomApiKey}
+        engineMode={engineMode}
+        setEngineMode={setEngineMode}
       />
 
       {/* Clear Session Confirmation Modal */}

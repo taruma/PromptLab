@@ -17,6 +17,8 @@ interface EngineControlsModalProps {
   setMaxTokens: (tokens: string) => void;
   customApiKey: string;
   setCustomApiKey: (key: string) => void;
+  engineMode?: "standard" | "interaction_beta";
+  setEngineMode?: (mode: "standard" | "interaction_beta") => void;
 }
 
 interface ModelOption {
@@ -119,12 +121,15 @@ export default function EngineControlsModal({
   setMaxTokens,
   customApiKey,
   setCustomApiKey,
+  engineMode = "standard",
+  setEngineMode,
 }: EngineControlsModalProps) {
   const [tempModel, setTempModel] = useState<string>(selectedModel);
   const [tempThinkingLevel, setTempThinkingLevel] = useState<string>(thinkingLevel);
   const [tempTemperature, setTempTemperature] = useState<number>(temperature);
   const [tempMaxTokens, setTempMaxTokens] = useState<string>(maxTokens);
   const [tempCustomApiKey, setTempCustomApiKey] = useState<string>(customApiKey);
+  const [tempEngineMode, setTempEngineMode] = useState<"standard" | "interaction_beta">(engineMode);
 
   // API Key Vault states
   const [localKeys, setLocalKeys] = useState<{ id: string; label: string; key: string }[]>([]);
@@ -147,6 +152,7 @@ export default function EngineControlsModal({
       setTempTemperature(temperature);
       setTempMaxTokens(maxTokens);
       setTempCustomApiKey(customApiKey);
+      setTempEngineMode(engineMode);
       setIsVaultCollapsed(true);
       setIsAdvancedCollapsed(true);
       const isSpecificActive = SPECIFIC_MODELS.some((m) => m.id === selectedModel);
@@ -179,6 +185,9 @@ export default function EngineControlsModal({
     setTemperature(tempTemperature);
     setMaxTokens(tempMaxTokens);
     setCustomApiKey(tempCustomApiKey);
+    if (setEngineMode) {
+      setEngineMode(tempEngineMode);
+    }
 
     localStorage.setItem("prompt_generator_selected_model", tempModel);
     localStorage.setItem("prompt_generator_thinking_level", tempThinkingLevel);
@@ -186,6 +195,7 @@ export default function EngineControlsModal({
     localStorage.setItem("prompt_generator_max_tokens", tempMaxTokens);
     localStorage.setItem("prompt_generator_custom_api_keys", JSON.stringify(localKeys));
     localStorage.setItem("prompt_generator_active_api_key_id", localActiveKeyId);
+    localStorage.setItem("prompt_generator_engine_mode", tempEngineMode);
 
     onClose();
   };
@@ -197,6 +207,7 @@ export default function EngineControlsModal({
     setTempMaxTokens("");
     setTempCustomApiKey("");
     setLocalActiveKeyId("");
+    setTempEngineMode("standard");
   };
 
   return (
@@ -615,6 +626,61 @@ export default function EngineControlsModal({
             {/* Column 2: Parameters */}
             <div className="flex flex-col gap-5">
               
+              {/* Execution Engine Architecture Switch */}
+              <div className="flex flex-col gap-2.5 bg-white border border-[#D1D1CF] p-3.5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#1A1A1A]">
+                    Execution Engine Mode
+                  </h4>
+                  <span className="text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    Wrapper Ready
+                  </span>
+                </div>
+                <p className="text-[10px] text-[#888884] leading-normal">
+                  Select between the stable production stream or the new Gemini Interactions API wrapper.
+                </p>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => setTempEngineMode("standard")}
+                    className={`py-2 px-2.5 text-left border transition-all cursor-pointer rounded-none flex flex-col gap-0.5 ${
+                      tempEngineMode === "standard"
+                        ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                        : "bg-white text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
+                    }`}
+                  >
+                    <span className="font-bold text-[9.5px] uppercase tracking-wider font-mono">
+                      Standard Stream (v2)
+                    </span>
+                    <span className={`text-[8.5px] ${tempEngineMode === "standard" ? "text-stone-300" : "text-[#888884]"}`}>
+                      Production pipeline
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTempEngineMode("interaction_beta")}
+                    className={`py-2 px-2.5 text-left border transition-all cursor-pointer rounded-none flex flex-col gap-0.5 ${
+                      tempEngineMode === "interaction_beta"
+                        ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                        : "bg-white text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[9.5px] uppercase tracking-wider font-mono">
+                        Interactions API
+                      </span>
+                      <span className="text-[7.5px] font-black uppercase px-1 py-0.2 bg-emerald-500 text-white font-mono">
+                        BETA
+                      </span>
+                    </div>
+                    <span className={`text-[8.5px] ${tempEngineMode === "interaction_beta" ? "text-stone-300" : "text-[#888884]"}`}>
+                      Interactions wrapper
+                    </span>
+                  </button>
+                </div>
+              </div>
+
               {/* Reasoning Level Selector */}
               <div className="flex flex-col gap-2.5">
                 <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#1A1A1A]">

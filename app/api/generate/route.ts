@@ -26,6 +26,8 @@ interface UploadedVideo {
   mimeType?: string;
 }
 
+import { createInteractionStreamResponse } from "@/lib/gemini-interaction-adapter";
+
 export async function POST(req: NextRequest) {
   try {
     let { 
@@ -38,7 +40,8 @@ export async function POST(req: NextRequest) {
       thinkingLevel = "MEDIUM",
       temperature = 1.0,
       maxTokens,
-      customApiKey
+      customApiKey,
+      engineMode = "standard"
     } = await req.json() as {
       variables: Record<string, string>;
       images: UploadedImage[];
@@ -50,6 +53,7 @@ export async function POST(req: NextRequest) {
       temperature?: number;
       maxTokens?: number;
       customApiKey?: string;
+      engineMode?: "standard" | "interaction_beta";
     };
 
     // Determine the active API key and dynamic client instantiation
@@ -198,6 +202,28 @@ export async function POST(req: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          if (engineMode === "interaction_beta") {
+            await createInteractionStreamResponse(
+              {
+                variables,
+                images,
+                videos,
+                systemPrompt,
+                promptTemplate,
+                filledTemplate,
+                model,
+                thinkingLevel,
+                temperature,
+                maxTokens,
+                customApiKey,
+                defaultAi: ai,
+              },
+              encoder,
+              controller
+            );
+            return;
+          }
+
           const responseStream = await activeAi.models.generateContentStream({
             model: model || "gemini-3.5-flash",
             contents: { parts },
