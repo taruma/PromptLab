@@ -4,6 +4,14 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
+## [UNRELEASED]
+
+### Added
+
+- **Token usage tracking and estimated API cost.** A comprehensive token tracking and cost estimation system was introduced with the new `lib/pricing.ts` module containing a full model pricing configuration table covering 6 Gemini models (Gemini 3.6 Flash, 3.5 Flash, 3.5 Flash-Lite, 3.1 Pro Preview with tiered ≤200K / >200K pricing, 3.1 Flash-Lite, and 3 Flash Preview) with audio input rate support and model alias resolution. Server-side SSE streaming in the generation handler (`app/api/generate/route.ts`) now captures `usageMetadata` (prompt token count, candidates/output token count, total token count, and cached content token count) from each Gemini API stream chunk and broadcasts them as `usage` events to the client. The `GenerationResultView` output panel header was enhanced to display real-time token counts (`TOKENS: {total} ({prompt} IN [{cached} CACHED] / {candidates} OUT)`) and an emerald-green estimated API cost badge alongside the character count. The `EngineControlsModal` model selector cards now display per-model IN/OUT pricing rate badges in the footer of each card. Token usage data is persisted in `HistoryItem` objects via a `tokenUsage` field and an `estimatedCost` string (computed and stored at generation time via `calculateEstimatedCost()`), with both displayed as badges in `HistoryCardSummary` (token count + cost), surfaced in `HistoryViewerModal` detail panels, and preserved across history JSON import/export. Cost display prefers the stored `estimatedCost` field over recomputation from raw `tokenUsage` to ensure stable display even if future pricing updates change the underlying rates. The active token usage state is also persisted to `localStorage` (`prompt_generator_token_usage`) so it survives page refreshes alongside other session state.
+
+---
+
 ## [v2.2.0] — July 26, 2026
 
 ### Added
