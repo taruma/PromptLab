@@ -507,6 +507,14 @@ export default function PromptGeneratorPage() {
             if (savedFilledPrompt) {
               setFilledPrompt(savedFilledPrompt);
             }
+            const savedTokenUsage = localStorage.getItem("prompt_generator_token_usage");
+            if (savedTokenUsage) {
+              try {
+                setTokenUsage(JSON.parse(savedTokenUsage));
+              } catch (e) {
+                console.error("Failed to parse saved token usage", e);
+              }
+            }
           } catch (e) {
             console.error("Failed to parse saved output states", e);
           }
@@ -876,8 +884,13 @@ export default function PromptGeneratorPage() {
       localStorage.setItem("prompt_generator_generation_result", generationResult);
       localStorage.setItem("prompt_generator_thinking_result", thinkingResult);
       localStorage.setItem("prompt_generator_filled_prompt", filledPrompt);
+      if (tokenUsage) {
+        localStorage.setItem("prompt_generator_token_usage", JSON.stringify(tokenUsage));
+      } else {
+        localStorage.removeItem("prompt_generator_token_usage");
+      }
     }
-  }, [generationResult, thinkingResult, filledPrompt, isConfigLoaded]);
+  }, [generationResult, thinkingResult, filledPrompt, tokenUsage, isConfigLoaded]);
 
   // Handle escape key to close open modals
   useEffect(() => {
