@@ -1,4 +1,4 @@
-**PromptLab v2** transforms from a single-session prompt tester into a **persistent, multi-modal, multi-project creative environment**. Every generation is automatically archived with full context. A reusable asset library supports images, MP4 videos, and YouTube links — all combined into a unified reference pipeline. Independent workspaces keep your projects organized, a git-style diff viewer lets you compare prompt configurations side-by-side, and the redesigned thinking trace panel visualizes the engine's reasoning in real time. All of this runs on modern IndexedDB storage, so nothing gets lost between sessions.
+**PromptLab v2** transforms from a single-session prompt tester into a **persistent, multi-modal, multi-project creative environment**. Every generation is automatically archived with full context. A reusable asset library supports images, MP4 videos, and YouTube links — all combined into a unified reference pipeline. Large media files (up to 2 GB) stream directly to Gemini's Files API with real-time progress tracking and a built-in file browser for reusing previously uploaded assets. Independent workspaces keep your projects organized, a git-style diff viewer lets you compare prompt configurations side-by-side, and the redesigned thinking trace panel visualizes the engine's reasoning in real time. Real-time token usage and estimated API costs are tracked for every generation. All of this runs on modern IndexedDB storage, so nothing gets lost between sessions.
 
 ---
 
@@ -67,6 +67,27 @@ All engine settings are centralized in a dedicated modal with a multi-key vault 
 - Temperature and max token controls are tucked behind an expandable "Advanced" section
 - Existing legacy keys are automatically migrated into the vault
 
+### 📤 Gemini Files API — Direct Uploads & Smart Browser
+
+Upload images and videos up to 2 GB directly to Google's Gemini Files API via two upload paths — a high-speed direct resumable stream and a reliable chunked proxy — plus a "Select Existing" file browser for reusing previously uploaded assets without re-uploading.
+
+- Upload media up to 2 GB with a direct resumable upload that streams bytes straight to Google Cloud via XMLHttpRequest, bypassing Vercel's 4.5 MB request body limit
+- Automatic CORS verification confirms uploads in the background without error popups; chunked proxy fallback (2 MB chunks) ensures reliability when direct upload is blocked
+- Browse, search, and attach previously uploaded files from the "Select Existing" tab — each card shows filename, size, MIME type, ACTIVE/PROCESSING status, 48-hour expiration countdown, and a quick-copy fileUri
+- Server-side and client-side automatically poll media files stuck in PROCESSING state until they reach ACTIVE, with differentiated error messages for PROCESSING, FAILED, and expired states
+- The generation pipeline pre-verifies every fileUri before invoking generation — expired or inaccessible assets automatically fall back to inline Base64 data with clear asset-specific error reporting when fallback isn't possible
+- All Files API assets display an emerald-green FILES API badge on their cards with local preview playback; references persist in history for recall within their 48-hour lifecycle
+
+### 💰 Token Usage Tracking & Cost Estimation
+
+A comprehensive token tracking and cost estimation system gives you real-time visibility into generation costs, with per-model pricing badges in the engine controls and persistent cost data in your history.
+
+- Real-time token counts (prompt, candidates, cached, and total) displayed in the output panel header, updated live via SSE usage events
+- An emerald-green estimated cost badge computed from a 6-model pricing table (Gemini 3.6 Flash through 3.1 Flash-Lite) with tiered pricing support
+- Each model selection card in Engine Controls now displays per-model IN/OUT pricing rate badges in its footer
+- Token usage and estimated cost are stored in HistoryItem objects at generation time and preserved across JSON import/export, keeping your historical cost data stable even if pricing rates change
+- Active token usage persists to localStorage so counts survive page refreshes
+
 ---
 
 ## ✨ What's New
@@ -87,6 +108,18 @@ All engine settings are centralized in a dedicated modal with a multi-key vault 
 - 🔑 Multi-key API key vault with labeled keys and automatic legacy migration
 - 🟢 Optional Core Idea — generate without filling the Main Objective field
 - 📥 Collapsible generation output with persisted state
+- 📤 Gemini Files API integration — upload images/videos up to 2 GB via direct resumable or chunked proxy
+- 🔍 "Select Existing" file browser — browse, search, and re-attach previously uploaded Files API assets
+- 🔄 Automatic processing state polling with differentiated error guidance
+- 🛡️ Pre-verification with automatic Base64 fallback for expired or inaccessible assets
+- 💰 Real-time token usage tracking — prompt, candidates, cached, and total counts via SSE
+- 💵 Estimated API cost badge with 6-model pricing table and tiered rate support
+- 🎛️ Per-model IN/OUT pricing rate badges in the engine controls model selector
+- 💾 Cost and token data persisted in history for stable archival and export
+- 📌 Preset selection survives page refreshes — active preset stays loaded with an [EDIT] badge when modified
+- 🚫 Chunked upload pipeline prevents 413 "Request Entity Too Large" errors on large files
+- 🧹 Improved SSE error messages — 403 PERMISSION_DENIED on expired files now shows clear actionable guidance
+- 🖼️ Empty src attribute sanitization across six media components eliminates browser console warnings
 
 ---
 
