@@ -80,6 +80,7 @@ Key differentiators:
 │   ├── ParameterInputsSection.tsx   # Dynamic parameter form inputs section
 │   ├── PresetCompareModal.tsx       # Full-screen diff viewer for preset comparison (unified/split views)
 │   ├── PresetExportDropdown.tsx     # Bulk export dropdown (All/Favorites/Selected) for user presets
+│   ├── PresetImportConfirmModal.tsx # Preset import confirmation modal with duplicate/replace strategy toggle, summary breakdown grid, and expandable item inspector
 │   ├── ProjectManagerModal.tsx      # Full-screen project management dashboard (CRUD, import/export)
 │   ├── PromptTemplateHelpTooltip.tsx # Contextual help tooltip for {{ variable }} syntax guidance
 │   ├── QuickPresetSelector.tsx      # Rapid preset switching dropdown in AppHeader
@@ -93,13 +94,14 @@ Key differentiators:
 │   ├── indexeddb.ts                 # IndexedDB helper module (open, get, save, delete)
 │   ├── asset-library-export.ts     # Asset library JSON import/export utilities
 │   ├── history-export.ts           # History JSON import/export utilities
-│   ├── preset-export.ts            # User preset bulk export/import utilities (JSON)
+│   ├── preset-export.ts            # User preset bulk export/import utilities with duplicate detection, configurable import strategy (duplicate/replace), unique name generation, and skip-reason differentiation
 │   ├── projects.ts                 # Multi-project workspace management (CRUD, import/export, cross-tab sync)
 │   ├── pricing.ts                   # Model pricing table, cost estimation & token usage utilities
 │   ├── video-utils.ts              # Video validation and Base64 encoding utilities
 │   └── search-utils.ts             # Fuzzy search utilities (normalizeText, matchesSearchQuery) with tokenized matching
 ├── /hooks
-│   └── use-mobile.ts                # Screen size hook helper (< 768px breakpoint)
+│   ├── use-mobile.ts                # Screen size hook helper (< 768px breakpoint)
+│   └── use-url-preset-import.ts     # URL preset import logic hook: query param detection, fetch, validation, dedup, workspace application, and openJsonPresetImport for local file workflow
 ├── /assets                          # Reserved for future static asset storage (currently empty)
 ├── package.json                     # Project dependencies and scripts
 ├── tsconfig.json                    # TypeScript configuration (ES2017 target, bundler module resolution)
@@ -116,9 +118,9 @@ Key differentiators:
 
 ### app/page.tsx Internal Structure
 
-The main workspace file (~3,000 lines) is organized into these major sections:
+The main workspace file (~2,600 lines) is organized into these major sections:
 
-- **State Declarations**: ~35+ `useState` hooks covering prompt config (system/prompt text, active presets, variables, inputs), engine parameters (model, temperature, reasoning/maxTokens), visual assets (uploaded images + videos, asset library sidebar), generation state (result, thinking trace, filled prompt, token usage, loading flags), project management (projects list, active project, project manager modal toggle), history (items, favorites, filter tab), preset management (editing ID, loaded ID, new name, status banner), and modal visibility toggles.
+- **State Declarations**: ~30+ `useState` hooks covering prompt config (system/prompt text, active presets, variables, inputs), engine parameters (model, temperature, reasoning/maxTokens), visual assets (uploaded images + videos, asset library sidebar), generation state (result, thinking trace, filled prompt, token usage, loading flags), project management (projects list, active project, project manager modal toggle), history (items, favorites, filter tab), preset management (editing ID, loaded ID, new name, status banner), and modal visibility toggles. URL preset import states (preset data, pending/error/success messages, import strategy) were extracted into the `useUrlPresetImport` hook.
 - **localStorage Persistence Effects**: `useEffect` hooks auto-load session state on mount (prompt config, engine params, variables, uploaded image metadata, collapsed sections, token usage via `prompt_generator_token_usage`). Additional effects persist changes back to localStorage as the user edits. The `syncActiveProjectToLocalStorage()` bridge writes project-level data (prompts, presets, history, assets) to legacy localStorage keys for backward compatibility.
 - **Project Initialization & Switching**: `initProjects()` runs on mount to load projects from IndexedDB, migrate legacy localStorage data into a default "Main Workspace" project on first access, and sync the active project to localStorage. The `onSwitchProject` handler swaps the active project, reloads state from IndexedDB, and broadcasts the change via `BroadcastChannel` for cross-tab synchronization.
 - **Template Variable Extraction**: `extractVariables()` parses `{{ placeholder }}` tokens from the prompt template, excluding reserved keywords (`visual_references`, `cast`, `idea`). The dynamic form fields are rendered from this extracted list.
@@ -236,13 +238,12 @@ The workspace reads dynamic template specifications from the currently configure
 - **Storage Warning**: If localStorage quota is exceeded during metadata save, a dismissible warning banner appears notifying the user that images are active for the session but cannot be cached locally.
 
 ### Rule I: URL Preset Import
-- **Query Parameter Detection**: The app accepts `?presetUrl=`, `?configUrl=`, `?preset=`, or `?config=` query parameters (one at a time) pointing to a remote JSON preset file.
+- **Query Parameter Detection**: The app accepts `?presetUrl=`, `?configUrl=`, `?preset=`, `?config=`, or `?preseturl=` query parameters (one at a time) pointing to a remote JSON preset file.
 - **GitHub URL Auto-Conversion**: GitHub blob URLs (e.g., `github.com/user/repo/blob/branch/file.json`) are automatically converted to raw URLs (`raw.githubusercontent.com/...`).
-- **Confirmation Modal**: A modal dialog displays the preset name, source URL, and two import options:
-  - **Preserve Core Idea**: Keep the current "Main Objective / Idea" text
-  - **Reset Active Session**: Clear all other active variables, uploaded assets, and outputs
-- **Security**: URL parameters are automatically cleaned from the browser history after import/cancel.
-- **Error Handling**: Failed fetches show a dismissible error toast with troubleshooting guidance.
+- **Import Confirmation Modal** (`PresetImportConfirmModal`): A redesigned modal dialog displays the preset name, source URL, and a **Duplicate vs. Replace** strategy selector (segmented toggle — "Create Duplicate" assigns a fresh ID with auto-incrementing name suffix on conflicts, "Replace Existing" overwrites the matching preset by its ID). A four-column summary grid shows Detected / New / Replaced / Skipped counts, and an expandable scrollable list of individual preset items with action badges (`NEW`, `REPLACE`, `SKIPPED`) and skip-reason explanations. A checkbox optionally applies the imported preset directly to the active workspace ("Apply as Active Workspace Prompt").
+- **Centralized Import Hook**: All URL preset import logic (query parameter detection, remote fetch, preset parsing, duplicate evaluation, workspace application, and localStorage persistence) is centralized in the `useUrlPresetImport` custom hook (`hooks/use-url-preset-import.ts`). The hook also exposes `openJsonPresetImport()` for triggering the same import workflow from local JSON file uploads in the Configure Prompts modal.
+- **Security**: URL parameters are automatically cleaned from the browser history after import/cancel (via `cleanUrlParam()`).
+- **Error Handling**: Failed fetches show a dismissible error toast with troubleshooting guidance. The loading state renders a full-screen spinner with "Fetching Remote Preset..." text.
 
 ### Rule J: Custom User Presets (localStorage)
 - **CRUD Operations & Preset Updates**: Users can save, load, delete, and update custom presets entirely client-side via localStorage key `prompt_generator_custom_presets`.
@@ -288,7 +289,7 @@ The workspace reads dynamic template specifications from the currently configure
 - **Bulk Export Dropdown**: The `PresetExportDropdown` component (placed in the Configure Prompts modal header) provides a compact dropdown menu for exporting user presets in bulk with three modes: **Export All**, **Export Favorites**, and **Export Active Preset**. Each option shows a live count badge.
 - **Export Payload Format**: Exports produce a JSON file (`promptlab_{projectSlug}_preset_{tag}_{date}_{time}_{uniqueId}.json`) conforming to the `PresetExportPayload` interface with version (`"1.0"`), type (`"promptlab_presets_export"`), exportedAt timestamp, exportType, itemCount, and an array of `UserPreset` objects. The `projectSlug` prefix is derived from the active project name.
 - **UserPreset Interface**: Each preset carries `id` (string), `name` (string), `systemPrompt` (string), `promptTemplate` (string), and optional `isFavorite` (boolean), `createdAt` (string), and `updatedAt` (string) fields. The `UserPreset` interface is defined in `lib/preset-export.ts` and shared across the Configure Prompts modal and the export dropdown.
-- **Import with Duplicate Detection**: Imported JSON files are validated for structure (accepts raw arrays, `presets`-wrapped arrays, `items`-wrapped arrays, or single preset objects). Duplicates are detected by matching both ID and name+content combinations against existing presets, with skipped entries reported in the import summary.
+- **Import with Duplicate Detection & Configurable Strategy**: Imported JSON files are validated for structure (accepts raw arrays, `presets`-wrapped arrays, `items`-wrapped arrays, `{ preset: ... }` single-wrapper objects, or single preset objects). The `importPresetsFromJSON()` utility supports a configurable `importStrategy` option: **Duplicate** (default — creates a fresh ID with auto-incrementing name suffix like `"My Preset (2)"` on conflicts) and **Replace** (overwrites the matching preset by its ID in-place). Returns `importedCount`, `replacedCount`, `skippedCount`, and a `processedItems` array of `ProcessedImportItem` objects carrying `action` (`"imported"`, `"replaced"`, `"skipped"`) and `skipReason` (`"exact_match"` for identical IDs, `"content_match_different_id"` for same content but different IDs). Unique preset names are generated via auto-incrementing numeric suffixes on name conflicts.
 - **Favorite/Pinned Reconciliation**: The export utility accepts a `pinnedPresetIds` array to reconcile `isFavorite` status. On import, any preset marked as favorite/pinned is automatically added to the pinned IDs set.
 - **Filename Conventions**: Export filenames include the date (YYYY-MM-DD), a compact timestamp (HHMMSS), and a unique 4-character random suffix. For "selected" exports, the active preset's slugified name is used as the tag instead of the export type.
 

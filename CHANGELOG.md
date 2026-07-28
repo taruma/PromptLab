@@ -4,6 +4,27 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
+## [UNRELEASED]
+
+### Added
+
+- **Configurable preset import strategy (Duplicate vs. Replace).** When importing presets via URL query parameters or local JSON files, users can now choose between two strategies: **Create Duplicate** (default, safe — assigns a fresh ID and auto-increments the name with a numeric suffix like `"My Preset (2)"` on ID or name conflicts) and **Replace Existing** (overwrites the matching preset by its ID with the incoming content). The strategy toggle is rendered as a segmented control in the redesigned `PresetImportConfirmModal`, and re-evaluates the import result live when switched.
+- **Redesigned PresetImportConfirmModal with summary breakdown and expandable item inspector.** The import confirmation modal (`components/PresetImportConfirmModal.tsx`) replaces the previous simple confirmation dialog with a rich interface displaying: a source metadata box (name, source URL/file), a four-column summary grid (Detected / New / Replaced / Skipped counts), and an expandable, scrollable list of individual preset items with action badges (`NEW`, `REPLACE`, `SKIPPED`). Skipped items reveal a reason explanation (exact ID match or identical name+content match). A checkbox lets users optionally apply the imported preset directly to the active workspace.
+- **Unified URL and local JSON file preset import flow.** The "Import JSON" action in the Configure Prompts modal now routes through the same `openJsonPresetImport()` pipeline used by URL imports, giving local file imports the strategy selector, summary breakdown, and item inspector. Both flows share the `PresetImportConfirmModal` and `useUrlPresetImport` hook.
+- **`preseturl` query parameter support.** The URL preset import detector now also recognizes `?preseturl=` (case-insensitive) in addition to the existing `presetUrl`, `configUrl`, `preset`, and `config` parameters.
+- **Skip-reason differentiation in `importPresetsFromJSON()`.** The core import utility now returns a `processedItems` array of `ProcessedImportItem` objects with `action` and `skipReason` fields. Skip reasons distinguish between `exact_match` (identical ID) and `content_match_different_id` (same name + identical prompts but different ID), providing clear feedback in the import modal.
+
+### Changed
+
+- **Enhanced `importPresetsFromJSON()` with replace strategy, unique name generation, and expanded JSON format support.** The import utility in `lib/preset-export.ts` now accepts an `options.importStrategy` parameter, returns `replacedCount` alongside `importedCount` and `skippedCount`, and generates unique preset names via an auto-incrementing suffix (e.g., `"My Preset (2)"`) when duplicates are detected. It also accepts `{ preset: ... }` single-wrapper JSON objects as a valid import source format. In replace mode, existing presets matched by ID are overwritten in-place while preserving their position in the working array.
+
+### Architecture & Refactoring
+
+- **Extracted URL preset import logic into `hooks/use-url-preset-import.ts`.** ~400+ lines of state management, URL query parameter detection, remote fetch, preset parsing, duplicate evaluation, workspace application, and localStorage persistence were moved from `app/page.tsx` into a standalone custom hook. The hook exposes `openJsonPresetImport()` for triggering the same import workflow from local file uploads and an `onSetImportStrategy` callback for live strategy switching.
+- **Extracted `PresetImportConfirmModal` component.** The import confirmation UI (preset metadata card, strategy selector, summary grid, expandable item list, workspace-application checkbox, loading spinner, error toast, and success toast) was split into its own component at `components/PresetImportConfirmModal.tsx` with a clean `PresetImportConfirmModalProps` interface.
+
+---
+
 ## [v2.3.0] — July 28, 2026
 
 ### Added
