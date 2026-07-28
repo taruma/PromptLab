@@ -176,12 +176,28 @@ export async function POST(req: NextRequest) {
       const img = imageList[i];
       if ((img.isFilesApi || img.fileUri) && img.fileUri) {
         let fileDataValid = false;
+        let lastFileState: string | undefined = undefined;
         try {
           const fileName = img.fileUri.includes("/files/")
             ? "files/" + img.fileUri.split("/files/")[1]
             : (img.fileUri.startsWith("files/") ? img.fileUri : `files/${img.fileUri}`);
 
-          const fileObj: any = await activeAi.files.get({ name: fileName });
+          let fileObj: any = await activeAi.files.get({ name: fileName });
+          lastFileState = fileObj?.state;
+
+          // If the file is still PROCESSING (common right after video/image upload), poll for state to become ACTIVE
+          let pollAttempts = 0;
+          while (fileObj && fileObj.state === "PROCESSING" && pollAttempts < 15) {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            try {
+              fileObj = await activeAi.files.get({ name: fileName });
+              lastFileState = fileObj?.state;
+            } catch {
+              break;
+            }
+            pollAttempts++;
+          }
+
           if (fileObj && (fileObj.state === "ACTIVE" || !fileObj.state)) {
             fileDataValid = true;
             parts.push({
@@ -191,7 +207,7 @@ export async function POST(req: NextRequest) {
               }
             });
           } else {
-            console.warn(`Files API image file '${fileName}' is in state '${fileObj?.state}'`);
+            console.warn(`Files API image file '${fileName}' ended in state '${fileObj?.state}'`);
           }
         } catch (fileErr: any) {
           console.warn(`Files API check failed for image fileUri '${img.fileUri}':`, fileErr?.message || fileErr);
@@ -212,9 +228,19 @@ export async function POST(req: NextRequest) {
             });
           } else {
             const fileId = img.fileUri.includes("/files/") ? img.fileUri.split("/files/")[1] : img.fileUri;
-            throw new Error(
-              `Gemini Files API Error: The uploaded reference image '@image${i + 1}' (${img.label || "Image"}) referencing '${fileId}' is no longer accessible on Gemini Files API. Files API assets automatically expire after 48 hours or require the same API key used during upload. Please remove or re-upload this asset in the 'Visual Assets' section.`
-            );
+            if (lastFileState === "PROCESSING") {
+              throw new Error(
+                `Gemini Files API Notice: The uploaded reference image '@image${i + 1}' (${img.label || "Image"}) referencing '${fileId}' is still being processed by Google Gemini (state: PROCESSING). Please wait a few seconds for media encoding to complete and try generating again.`
+              );
+            } else if (lastFileState === "FAILED") {
+              throw new Error(
+                `Gemini Files API Error: Media processing failed on Google Gemini Files API for '@image${i + 1}' (${img.label || "Image"}) referencing '${fileId}'. Please re-upload or select a different asset.`
+              );
+            } else {
+              throw new Error(
+                `Gemini Files API Error: The uploaded reference image '@image${i + 1}' (${img.label || "Image"}) referencing '${fileId}' is no longer accessible on Gemini Files API. Files API assets automatically expire after 48 hours or require the same API key used during upload. Please remove or re-upload this asset in the 'Visual Assets' section.`
+              );
+            }
           }
         }
       } else if (img.base64 && !img.base64.startsWith("blob:")) {
@@ -238,12 +264,28 @@ export async function POST(req: NextRequest) {
       const vid = videoList[i];
       if ((vid.isFilesApi || vid.fileUri) && vid.fileUri) {
         let fileDataValid = false;
+        let lastFileState: string | undefined = undefined;
         try {
           const fileName = vid.fileUri.includes("/files/")
             ? "files/" + vid.fileUri.split("/files/")[1]
             : (vid.fileUri.startsWith("files/") ? vid.fileUri : `files/${vid.fileUri}`);
 
-          const fileObj: any = await activeAi.files.get({ name: fileName });
+          let fileObj: any = await activeAi.files.get({ name: fileName });
+          lastFileState = fileObj?.state;
+
+          // If the file is still PROCESSING (common right after video upload), poll for state to become ACTIVE
+          let pollAttempts = 0;
+          while (fileObj && fileObj.state === "PROCESSING" && pollAttempts < 15) {
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            try {
+              fileObj = await activeAi.files.get({ name: fileName });
+              lastFileState = fileObj?.state;
+            } catch {
+              break;
+            }
+            pollAttempts++;
+          }
+
           if (fileObj && (fileObj.state === "ACTIVE" || !fileObj.state)) {
             fileDataValid = true;
             parts.push({
@@ -253,7 +295,7 @@ export async function POST(req: NextRequest) {
               }
             });
           } else {
-            console.warn(`Files API video file '${fileName}' is in state '${fileObj?.state}'`);
+            console.warn(`Files API video file '${fileName}' ended in state '${fileObj?.state}'`);
           }
         } catch (fileErr: any) {
           console.warn(`Files API check failed for video fileUri '${vid.fileUri}':`, fileErr?.message || fileErr);
@@ -274,9 +316,19 @@ export async function POST(req: NextRequest) {
             });
           } else {
             const fileId = vid.fileUri.includes("/files/") ? vid.fileUri.split("/files/")[1] : vid.fileUri;
-            throw new Error(
-              `Gemini Files API Error: The uploaded reference video '@video${i + 1}' (${vid.label || "Video"}) referencing '${fileId}' is no longer accessible on Gemini Files API. Files API assets automatically expire after 48 hours or require the same API key used during upload. Please remove or re-upload this asset in the 'Visual Assets' section.`
-            );
+            if (lastFileState === "PROCESSING") {
+              throw new Error(
+                `Gemini Files API Notice: The uploaded reference video '@video${i + 1}' (${vid.label || "Video"}) referencing '${fileId}' is still being processed by Google Gemini (state: PROCESSING). Please wait a few seconds for media encoding to complete and try generating again.`
+              );
+            } else if (lastFileState === "FAILED") {
+              throw new Error(
+                `Gemini Files API Error: Media processing failed on Google Gemini Files API for '@video${i + 1}' (${vid.label || "Video"}) referencing '${fileId}'. Please re-upload or select a different asset.`
+              );
+            } else {
+              throw new Error(
+                `Gemini Files API Error: The uploaded reference video '@video${i + 1}' (${vid.label || "Video"}) referencing '${fileId}' is no longer accessible on Gemini Files API. Files API assets automatically expire after 48 hours or require the same API key used during upload. Please remove or re-upload this asset in the 'Visual Assets' section.`
+              );
+            }
           }
         }
       } else if (vid.youtubeUrl) {

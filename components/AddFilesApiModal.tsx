@@ -262,11 +262,37 @@ export default function AddFilesApiModal({
 
     // Option A: If browser allowed reading response directly
     if (!directUploadFailed && directUploadRes) {
-      const fileResource = directUploadRes.file || directUploadRes;
+      let fileResource = directUploadRes.file || directUploadRes;
       const isImage = fileToUpload.type.startsWith("image/");
       const resolvedUri = fileResource.uri || fileResource.fileUri || (fileResource.name ? `https://generativelanguage.googleapis.com/v1beta/${fileResource.name.startsWith("files/") ? fileResource.name : `files/${fileResource.name}`}` : "");
 
       if (resolvedUri) {
+        // Poll briefly if file is in PROCESSING state (e.g. video files decoding on Gemini)
+        if (fileResource.state === "PROCESSING") {
+          setUploadProgressPercent(95);
+          setUploadProgressStatus("Processing media tracks on Google Cloud...");
+          const fileName = fileResource.name;
+          let pollCount = 0;
+          while (fileResource.state === "PROCESSING" && pollCount < 8) {
+            await new Promise((r) => setTimeout(r, 1500));
+            try {
+              const listRes = await fetch("/api/upload-file", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "list", customApiKey }),
+              });
+              if (listRes.ok) {
+                const { files } = await listRes.json();
+                const found = (files || []).find((f: any) => f.name === fileName || f.fileUri === resolvedUri);
+                if (found && found.state) {
+                  fileResource = found;
+                }
+              }
+            } catch {}
+            pollCount++;
+          }
+        }
+
         setUploadProgressPercent(100);
         setUploadProgressStatus("Upload complete! File is ACTIVE.");
 
@@ -289,44 +315,75 @@ export default function AddFilesApiModal({
     }
 
     // Option B: If browser CORS blocked reading completion response, verify file on Google Files API
-    setUploadProgressPercent(95);
+    setUploadProgressPercent(90);
     setUploadProgressStatus("Verifying uploaded file with Gemini API...");
 
     try {
-      const listRes = await fetch("/api/upload-file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "list", customApiKey }),
-      });
+      let matched: any = null;
+      let verifyPollCount = 0;
 
-      if (listRes.ok) {
-        const { files } = await listRes.json();
-        const matched = (files || []).find((f: any) =>
-          (f.displayName === fileToUpload.name || f.name === fileToUpload.name) &&
-          Math.abs((Number(f.sizeBytes) || 0) - fileToUpload.size) < 2000
-        );
+      while (!matched && verifyPollCount < 10) {
+        const listRes = await fetch("/api/upload-file", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "list", customApiKey }),
+        });
 
-        if (matched) {
-          setUploadProgressPercent(100);
-          setUploadProgressStatus("Upload complete! File is ACTIVE.");
-
-          const isImage = fileToUpload.type.startsWith("image/");
-          onUploadSuccess({
-            label: label.trim() || fileToUpload.name,
-            fileUri: matched.fileUri,
-            mimeType: matched.mimeType || fileToUpload.type,
-            sizeBytes: Number(matched.sizeBytes) || fileToUpload.size,
-            expirationTime: matched.expirationTime,
-            isImage,
-            fileObj: fileToUpload,
-          });
-
-          setSelectedFile(null);
-          setLabel("");
-          setIsUploading(false);
-          onClose();
-          return true;
+        if (listRes.ok) {
+          const { files } = await listRes.json();
+          matched = (files || []).find((f: any) =>
+            (f.displayName === fileToUpload.name || f.name === fileToUpload.name) &&
+            Math.abs((Number(f.sizeBytes) || 0) - fileToUpload.size) < 2000
+          );
         }
+
+        if (!matched) {
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+        verifyPollCount++;
+      }
+
+      if (matched) {
+        // Poll if matched file is still processing
+        let pollCount = 0;
+        while (matched.state === "PROCESSING" && pollCount < 8) {
+          setUploadProgressPercent(95);
+          setUploadProgressStatus("Processing media tracks on Google Cloud...");
+          await new Promise((r) => setTimeout(r, 1500));
+          try {
+            const listRes = await fetch("/api/upload-file", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "list", customApiKey }),
+            });
+            if (listRes.ok) {
+              const { files } = await listRes.json();
+              const updated = (files || []).find((f: any) => f.name === matched.name || f.fileUri === matched.fileUri);
+              if (updated) matched = updated;
+            }
+          } catch {}
+          pollCount++;
+        }
+
+        setUploadProgressPercent(100);
+        setUploadProgressStatus("Upload complete! File is ACTIVE.");
+
+        const isImage = fileToUpload.type.startsWith("image/");
+        onUploadSuccess({
+          label: label.trim() || fileToUpload.name,
+          fileUri: matched.fileUri,
+          mimeType: matched.mimeType || fileToUpload.type,
+          sizeBytes: Number(matched.sizeBytes) || fileToUpload.size,
+          expirationTime: matched.expirationTime,
+          isImage,
+          fileObj: fileToUpload,
+        });
+
+        setSelectedFile(null);
+        setLabel("");
+        setIsUploading(false);
+        onClose();
+        return true;
       }
     } catch (verifyErr) {
       console.warn("Error verifying file list:", verifyErr);
