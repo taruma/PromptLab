@@ -112,19 +112,31 @@ export function exportPresetsToJSON(
   return { count: presetsToExport.length, filename };
 }
 
+export interface ProcessedImportItem {
+  preset: UserPreset;
+  action: "imported" | "replaced" | "skipped";
+  skipReason?: "exact_match" | "content_match_different_id";
+}
+
 /**
- * Import user presets from JSON text with duplicate detection.
+ * Import user presets from JSON text with duplicate detection and configurable strategy.
  */
 export function importPresetsFromJSON(
   jsonText: string,
   currentPresets: UserPreset[],
-  pinnedPresetIds: string[] = []
+  pinnedPresetIds: string[] = [],
+  options: { importStrategy?: "duplicate" | "replace" } = {}
 ): {
   updatedPresets: UserPreset[];
   newPinnedIds: string[];
   importedCount: number;
+  replacedCount: number;
   skippedCount: number;
+  processedItems: ProcessedImportItem[];
 } {
+  const importStrategy = options.importStrategy || "duplicate";
+  const processedItems: ProcessedImportItem[] = [];
+
   let parsedData: any;
   try {
     parsedData = JSON.parse(jsonText);
@@ -156,35 +168,52 @@ export function importPresetsFromJSON(
   }
 
   const now = Date.now();
+  const nowISO = new Date(now).toISOString();
+
+  // Working copy of current presets
+  const workingPresets = [...currentPresets];
   const processedNewPresets: UserPreset[] = [];
   const newPinnedIds: string[] = [];
-  let skippedCount = 0;
 
-  // Set of existing duplicate checks
-  const existingIds = new Set(currentPresets.map((p) => p.id));
+  // Track existing IDs and lowercase Names
+  const existingIdMap = new Map<string, UserPreset>();
+  const existingNamesSet = new Set<string>();
 
-  // Helper to test if a raw item is a duplicate of existing or already processed presets
-  const isDuplicate = (item: any, existingList: UserPreset[]): boolean => {
-    const rawId = item.id;
-    if (rawId && existingIds.has(rawId)) {
-      return true;
+  currentPresets.forEach((p) => {
+    existingIdMap.set(p.id, p);
+    if (p.name) {
+      existingNamesSet.add(p.name.trim().toLowerCase());
+    }
+  });
+
+  const getUniquePresetName = (baseName: string, nameSet: Set<string>): string => {
+    const trimmed = baseName.trim() || "Imported Preset";
+    if (!nameSet.has(trimmed.toLowerCase())) {
+      nameSet.add(trimmed.toLowerCase());
+      return trimmed;
     }
 
-    const rawName = String(item.name || "").trim().toLowerCase();
-    const rawSys = String(item.systemPrompt || "");
-    const rawTpl = String(item.promptTemplate || "");
+    let coreName = trimmed;
+    let counter = 1;
+    const match = trimmed.match(/^(.*?)\s*\((\d+)\)$/);
+    if (match) {
+      coreName = match[1].trim();
+      counter = parseInt(match[2], 10) + 1;
+    }
 
-    return existingList.some((p) => {
-      const existingName = p.name.trim().toLowerCase();
-      // Match if same name AND identical prompts
-      if (rawName && existingName === rawName && p.systemPrompt === rawSys && p.promptTemplate === rawTpl) {
-        return true;
+    while (true) {
+      const candidate = `${coreName} (${counter})`;
+      if (!nameSet.has(candidate.toLowerCase())) {
+        nameSet.add(candidate.toLowerCase());
+        return candidate;
       }
-      return false;
-    });
+      counter++;
+    }
   };
 
-  const combinedListForCheck = [...currentPresets];
+  let importedCount = 0;
+  let replacedCount = 0;
+  let skippedCount = 0;
 
   rawItems.forEach((rawItem, idx) => {
     const systemPrompt = String(rawItem.systemPrompt || "");
@@ -195,45 +224,101 @@ export function importPresetsFromJSON(
       return;
     }
 
-    if (isDuplicate(rawItem, combinedListForCheck)) {
+    const rawId = rawItem.id ? String(rawItem.id) : null;
+    const rawName = String(rawItem.name || "Imported Preset").trim();
+    const isFav = Boolean(rawItem.isFavorite ?? rawItem.isPinned);
+
+    // 1. Check if an identical preset already exists (same name AND same systemPrompt AND same promptTemplate)
+    const exactMatch = workingPresets.find((p) => {
+      const sameName = (p.name || "").trim().toLowerCase() === rawName.toLowerCase();
+      const sameSys = (p.systemPrompt || "").trim() === systemPrompt.trim();
+      const sameTmpl = (p.promptTemplate || "").trim() === promptTemplate.trim();
+      return sameName && sameSys && sameTmpl;
+    });
+
+    if (exactMatch) {
+      // The preset is completely identical to an existing preset in the library; skip creating a duplicate
       skippedCount++;
+      processedItems.push({
+        preset: exactMatch,
+        action: "skipped",
+        skipReason: exactMatch.id === rawId ? "exact_match" : "content_match_different_id",
+      });
       return;
     }
 
-    const isFav = Boolean(rawItem.isFavorite ?? rawItem.isPinned);
-    const newId = rawItem.id && !existingIds.has(rawItem.id)
-      ? rawItem.id
-      : `custom-preset-${now}-${idx}-${Math.random().toString(36).substring(2, 6)}`;
+    // Check if ID exists in original or updated list
+    const existingIndex = rawId ? workingPresets.findIndex((p) => p.id === rawId) : -1;
 
-    const nowISO = new Date(now).toISOString();
-    const createdAt = rawItem.createdAt ? String(rawItem.createdAt) : nowISO;
-    const updatedAt = rawItem.updatedAt ? String(rawItem.updatedAt) : createdAt;
+    if (importStrategy === "replace" && existingIndex !== -1 && rawId) {
+      // Overwrite existing preset with matching ID
+      const targetPreset = workingPresets[existingIndex];
+      const updatedPreset: UserPreset = {
+        ...targetPreset,
+        name: rawName || targetPreset.name,
+        systemPrompt,
+        promptTemplate,
+        isFavorite: isFav ?? targetPreset.isFavorite,
+        updatedAt: nowISO,
+      };
+      workingPresets[existingIndex] = updatedPreset;
+      existingIdMap.set(rawId, updatedPreset);
+      replacedCount++;
+      processedItems.push({ preset: updatedPreset, action: "replaced" });
 
-    const newPreset: UserPreset = {
-      id: newId,
-      name: String(rawItem.name || "Imported Preset").trim(),
-      systemPrompt,
-      promptTemplate,
-      isFavorite: isFav,
-      createdAt,
-      updatedAt,
-    };
+      if (isFav) {
+        newPinnedIds.push(rawId);
+      }
+    } else {
+      // Duplicate mode (default) OR replace mode for new IDs
+      const isIdConflict = Boolean(rawId && existingIdMap.has(rawId));
+      const shouldAssignFreshId = (importStrategy === "duplicate" && isIdConflict) || !rawId || isIdConflict;
 
-    if (isFav) {
-      newPinnedIds.push(newId);
+      const newId = shouldAssignFreshId
+        ? `custom-preset-${now}-${idx}-${Math.random().toString(36).substring(2, 6)}`
+        : rawId;
+
+      // Unique name if duplicate mode with conflict OR name conflict
+      const isNameConflict = existingNamesSet.has(rawName.toLowerCase());
+      const shouldSuffixName = (importStrategy === "duplicate" && (isIdConflict || isNameConflict)) || isNameConflict;
+
+      const finalName = shouldSuffixName
+        ? getUniquePresetName(rawName, existingNamesSet)
+        : rawName;
+
+      existingNamesSet.add(finalName.toLowerCase());
+
+      const createdAt = rawItem.createdAt ? String(rawItem.createdAt) : nowISO;
+      const updatedAt = rawItem.updatedAt ? String(rawItem.updatedAt) : createdAt;
+
+      const newPreset: UserPreset = {
+        id: newId,
+        name: finalName,
+        systemPrompt,
+        promptTemplate,
+        isFavorite: isFav,
+        createdAt,
+        updatedAt,
+      };
+
+      if (isFav) {
+        newPinnedIds.push(newId);
+      }
+
+      processedNewPresets.push(newPreset);
+      workingPresets.push(newPreset);
+      existingIdMap.set(newId, newPreset);
+      importedCount++;
+      processedItems.push({ preset: newPreset, action: "imported" });
     }
-
-    processedNewPresets.push(newPreset);
-    combinedListForCheck.push(newPreset);
-    existingIds.add(newId);
   });
 
-  const updatedPresets = [...currentPresets, ...processedNewPresets];
-
   return {
-    updatedPresets,
+    updatedPresets: workingPresets,
     newPinnedIds,
-    importedCount: processedNewPresets.length,
+    importedCount,
+    replacedCount,
     skippedCount,
+    processedItems,
   };
 }

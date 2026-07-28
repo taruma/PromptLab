@@ -43,7 +43,7 @@ import LoadWorkspaceConfirmModal from "../components/LoadWorkspaceConfirmModal";
 import DeleteHistoryConfirmModal from "../components/DeleteHistoryConfirmModal";
 import DiscardChangesConfirmModal from "../components/DiscardChangesConfirmModal";
 import PresetExportDropdown from "../components/PresetExportDropdown";
-import UrlImportConfirmModal from "../components/UrlImportConfirmModal";
+import PresetImportConfirmModal from "../components/PresetImportConfirmModal";
 import AddYouTubeModal from "../components/AddYouTubeModal";
 import AddFilesApiModal from "../components/AddFilesApiModal";
 import YouTubeIcon from "../components/YouTubeIcon";
@@ -342,6 +342,9 @@ export default function PromptGeneratorPage() {
     setUrlImportSuccessMsg,
     applyToWorkspace,
     setApplyToWorkspace,
+    importStrategy,
+    onSetImportStrategy,
+    openJsonPresetImport,
     handleApplyUrlPreset,
     handleCancelUrlPreset,
   } = useUrlPresetImport({
@@ -1554,39 +1557,10 @@ export default function PromptGeneratorPage() {
     reader.onload = (event) => {
       try {
         const jsonText = event.target?.result as string;
-        const { updatedPresets, newPinnedIds, importedCount, skippedCount } = importPresetsFromJSON(
-          jsonText,
-          customPresets,
-          pinnedPresetIds
-        );
-
-        if (importedCount === 0 && skippedCount === 0) {
-          setPresetStatusBanner({
-            message: "No valid user presets found in the imported file.",
-            isError: true
-          });
-          return;
-        }
-
-        if (importedCount > 0) {
-          setCustomPresets(updatedPresets);
-          localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(updatedPresets));
-
-          if (newPinnedIds.length > 0) {
-            const mergedPinned = Array.from(new Set([...pinnedPresetIds, ...newPinnedIds]));
-            setPinnedPresetIds(mergedPinned);
-            localStorage.setItem("prompt_generator_pinned_presets", JSON.stringify(mergedPinned));
-          }
-        }
-
-        let alertMsg = `Successfully imported ${importedCount} preset(s).`;
-        if (skippedCount > 0) {
-          alertMsg += ` (${skippedCount} duplicate(s) skipped)`;
-        }
-        setPresetStatusBanner({ message: alertMsg });
+        openJsonPresetImport(jsonText, file.name);
       } catch (err: any) {
         setPresetStatusBanner({
-          message: "Failed to import presets: " + err.message,
+          message: "Failed to read preset file: " + err.message,
           isError: true
         });
       }
@@ -2867,8 +2841,8 @@ export default function PromptGeneratorPage() {
         onConfirm={(id) => deleteHistoryItemById(id)}
       />
 
-      {/* URL Preset Import Confirmation Modal */}
-      <UrlImportConfirmModal
+      {/* Preset Import Confirmation Modal */}
+      <PresetImportConfirmModal
         isOpen={isUrlImportConfirmOpen}
         urlPresetData={urlPresetData}
         urlImportPending={urlImportPending}
@@ -2876,6 +2850,8 @@ export default function PromptGeneratorPage() {
         urlImportSuccessMsg={urlImportSuccessMsg}
         applyToWorkspace={applyToWorkspace}
         onSetApplyToWorkspace={setApplyToWorkspace}
+        importStrategy={importStrategy}
+        onSetImportStrategy={onSetImportStrategy}
         onApply={handleApplyUrlPreset}
         onCancel={handleCancelUrlPreset}
         onDismissError={() => setUrlImportError(null)}

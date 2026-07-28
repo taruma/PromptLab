@@ -74,7 +74,64 @@ export function useUrlPresetImport({
   const [urlImportPending, setUrlImportPending] = useState<boolean>(false);
   const [urlImportError, setUrlImportError] = useState<string | null>(null);
   const [urlImportSuccessMsg, setUrlImportSuccessMsg] = useState<string | null>(null);
-  const [applyToWorkspace, setApplyToWorkspace] = useState<boolean>(true);
+  const [applyToWorkspace, setApplyToWorkspace] = useState<boolean>(false);
+  const [importStrategy, setImportStrategy] = useState<"duplicate" | "replace">("duplicate");
+
+  // Re-evaluate import result when importStrategy is toggled
+  const handleSetImportStrategy = (strategy: "duplicate" | "replace") => {
+    setImportStrategy(strategy);
+    if (!urlPresetData || !urlPresetData.rawJsonText) return;
+
+    let currentPresets = customPresets;
+    if (currentPresets.length === 0 && typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("prompt_generator_custom_presets");
+        if (saved) currentPresets = JSON.parse(saved);
+      } catch (e) {}
+    }
+
+    try {
+      const freshResult = importPresetsFromJSON(
+        urlPresetData.rawJsonText,
+        currentPresets,
+        pinnedPresetIds,
+        { importStrategy: strategy }
+      );
+
+      let targetPreset: UserPreset | undefined = undefined;
+      if (freshResult.importedCount > 0) {
+        targetPreset = freshResult.updatedPresets[freshResult.updatedPresets.length - 1];
+      } else if (freshResult.replacedCount > 0) {
+        // Find the replaced preset
+        try {
+          const rawParsed = JSON.parse(urlPresetData.rawJsonText);
+          const raw = Array.isArray(rawParsed)
+            ? rawParsed[0]
+            : rawParsed.presets?.[0] || rawParsed.items?.[0] || rawParsed.preset || rawParsed;
+          if (raw && raw.id) {
+            targetPreset = freshResult.updatedPresets.find((p) => p.id === String(raw.id));
+          }
+        } catch (e) {}
+        if (!targetPreset && freshResult.updatedPresets.length > 0) {
+          targetPreset = freshResult.updatedPresets[freshResult.updatedPresets.length - 1];
+        }
+      }
+
+      setUrlPresetData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          importResult: freshResult,
+          targetPreset: targetPreset || prev.targetPreset,
+          name: targetPreset?.name || prev.name,
+          systemPrompt: targetPreset?.systemPrompt || prev.systemPrompt,
+          promptTemplate: targetPreset?.promptTemplate || prev.promptTemplate,
+        };
+      });
+    } catch (err) {
+      console.error("Failed to re-evaluate preset import with new strategy:", err);
+    }
+  };
 
   // Fetch preset from URL query parameter if present on mount
   useEffect(() => {
@@ -111,15 +168,28 @@ export function useUrlPresetImport({
             } catch (e) {}
           }
 
-          const importResult = importPresetsFromJSON(text, existingCustomPresets, pinnedPresetIds);
+          const importResult = importPresetsFromJSON(text, existingCustomPresets, pinnedPresetIds, { importStrategy });
 
-          if (importResult.importedCount === 0 && importResult.skippedCount === 0) {
+          if (importResult.importedCount === 0 && importResult.replacedCount === 0 && importResult.skippedCount === 0) {
             throw new Error("No valid preset items found in remote file.");
           }
 
           let targetPreset: UserPreset | null = null;
           if (importResult.importedCount > 0) {
             targetPreset = importResult.updatedPresets[importResult.updatedPresets.length - 1];
+          } else if (importResult.replacedCount > 0) {
+            try {
+              const rawParsed = JSON.parse(text);
+              const raw = Array.isArray(rawParsed)
+                ? rawParsed[0]
+                : rawParsed.presets?.[0] || rawParsed.items?.[0] || rawParsed.preset || rawParsed;
+              if (raw && raw.id) {
+                targetPreset = importResult.updatedPresets.find((p) => p.id === String(raw.id)) || null;
+              }
+            } catch (e) {}
+            if (!targetPreset && importResult.updatedPresets.length > 0) {
+              targetPreset = importResult.updatedPresets[importResult.updatedPresets.length - 1];
+            }
           } else {
             try {
               const rawParsed = JSON.parse(text);
@@ -190,18 +260,20 @@ export function useUrlPresetImport({
     let freshImportResult = urlPresetData.importResult;
     if (urlPresetData.rawJsonText) {
       try {
-        freshImportResult = importPresetsFromJSON(urlPresetData.rawJsonText, currentPresets, pinnedPresetIds);
+        freshImportResult = importPresetsFromJSON(urlPresetData.rawJsonText, currentPresets, pinnedPresetIds, { importStrategy });
       } catch (e) {
         console.error("Failed to re-evaluate preset import:", e);
       }
     }
 
     let importedCount = 0;
+    let replacedCount = 0;
     if (freshImportResult) {
-      const { updatedPresets, newPinnedIds, importedCount: count } = freshImportResult;
+      const { updatedPresets, newPinnedIds, importedCount: count, replacedCount: rCount } = freshImportResult;
       importedCount = count;
+      replacedCount = rCount;
 
-      if (importedCount > 0 || updatedPresets.length > 0) {
+      if (importedCount > 0 || replacedCount > 0 || updatedPresets.length > 0) {
         setCustomPresets(updatedPresets);
         try {
           localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(updatedPresets));
@@ -256,7 +328,8 @@ export function useUrlPresetImport({
     }
 
     const appliedNotice = applyToWorkspace ? " & applied to active workspace" : "";
-    setUrlImportSuccessMsg(`Successfully imported "${urlPresetData.name}" into library${appliedNotice}.`);
+    const actionText = importStrategy === "replace" ? "replaced" : "imported";
+    setUrlImportSuccessMsg(`Successfully ${actionText} "${urlPresetData.name}" into library${appliedNotice}.`);
     setTimeout(() => {
       setUrlImportSuccessMsg(null);
     }, 4000);
@@ -264,6 +337,78 @@ export function useUrlPresetImport({
     setIsUrlImportConfirmOpen(false);
     setUrlPresetData(null);
     cleanUrlParam();
+  };
+
+  const openJsonPresetImport = (jsonText: string, sourceName?: string) => {
+    let currentPresets = customPresets;
+    if (currentPresets.length === 0 && typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("prompt_generator_custom_presets");
+        if (saved) currentPresets = JSON.parse(saved);
+      } catch (e) {}
+    }
+
+    try {
+      const freshResult = importPresetsFromJSON(
+        jsonText,
+        currentPresets,
+        pinnedPresetIds,
+        { importStrategy }
+      );
+
+      if (freshResult.importedCount === 0 && freshResult.replacedCount === 0 && freshResult.skippedCount === 0) {
+        setUrlImportError("No valid preset items found in the file or JSON text.");
+        return;
+      }
+
+      let targetPreset: UserPreset | undefined = undefined;
+      if (freshResult.importedCount > 0) {
+        targetPreset = freshResult.updatedPresets[freshResult.updatedPresets.length - 1];
+      } else if (freshResult.replacedCount > 0) {
+        try {
+          const rawParsed = JSON.parse(jsonText);
+          const raw = Array.isArray(rawParsed)
+            ? rawParsed[0]
+            : rawParsed.presets?.[0] || rawParsed.items?.[0] || rawParsed.preset || rawParsed;
+          if (raw && raw.id) {
+            targetPreset = freshResult.updatedPresets.find((p) => p.id === String(raw.id));
+          }
+        } catch (e) {}
+        if (!targetPreset && freshResult.updatedPresets.length > 0) {
+          targetPreset = freshResult.updatedPresets[freshResult.updatedPresets.length - 1];
+        }
+      } else {
+        try {
+          const rawParsed = JSON.parse(jsonText);
+          const raw = Array.isArray(rawParsed)
+            ? rawParsed[0]
+            : rawParsed.presets?.[0] || rawParsed.items?.[0] || rawParsed.preset || rawParsed;
+          if (raw) {
+            targetPreset = {
+              id: String(raw.id || "imported"),
+              name: String(raw.name || sourceName || "Imported Preset"),
+              systemPrompt: String(raw.systemPrompt || ""),
+              promptTemplate: String(raw.promptTemplate || ""),
+            };
+          }
+        } catch (e) {}
+      }
+
+      const presetName = targetPreset?.name || sourceName || "Imported Preset";
+
+      setUrlPresetData({
+        name: presetName,
+        systemPrompt: targetPreset?.systemPrompt || "",
+        promptTemplate: targetPreset?.promptTemplate || "",
+        url: sourceName ? `File: ${sourceName}` : "Local JSON Import",
+        rawJsonText: jsonText,
+        importResult: freshResult,
+        targetPreset,
+      });
+      setIsUrlImportConfirmOpen(true);
+    } catch (err: any) {
+      setUrlImportError("Failed to parse preset file: " + err.message);
+    }
   };
 
   const handleCancelUrlPreset = () => {
@@ -285,6 +430,9 @@ export function useUrlPresetImport({
     setUrlImportSuccessMsg,
     applyToWorkspace,
     setApplyToWorkspace,
+    importStrategy,
+    onSetImportStrategy: handleSetImportStrategy,
+    openJsonPresetImport,
     handleApplyUrlPreset,
     handleCancelUrlPreset,
   };
