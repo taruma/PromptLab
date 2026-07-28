@@ -287,8 +287,9 @@ export default function QuickPresetSelector({
   const filteredCustom = sortPresetsList(filterByQuery(customPresets));
 
   const allPresetsCombined: PresetItem[] = [...presets, ...customPresets];
+  const validFavorites = allPresetsCombined.filter((p) => pinnedIds.includes(p.id) || p.isFavorite);
   const favoritePresets = sortPresetsList(
-    filterByQuery(allPresetsCombined.filter((p) => pinnedIds.includes(p.id)))
+    filterByQuery(validFavorites)
   );
 
   return (
@@ -388,7 +389,7 @@ export default function QuickPresetSelector({
                     tab === "all"
                       ? "ALL"
                       : tab === "favorites"
-                      ? `★ (${pinnedIds.length})`
+                      ? `★ (${validFavorites.length})`
                       : tab === "system"
                       ? `SYS (${presets.length})`
                       : `USER (${customPresets.length})`;
@@ -457,7 +458,7 @@ export default function QuickPresetSelector({
                           key={`fav-${preset.id}`}
                           preset={preset}
                           isActive={matchingPreset?.id === preset.id}
-                          isPinned={pinnedIds.includes(preset.id)}
+                          isPinned={pinnedIds.includes(preset.id) || !!preset.isFavorite}
                           isSystem={presets.some((p) => p.id === preset.id)}
                           onSelect={() => {
                             onSelectPreset(preset);
@@ -491,7 +492,7 @@ export default function QuickPresetSelector({
                           key={preset.id}
                           preset={preset}
                           isActive={matchingPreset?.id === preset.id}
-                          isPinned={pinnedIds.includes(preset.id)}
+                          isPinned={pinnedIds.includes(preset.id) || !!preset.isFavorite}
                           isSystem={true}
                           onSelect={() => {
                             onSelectPreset(preset);
@@ -529,7 +530,7 @@ export default function QuickPresetSelector({
                           key={preset.id}
                           preset={preset}
                           isActive={matchingPreset?.id === preset.id}
-                          isPinned={pinnedIds.includes(preset.id)}
+                          isPinned={pinnedIds.includes(preset.id) || !!preset.isFavorite}
                           isSystem={false}
                           onSelect={() => {
                             onSelectPreset(preset);
@@ -558,7 +559,7 @@ export default function QuickPresetSelector({
                       key={`fav-tab-${preset.id}`}
                       preset={preset}
                       isActive={matchingPreset?.id === preset.id}
-                      isPinned={pinnedIds.includes(preset.id)}
+                      isPinned={pinnedIds.includes(preset.id) || !!preset.isFavorite}
                       isSystem={presets.some((p) => p.id === preset.id)}
                       onSelect={() => {
                         onSelectPreset(preset);
@@ -586,7 +587,7 @@ export default function QuickPresetSelector({
                       key={`sys-tab-${preset.id}`}
                       preset={preset}
                       isActive={matchingPreset?.id === preset.id}
-                      isPinned={pinnedIds.includes(preset.id)}
+                      isPinned={pinnedIds.includes(preset.id) || !!preset.isFavorite}
                       isSystem={true}
                       onSelect={() => {
                         onSelectPreset(preset);
@@ -612,7 +613,7 @@ export default function QuickPresetSelector({
                       key={`user-tab-${preset.id}`}
                       preset={preset}
                       isActive={matchingPreset?.id === preset.id}
-                      isPinned={pinnedIds.includes(preset.id)}
+                      isPinned={pinnedIds.includes(preset.id) || !!preset.isFavorite}
                       isSystem={false}
                       onSelect={() => {
                         onSelectPreset(preset);
@@ -630,21 +631,6 @@ export default function QuickPresetSelector({
                 )}
               </div>
             )}
-          </div>
-
-          {/* Footer Action */}
-          <div className="p-2 border-t border-[#D1D1CF] bg-[#F4F4F2] shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                onOpenPromptConfig();
-              }}
-              className="w-full py-1.5 bg-white hover:bg-[#EAEAE8] border border-[#D1D1CF] text-[9.5px] font-bold uppercase tracking-wider text-[#1A1A1A] flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-2xs"
-            >
-              <Settings className="w-3 h-3 text-[#888884]" />
-              Manage All Presets & Prompts
-            </button>
           </div>
         </div>
       )}
@@ -668,50 +654,75 @@ function PresetRow({
   onSelect: () => void;
   onTogglePin: (e: React.MouseEvent) => void;
 }) {
+  const cleanExcerpt = preset.systemPrompt
+    ? preset.systemPrompt.trim().replace(/\s+/g, " ")
+    : "";
+
   return (
     <div
       onClick={onSelect}
-      className={`w-full text-left px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider flex items-center justify-between border transition-all cursor-pointer group ${
+      className={`w-full text-left px-2.5 py-2 border transition-all cursor-pointer group ${
         isActive
           ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
           : "bg-[#F4F4F2] text-[#1A1A1A] border-transparent hover:border-[#D1D1CF] hover:bg-white"
       }`}
     >
-      <div className="flex items-center gap-1.5 truncate pr-2">
-        <button
-          type="button"
-          onClick={onTogglePin}
-          title={isPinned ? "Unpin from favorites" : "Pin to favorites"}
-          className="p-0.5 text-[#888884] hover:text-amber-500 transition-colors cursor-pointer shrink-0"
-        >
-          <Star
-            className={`w-3 h-3 ${
-              isPinned
-                ? "fill-amber-400 text-amber-500"
-                : "text-stone-400 opacity-60 group-hover:opacity-100"
-            }`}
-          />
-        </button>
-        <span className="truncate">{preset.name}</span>
-      </div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-1.5 min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={onTogglePin}
+            title={isPinned ? "Unpin from favorites" : "Pin to favorites"}
+            className="p-0.5 text-[#888884] hover:text-amber-500 transition-colors cursor-pointer shrink-0 mt-0.5"
+          >
+            <Star
+              className={`w-3 h-3 ${
+                isPinned
+                  ? "fill-amber-400 text-amber-500"
+                  : "text-stone-400 opacity-60 group-hover:opacity-100"
+              }`}
+            />
+          </button>
+          <div className="flex flex-col min-w-0 flex-1">
+            <span className="truncate font-bold uppercase tracking-wider text-[10px] leading-tight">
+              {preset.name}
+            </span>
+            {cleanExcerpt && (
+              <p
+                className={`text-[9px] font-normal leading-snug mt-0.5 select-none ${
+                  isActive ? "text-[#A0A0A0]" : "text-[#888884]"
+                }`}
+                style={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                {cleanExcerpt}
+              </p>
+            )}
+          </div>
+        </div>
 
-      <div className="flex items-center gap-1 shrink-0 font-mono text-[8px]">
-        {isActive && (
-          <span className="bg-emerald-600 text-white px-1 py-0.2 font-bold flex items-center gap-0.5">
-            <Check className="w-2.5 h-2.5" /> ACT
+        <div className="flex items-center gap-1 shrink-0 font-mono text-[8px] mt-0.5">
+          {isActive && (
+            <span className="bg-emerald-600 text-white px-1 py-0.2 font-bold flex items-center gap-0.5">
+              <Check className="w-2.5 h-2.5" /> ACT
+            </span>
+          )}
+          <span
+            className={`px-1 py-0.2 font-bold ${
+              isActive
+                ? "text-stone-300"
+                : isSystem
+                ? "text-[#888884]"
+                : "text-emerald-700 bg-emerald-100/60"
+            }`}
+          >
+            {isSystem ? "SYS" : "USER"}
           </span>
-        )}
-        <span
-          className={`px-1 py-0.2 font-bold ${
-            isActive
-              ? "text-stone-[#300]"
-              : isSystem
-              ? "text-[#888884]"
-              : "text-emerald-700 bg-emerald-100/60"
-          }`}
-        >
-          {isSystem ? "SYS" : "USER"}
-        </span>
+        </div>
       </div>
     </div>
   );

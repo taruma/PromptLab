@@ -79,6 +79,7 @@ Key differentiators:
 │   ├── PresetCompareModal.tsx       # Full-screen diff viewer for preset comparison (unified/split views)
 │   ├── PresetExportDropdown.tsx     # Bulk export dropdown (All/Favorites/Selected) for user presets
 │   ├── PresetImportConfirmModal.tsx # Preset import confirmation modal with duplicate/replace strategy toggle, summary breakdown grid, and expandable item inspector
+│   ├── PresetReplaceConfirmModal.tsx # Confirmation modal when replacing unsaved prompt edits via Quick Preset Selector
 │   ├── ProjectManagerModal.tsx      # Full-screen project management dashboard (CRUD, import/export)
 │   ├── PromptTemplateHelpTooltip.tsx # Contextual help tooltip for {{ variable }} syntax guidance
 │   ├── QuickPresetSelector.tsx      # Rapid preset switching dropdown in AppHeader

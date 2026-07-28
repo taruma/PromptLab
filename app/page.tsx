@@ -42,6 +42,7 @@ import ClearSessionConfirmModal from "../components/ClearSessionConfirmModal";
 import LoadWorkspaceConfirmModal from "../components/LoadWorkspaceConfirmModal";
 import DeleteHistoryConfirmModal from "../components/DeleteHistoryConfirmModal";
 import DiscardChangesConfirmModal from "../components/DiscardChangesConfirmModal";
+import PresetReplaceConfirmModal from "../components/PresetReplaceConfirmModal";
 import PresetExportDropdown from "../components/PresetExportDropdown";
 import PresetImportConfirmModal from "../components/PresetImportConfirmModal";
 import AddYouTubeModal from "../components/AddYouTubeModal";
@@ -208,7 +209,14 @@ export default function PromptGeneratorPage() {
   const [activeEditingPresetId, setActiveEditingPresetId] = useState<string | null>(null);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState<boolean>(false);
   const [loadedPresetId, setLoadedPresetId] = useState<string | null>(null);
+  const [pendingQuickPreset, setPendingQuickPreset] = useState<{ id: string; name: string; systemPrompt: string; promptTemplate: string } | null>(null);
+  const [isPresetReplaceConfirmOpen, setIsPresetReplaceConfirmOpen] = useState<boolean>(false);
   const [presetStatusBanner, setPresetStatusBanner] = useState<{ message: string; isError?: boolean } | null>(null);
+  const initialPresetSnapshotRef = useRef<{ loadedPresetId: string | null; activeEditingPresetId: string | null; newPresetName: string }>({
+    loadedPresetId: null,
+    activeEditingPresetId: null,
+    newPresetName: "",
+  });
   
   // Preset Search, Filter, Pinning & Sorting
   const [presetSearch, setPresetSearch] = useState<string>("");
@@ -425,6 +433,26 @@ export default function PromptGeneratorPage() {
           setSystemPrompt(activeSystemPrompt);
           setPromptTemplate(activePromptTemplate);
           setVariables(activeVars);
+
+          // Restore loaded preset ID from local storage on mount
+          try {
+            const savedLoadedPresetId = localStorage.getItem("prompt_generator_loaded_preset_id");
+            if (savedLoadedPresetId) {
+              setLoadedPresetId(savedLoadedPresetId);
+              let parsedCustom: UserPreset[] = [];
+              const rawCustom = localStorage.getItem("prompt_generator_custom_presets");
+              if (rawCustom) {
+                try { parsedCustom = JSON.parse(rawCustom); } catch (e) {}
+              }
+              const customMatch = parsedCustom.find((p) => p.id === savedLoadedPresetId);
+              if (customMatch) {
+                setActiveEditingPresetId(customMatch.id);
+                setNewPresetName(customMatch.name);
+              }
+            }
+          } catch (e) {
+            console.error("Failed to restore saved loaded preset id", e);
+          }
 
           const initialInputs: Record<string, string> = {};
           activeVars.forEach((v: string) => {
@@ -1409,7 +1437,7 @@ export default function PromptGeneratorPage() {
   // We manage engine controls configuration via the external EngineControlsModal component.
 
   // Quick preset selector handler for instant header preset switching
-  const handleSelectQuickPreset = (preset: { id: string; name: string; systemPrompt: string; promptTemplate: string }) => {
+  const applyQuickPreset = (preset: { id: string; name: string; systemPrompt: string; promptTemplate: string }) => {
     setSystemPrompt(preset.systemPrompt);
     setPromptTemplate(preset.promptTemplate);
     const vars = extractVariables(preset.promptTemplate);
@@ -1446,6 +1474,24 @@ export default function PromptGeneratorPage() {
     }
   };
 
+  const handleSelectQuickPreset = (preset: { id: string; name: string; systemPrompt: string; promptTemplate: string }) => {
+    const activeLoadedPreset = loadedPresetId
+      ? presets.find(p => p.id === loadedPresetId) || customPresets.find(p => p.id === loadedPresetId) || null
+      : null;
+
+    const isModified = activeLoadedPreset
+      ? (systemPrompt !== activeLoadedPreset.systemPrompt || promptTemplate !== activeLoadedPreset.promptTemplate)
+      : false;
+
+    if (isModified) {
+      setPendingQuickPreset(preset);
+      setIsPresetReplaceConfirmOpen(true);
+      return;
+    }
+
+    applyQuickPreset(preset);
+  };
+
   // Open the configuration modal
   const handleOpenPromptConfig = () => {
     setPresetStatusBanner(null);
@@ -1460,7 +1506,14 @@ export default function PromptGeneratorPage() {
       p => p.systemPrompt === systemPrompt && p.promptTemplate === promptTemplate
     );
 
+    let snapshotLoadedId: string | null = null;
+    let snapshotEditingId: string | null = null;
+    let snapshotName: string = "";
+
     if (matchingCustom) {
+      snapshotLoadedId = matchingCustom.id;
+      snapshotEditingId = matchingCustom.id;
+      snapshotName = matchingCustom.name;
       setActiveEditingPresetId(matchingCustom.id);
       setNewPresetName(matchingCustom.name);
       setLoadedPresetId(matchingCustom.id);
@@ -1468,6 +1521,9 @@ export default function PromptGeneratorPage() {
         localStorage.setItem("prompt_generator_loaded_preset_id", matchingCustom.id);
       } catch (e) {}
     } else if (matchingSys) {
+      snapshotLoadedId = matchingSys.id;
+      snapshotEditingId = null;
+      snapshotName = "";
       setActiveEditingPresetId(null);
       setNewPresetName("");
       setLoadedPresetId(matchingSys.id);
@@ -1482,16 +1538,24 @@ export default function PromptGeneratorPage() {
         : null;
 
       if (currentLoadedPreset) {
+        snapshotLoadedId = currentLoadedPreset.id;
         const isCustom = customPresets.some(p => p.id === currentLoadedPreset.id);
         if (isCustom) {
+          snapshotEditingId = currentLoadedPreset.id;
+          snapshotName = currentLoadedPreset.name;
           setActiveEditingPresetId(currentLoadedPreset.id);
           setNewPresetName(currentLoadedPreset.name);
         } else {
+          snapshotEditingId = null;
+          snapshotName = "";
           setActiveEditingPresetId(null);
           setNewPresetName("");
         }
         // Preserve loadedPresetId so modified preset remains selected with [EDIT] indicator
       } else {
+        snapshotLoadedId = null;
+        snapshotEditingId = null;
+        snapshotName = "";
         setActiveEditingPresetId(null);
         setNewPresetName("");
         setLoadedPresetId(null);
@@ -1500,6 +1564,12 @@ export default function PromptGeneratorPage() {
         } catch (e) {}
       }
     }
+
+    initialPresetSnapshotRef.current = {
+      loadedPresetId: snapshotLoadedId,
+      activeEditingPresetId: snapshotEditingId,
+      newPresetName: snapshotName,
+    };
     
     setIsPromptConfigOpen(true);
   };
@@ -2858,6 +2928,27 @@ export default function PromptGeneratorPage() {
         onDismissSuccess={() => setUrlImportSuccessMsg(null)}
       />
 
+      {/* Preset Replace Confirmation Modal */}
+      <PresetReplaceConfirmModal
+        isOpen={isPresetReplaceConfirmOpen}
+        currentPresetName={
+          loadedPresetId
+            ? (presets.find((p) => p.id === loadedPresetId) || customPresets.find((p) => p.id === loadedPresetId))?.name || null
+            : null
+        }
+        targetPreset={pendingQuickPreset}
+        onClose={() => {
+          setIsPresetReplaceConfirmOpen(false);
+          setPendingQuickPreset(null);
+        }}
+        onConfirm={() => {
+          if (pendingQuickPreset) {
+            applyQuickPreset(pendingQuickPreset);
+            setPendingQuickPreset(null);
+          }
+        }}
+      />
+
       {/* Unsaved Changes Discard Confirmation Modal */}
       <DiscardChangesConfirmModal
         isOpen={isDiscardConfirmOpen}
@@ -2865,6 +2956,17 @@ export default function PromptGeneratorPage() {
         onDiscard={() => {
           setIsDiscardConfirmOpen(false);
           setIsPromptConfigOpen(false);
+          const snap = initialPresetSnapshotRef.current;
+          setLoadedPresetId(snap.loadedPresetId);
+          setActiveEditingPresetId(snap.activeEditingPresetId);
+          setNewPresetName(snap.newPresetName);
+          try {
+            if (snap.loadedPresetId) {
+              localStorage.setItem("prompt_generator_loaded_preset_id", snap.loadedPresetId);
+            } else {
+              localStorage.removeItem("prompt_generator_loaded_preset_id");
+            }
+          } catch (e) {}
         }}
       />
 
