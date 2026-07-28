@@ -40,7 +40,7 @@ Key differentiators:
 │   ├── /api
 │   │   ├── /generate/route.ts       # Main Gemini multi-modal generation handler (passes active prompts & fileUri parts)
 │   │   ├── /prompt-config/route.ts  # Dynamic fallback template loading & presets lookup
-│   │   └── /upload-file/route.ts    # Gemini Files API upload & polling proxy handler
+│   │   └── /upload-file/route.ts    # Gemini Files API upload & polling proxy handler with centralized API key resolution
 │   ├── globals.css                  # Global Tailwind imports (@import "tailwindcss";) + @keyframes slideFadeIn animation
 │   ├── layout.tsx                   # Font configurations (Inter, Space Grotesk & JetBrains Mono variables)
 │   └── page.tsx                     # Core Interactive UI Workspace & Prompt Editor Sidebar
@@ -110,7 +110,7 @@ Key differentiators:
 ├── eslint.config.mjs                # Flat ESLint config (extends eslint-config-next)
 ├── .eslintrc.json                   # Legacy ESLint config (extends "next")
 ├── .gitignore                       # Git ignore rules
-├── .env.example                     # Environment configuration documentation (GEMINI_API_KEY, APP_URL)
+├── .env.example                     # Environment configuration documentation (GEMINI_API_KEY, ALLOW_SERVER_ENV_KEY, APP_URL)
 ├── next-env.d.ts                    # Next.js TypeScript declarations
 ├── metadata.json                    # Platform capabilities and application metadata
 └── README.md                        # Project README
@@ -174,6 +174,7 @@ The workspace reads dynamic template specifications from the currently configure
 - The `GEMINI_API_KEY` is a private backend secret.
 - **API Key Vault**: The Engine Controls modal includes a collapsible **API Key Vault** section supporting multiple labeled API keys with add, switch, and delete operations. Existing legacy keys are automatically migrated into the vault on first access. The active key's label is displayed in the workspace footer.
 - **Custom Local API Key Override**: Users can optionally configure custom developer Gemini API keys inside the **Engine Controls** modal. These keys are stored exclusively in client-side `localStorage` and passed securely as part of the POST payload to the server-side proxy handler (`/app/api/generate/route.ts`). This avoids exposing keys to the public web while giving users control over their own API quotas.
+- **Server Environment Key Control (`ALLOW_SERVER_ENV_KEY`)**: A new `ALLOW_SERVER_ENV_KEY` environment variable (defaults to `"true"`) lets deployments disable the server-side `GEMINI_API_KEY`. When set to `"false"`, the generation and file upload handlers reject requests lacking a user-supplied custom API key with a specific "Server environment API key usage is disabled" error message, enforcing that end-users provide their own keys. The generation handler no longer uses a static module-level `GoogleGenAI` client singleton; instead, it creates per-request dynamic client instances based on the resolved active API key (custom key first, then server env key if permitted). The Files API upload handler extracts a shared `getActiveApiKey()` helper that centralizes this key resolution logic across all upload actions (direct resumable, chunked proxy, list, delete, and single-file upload).
 - Keep all generations routed securely through the proxy handler `/app/api/generate/route.ts`. The client passes its active custom prompts (`systemPrompt` and `promptTemplate`) as POST arguments.
 
 ### Rule C: Engine Controls & Hyperparameters

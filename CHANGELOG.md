@@ -4,7 +4,7 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
-## [UNRELEASED]
+## [v2.4.0] — July 28, 2026
 
 ### Added
 
@@ -13,6 +13,7 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 - **Unified URL and local JSON file preset import flow.** The "Import JSON" action in the Configure Prompts modal now routes through the same `openJsonPresetImport()` pipeline used by URL imports, giving local file imports the strategy selector, summary breakdown, and item inspector. Both flows share the `PresetImportConfirmModal` and `useUrlPresetImport` hook.
 - **`preseturl` query parameter support.** The URL preset import detector now also recognizes `?preseturl=` (case-insensitive) in addition to the existing `presetUrl`, `configUrl`, `preset`, and `config` parameters.
 - **Skip-reason differentiation in `importPresetsFromJSON()`.** The core import utility now returns a `processedItems` array of `ProcessedImportItem` objects with `action` and `skipReason` fields. Skip reasons distinguish between `exact_match` (identical ID) and `content_match_different_id` (same name + identical prompts but different ID), providing clear feedback in the import modal.
+- **ALLOW_SERVER_ENV_KEY configuration flag for enforcing user-supplied API keys.** A new `ALLOW_SERVER_ENV_KEY` environment variable (defaults to `"true"`) lets deployments disable the server-side `GEMINI_API_KEY`, requiring end-users to provide their own custom Gemini API key in Engine Controls. When set to `"false"`, the generation and file upload handlers reject requests without a user-supplied key with a specific "Server environment API key usage is disabled" error message. The generation handler no longer uses a static module-level `GoogleGenAI` client singleton; instead, it creates per-request dynamic client instances based on the resolved active API key. The Files API upload handler extracts a shared `getActiveApiKey()` helper for centralized key resolution across all upload actions (direct resumable, chunked proxy, list, delete, and single-file upload).
 
 ### Changed
 

@@ -19,19 +19,40 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 
 ## Features
 
+### 🎛️ Prompt Engineering
 - **Dynamic Template Variables** — Add `{{ placeholders }}` to your prompt template and form fields appear automatically. No hardcoding needed.
-- **Visual Reference Uploads** — Drag and drop images to serve as casting or scene references. Each asset is auto-mapped (e.g., `@image1`) and injected into your prompt. Images are automatically compressed to high-quality JPEG to conserve storage.
-- **Multi-Modal Video Support** — Upload MP4 videos alongside images as reference assets. Videos are validated (≤30 seconds, ≤35 MB) and mapped to `@videoN` annotations. Preview uploaded videos in a full-screen player before generating. *(Note: video uploads work best when running locally; hosted deployments may hit POST payload size limits.)*
-- **Image Storage with IndexedDB** — Uploaded images are stored in your browser's IndexedDB, avoiding localStorage quota limits. You can upload larger files without worrying about storage caps.
-- **Custom Presets** — Save, update, or delete your own presets. Import and export as JSON files. Share presets via URL query parameters. Visual badges show when a preset is loaded or has unsaved changes.
-- **Engine Controls** — Switch between Gemini models (3.5 Flash, 3.1 Flash Lite, 3.1 Pro), adjust temperature, reasoning effort, and max output tokens.
-- **API Key Vault** — Bring your own Gemini API keys. Manage multiple labeled keys, switch between them, and delete old ones — all from the Engine Controls panel.
-- **Session History** — Past generations are saved locally. Favorite entries, filter by tabs (All / Favorites / Recent), import/export as JSON for backup or sharing, and clear with a single action.
-- **Asset Library** — A persistent image library sidebar. Upload, browse, search, rename, and reuse images across workspaces without re-uploading.
-- **Preset Compare & Diff Viewer** — Side-by-side diff between your current config and any saved preset. Git-style add/remove highlighting before you load.
-- **Preset Export & Import** — Bulk export user presets (All / Favorites / Active) as versioned JSON files, with duplicate detection and favorite/pinned reconciliation on import.
-- **Preset Search & Filtering** — Search presets by name and filter with All / System / User tab toggles for quick navigation.
-- **Lab Manual & Quick-Start Guide** — A built-in 4-step walkthrough helps new users get oriented and productive immediately.
+- **Custom Presets** — Save, update, or delete your own presets. Share them via URL or import/export as JSON files. Visual badges show whether a preset is loaded or has unsaved changes.
+- **Preset Compare & Diff Viewer** — Side-by-side differences between your current config and any saved preset, with color-coded additions and deletions.
+- **Import Strategy Control** — When importing presets, choose whether to create duplicates (safe) or replace existing ones in-place — with a full breakdown of what will be added, replaced, or skipped before you commit.
+- **Quick Preset Switcher** — Switch between system and custom presets directly from the top navigation bar without opening a modal.
+
+### 🖼️ Media References
+- **Image Uploads** — Drag and drop images as casting or scene references. Each asset auto-maps to `@imageN` and compresses to high-quality JPEG automatically.
+- **Video Uploads (MP4)** — Upload MP4 videos alongside images, validated for length and size, and mapped to `@videoN` annotations. Preview videos in a full-screen player before generating.
+- **YouTube References** — Paste any YouTube URL to use as a video reference, mapped to `@videoN` alongside your uploaded videos.
+- **Gemini Files API** — Upload media files up to 2 GB via Google's Gemini Files API with real-time progress tracking. Browse and reuse previously uploaded files from a built-in file browser — no re-uploading needed.
+
+### 🤖 AI Engine
+- **Multiple Gemini Models** — Switch between Gemini 3.5 Flash, 3.5 Flash-Lite, 3.1 Pro Preview, and more.
+- **Temperature & Reasoning Control** — Fine-tune creativity (0.0–2.0) and choose from four reasoning effort levels (MINIMAL through HIGH).
+- **Engine Reasoning Trace** — Watch the model's internal thinking process stream in real-time alongside your output, with a pulsing indicator during active processing.
+- **Token Usage & Cost Tracking** — See exactly how many tokens each generation used (input, output, and cached), with a real-time estimated cost in USD.
+
+### 📊 Output
+- **Dual-Mode Rendering** — Toggle between richly formatted Markdown (headings, lists, bold) and traditional raw monospace text.
+- **Live Character Count** — See your output length at a glance with a formatted `{N} CHARS` badge.
+- **Real-Time Streaming** — Watch generations appear word-by-word via Server-Sent Events.
+
+### 💾 Workspace
+- **Multi-Project Support** — Create independent workspaces, each with their own prompts, presets, history, and asset library. Switch between them from the top bar.
+- **Session History** — Past generations are saved locally. Favorite entries, search with fuzzy matching, compare historical prompts against your current workspace with a built-in diff viewer, and export/import as JSON for backup.
+- **Asset Library** — A persistent image sidebar for uploading, browsing, searching, and reusing images across any workspace without re-uploading.
+- **Workspace Clone** — Create a new project by copying your current prompts, presets, and assets — perfect for exploring variations.
+
+### 🔐 API Keys
+- **Multi-Key Vault** — Manage multiple labeled Gemini API keys, switch between them, and see which key is active in the workspace footer.
+- **Bring Your Own Key** — Use your own Gemini API key stored locally in your browser — no server-side key required.
+- **Deployment Security** — Server operators can disable the server-side API key entirely (`ALLOW_SERVER_ENV_KEY`), ensuring every user provides their own key.
 
 ---
 
@@ -86,12 +107,12 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Usage
 
-1. **Bring your own system instructions and template** via the **Configure Prompts** button — or start from one of the example presets
-2. **Fill in the template variables** that appear in the left panel
-3. **Upload reference images and videos** by dragging them into the drop zone — label each one to map it to a character or setting (e.g., `@image1` for images, `@video1` for videos). *For video uploads with larger files, run PromptLab locally to avoid payload size limits on hosted deployments.*
-4. **Click "Generate Sequence"** to test your prompt against Gemini
-5. **Review the output**, tweak your template, and generate again — iterate until your prompt design feels right
-6. **Browse past generations** in the history panel — favorite, export, or click any entry to restore it
+1. **Bring your own system instructions and template** via the **Configure Prompts** button — or start from one of the example presets.
+2. **Fill in the template variables** that appear in the left panel.
+3. **Upload reference images and videos** by dragging them into the drop zone — label each one to map it to a character or setting (e.g., `@image1` for images, `@video1` for videos). For large media files, use the **Files API Upload** option (supports up to 2 GB).
+4. **Click "Generate Sequence"** to test your prompt against Gemini.
+5. **Review the output**, switch between Markdown and Raw view, tweak your template, and generate again — iterate until your prompt design feels right.
+6. **Browse past generations** in the history panel — favorite, search, export, or click any entry to restore it.
 
 ### Sharing Presets via URL
 
@@ -101,7 +122,7 @@ You can share a preset configuration by hosting a JSON file (e.g., on GitHub) an
 https://promptlab.taruma.my.id/?presetUrl=https://raw.githubusercontent.com/user/repo/main/my-preset.json
 ```
 
-Supported parameters: `?presetUrl=`, `?configUrl=`, `?preset=`, or `?config=`. Opening such a link will show an import confirmation dialog.
+Supported parameters: `?presetUrl=`, `?configUrl=`, `?preset=`, `?config=`, or `?preseturl=`. Opening such a link will show an import confirmation dialog where you can choose how duplicates are handled and preview exactly what will be imported.
 
 ---
 
@@ -110,12 +131,13 @@ Supported parameters: `?presetUrl=`, `?configUrl=`, `?preset=`, or `?config=`. O
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GEMINI_API_KEY` | No* | Your Gemini API key. *Not required if you provide a custom key in the app's Engine Controls panel. |
+| `ALLOW_SERVER_ENV_KEY` | No | Set to `"false"` to disable the server-side API key, requiring every user to supply their own key. Defaults to `"true"`. |
 
 ---
 
 ## Tech Stack
 
-Built with [Next.js](https://nextjs.org/) 15, [Tailwind CSS](https://tailwindcss.com/) v4, [Vercel Analytics](https://vercel.com/analytics), and the [Google GenAI SDK](https://www.npmjs.com/package/@google/genai). Image persistence uses IndexedDB to avoid browser storage limits. Video validation uses the HTML5 Video API for metadata extraction.
+Built with [Next.js](https://nextjs.org/) 15, [Tailwind CSS](https://tailwindcss.com/) v4, [Vercel Analytics](https://vercel.com/analytics), [react-markdown](https://github.com/remarkjs/react-markdown), and the [Google GenAI SDK](https://www.npmjs.com/package/@google/genai). Image persistence uses IndexedDB to avoid browser storage limits. Video validation uses the HTML5 Video API for metadata extraction. Large media uploads use the Gemini Files API with direct resumable streaming.
 
 ---
 
