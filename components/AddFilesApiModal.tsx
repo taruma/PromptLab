@@ -182,7 +182,161 @@ export default function AddFilesApiModal({
     setLabel(baseName || "Reference File");
   };
 
-  const handleUpload = async () => {
+  const handleDirectResumableUpload = async (fileToUpload: File): Promise<boolean> => {
+    setUploadProgressPercent(10);
+    setUploadProgressStatus("Requesting fast direct upload session...");
+
+    // 1. Get resumable upload URL session from server API route
+    const initRes = await fetch("/api/upload-file", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "resumable_session",
+        fileName: fileToUpload.name,
+        mimeType: fileToUpload.type || "application/octet-stream",
+        fileSize: fileToUpload.size,
+        customApiKey,
+      }),
+    });
+
+    if (!initRes.ok) {
+      const errData = await initRes.json().catch(() => ({}));
+      throw new Error(errData.error || `Direct session initiation failed (status ${initRes.status}).`);
+    }
+
+    const { uploadUrl } = await initRes.json();
+    if (!uploadUrl) {
+      throw new Error("No uploadUrl session returned from server.");
+    }
+
+    setUploadProgressPercent(30);
+    setUploadProgressStatus("Streaming file directly to Google Cloud...");
+
+    // 2. Direct upload file bytes to Google Resumable Upload URL via XMLHttpRequest for progress tracking
+    let directUploadRes: any = null;
+    let directUploadFailed = false;
+
+    try {
+      directUploadRes = await new Promise<any>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", uploadUrl);
+        xhr.setRequestHeader("X-Goog-Upload-Offset", "0");
+        xhr.setRequestHeader("X-Goog-Upload-Command", "upload, finalize");
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const pct = 30 + Math.round((event.loaded / event.total) * 65);
+            setUploadProgressPercent(pct);
+            setUploadProgressStatus(`Streaming directly to Google (${pct}%)...`);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            let json: any = {};
+            if (xhr.responseText && xhr.responseText.trim()) {
+              try {
+                json = JSON.parse(xhr.responseText);
+              } catch (e) {
+                console.warn("Could not parse JSON response from Google Files API:", xhr.responseText, e);
+              }
+            }
+            resolve(json);
+          } else {
+            console.warn("Google direct upload HTTP status notice:", xhr.status, xhr.statusText);
+            reject(new Error(`Google direct upload returned status ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = (e) => {
+          console.warn("Google direct upload XHR CORS/network notice:", e);
+          reject(new Error("XHR response blocked by browser CORS policy."));
+        };
+        xhr.ontimeout = () => reject(new Error("Direct upload connection to Google timed out."));
+
+        xhr.send(fileToUpload);
+      });
+    } catch (xhrErr) {
+      directUploadFailed = true;
+    }
+
+    // Option A: If browser allowed reading response directly
+    if (!directUploadFailed && directUploadRes) {
+      const fileResource = directUploadRes.file || directUploadRes;
+      const isImage = fileToUpload.type.startsWith("image/");
+      const resolvedUri = fileResource.uri || fileResource.fileUri || (fileResource.name ? `https://generativelanguage.googleapis.com/v1beta/${fileResource.name.startsWith("files/") ? fileResource.name : `files/${fileResource.name}`}` : "");
+
+      if (resolvedUri) {
+        setUploadProgressPercent(100);
+        setUploadProgressStatus("Upload complete! File is ACTIVE.");
+
+        onUploadSuccess({
+          label: label.trim() || fileToUpload.name,
+          fileUri: resolvedUri,
+          mimeType: fileResource.mimeType || fileToUpload.type,
+          sizeBytes: Number(fileResource.sizeBytes) || fileToUpload.size,
+          expirationTime: fileResource.expirationTime,
+          isImage,
+          fileObj: fileToUpload,
+        });
+
+        setSelectedFile(null);
+        setLabel("");
+        setIsUploading(false);
+        onClose();
+        return true;
+      }
+    }
+
+    // Option B: If browser CORS blocked reading completion response, verify file on Google Files API
+    setUploadProgressPercent(95);
+    setUploadProgressStatus("Verifying uploaded file with Gemini API...");
+
+    try {
+      const listRes = await fetch("/api/upload-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "list", customApiKey }),
+      });
+
+      if (listRes.ok) {
+        const { files } = await listRes.json();
+        const matched = (files || []).find((f: any) =>
+          (f.displayName === fileToUpload.name || f.name === fileToUpload.name) &&
+          Math.abs((Number(f.sizeBytes) || 0) - fileToUpload.size) < 2000
+        );
+
+        if (matched) {
+          setUploadProgressPercent(100);
+          setUploadProgressStatus("Upload complete! File is ACTIVE.");
+
+          const isImage = fileToUpload.type.startsWith("image/");
+          onUploadSuccess({
+            label: label.trim() || fileToUpload.name,
+            fileUri: matched.fileUri,
+            mimeType: matched.mimeType || fileToUpload.type,
+            sizeBytes: Number(matched.sizeBytes) || fileToUpload.size,
+            expirationTime: matched.expirationTime,
+            isImage,
+            fileObj: fileToUpload,
+          });
+
+          setSelectedFile(null);
+          setLabel("");
+          setIsUploading(false);
+          onClose();
+          return true;
+        }
+      }
+    } catch (verifyErr) {
+      console.warn("Error verifying file list:", verifyErr);
+    }
+
+    // If file is truly missing, throw to backup fallback
+    throw new Error("Direct upload file verification failed.");
+  };
+
+  const handleLegacyChunkedUpload = async () => {
     if (!selectedFile) return;
 
     setIsUploading(true);
@@ -301,6 +455,30 @@ export default function AddFilesApiModal({
       setError(err.message || "An error occurred during file upload.");
       setIsUploading(false);
     }
+  };
+
+  // WRAPPER ENTRY POINT (Set ENABLE_DIRECT_UPLOAD_WRAPPER to false to immediately disable wrapper)
+  const ENABLE_DIRECT_UPLOAD_WRAPPER = true;
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+
+    setIsUploading(true);
+    setError(null);
+    setUploadProgressPercent(0);
+
+    if (ENABLE_DIRECT_UPLOAD_WRAPPER) {
+      try {
+        await handleDirectResumableUpload(selectedFile);
+        return;
+      } catch (directErr: any) {
+        console.warn("Direct upload wrapper failed or blocked by network, falling back to legacy chunked proxy:", directErr);
+        setUploadProgressStatus("Direct upload unavailable. Using backup chunked proxy...");
+        await new Promise((res) => setTimeout(res, 500));
+      }
+    }
+
+    await handleLegacyChunkedUpload();
   };
 
   const handleSelectExistingFile = (file: FilesApiListItem) => {

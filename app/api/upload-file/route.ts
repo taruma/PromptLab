@@ -83,6 +83,60 @@ export async function POST(req: NextRequest) {
 
     const action = isJson ? jsonBody?.action : (formData?.get("action") as string | null);
 
+    // ACTION: RESUMABLE SESSION (Direct Resumable Upload Handshake Wrapper)
+    if (action === "resumable_session") {
+      const fileName = isJson ? jsonBody?.fileName : (formData?.get("fileName") as string);
+      const mimeType = isJson ? jsonBody?.mimeType : (formData?.get("mimeType") as string);
+      const fileSize = isJson ? jsonBody?.fileSize : Number(formData?.get("fileSize"));
+      const customApiKey = isJson ? jsonBody?.customApiKey : (formData?.get("customApiKey") as string) || req.headers.get("x-api-key") || undefined;
+      const activeApiKey = customApiKey?.trim() || process.env.GEMINI_API_KEY;
+
+      if (!activeApiKey) {
+        return NextResponse.json({
+          error: "No Gemini API key found. Please input a custom API key in 'Engine Controls' or verify configuration."
+        }, { status: 400 });
+      }
+
+      if (!fileName || !fileSize) {
+        return NextResponse.json({ error: "Missing fileName or fileSize for resumable session." }, { status: 400 });
+      }
+
+      const googleInitRes = await fetch(
+        `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${encodeURIComponent(activeApiKey)}`,
+        {
+          method: "POST",
+          headers: {
+            "X-Goog-Upload-Protocol": "resumable",
+            "X-Goog-Upload-Command": "start",
+            "X-Goog-Upload-Header-Content-Length": String(fileSize),
+            "X-Goog-Upload-Header-Content-Type": mimeType || "application/octet-stream",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            file: {
+              display_name: fileName,
+            },
+          }),
+        }
+      );
+
+      if (!googleInitRes.ok) {
+        const errText = await googleInitRes.text().catch(() => "");
+        return NextResponse.json({
+          error: `Google Files API session initialization failed: ${googleInitRes.statusText} ${errText}`
+        }, { status: googleInitRes.status });
+      }
+
+      const uploadUrl = googleInitRes.headers.get("X-Goog-Upload-URL");
+      if (!uploadUrl) {
+        return NextResponse.json({
+          error: "Google Files API did not return an X-Goog-Upload-URL session header."
+        }, { status: 500 });
+      }
+
+      return NextResponse.json({ uploadUrl });
+    }
+
     // ACTION: LIST
     if (action === "list") {
       const customApiKey = isJson ? jsonBody?.customApiKey : (formData?.get("customApiKey") as string) || req.headers.get("x-api-key") || undefined;
