@@ -58,11 +58,20 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 
 ## Built-in Presets
 
-| Preset | Focus |
-|--------|-------|
-| **AI Casting & Screenplay** | Character-driven dramatic narratives. Generates synthetic persona breakdowns, scene beats, cinematic dialogue drafts, and performance directives. |
-| **AI Director & Storyboard** | Cinematic pre-production. Produces directorial vision, camera/lens specs, shot-by-shot AI storyboard plans, and soundscape design. |
-| **VFX & Speculative Worldbuilder** | Virtual production & world design. Delivers environmental constitutions, LED volume schematics, VFX complexity passes, and text-to-3D asset prompts. |
+PromptLab includes 10 built-in system presets stored in subdirectories under `/prompts/presets/[preset_id]/` (each containing `meta.json`, `system_prompt.txt`, and `prompt_template.txt`):
+
+| Preset | Focus & Usage |
+|--------|---------------|
+| **Cine DeepDive** | A comprehensive film analysis tool that performs multi-dimensional scene breakdowns across shot design, framing, lighting, composition, and editing rhythm. Helps creators learn and apply deep cinematic language to evaluate visual scenes. |
+| **Color Mapper** | Extracts, names, and analyzes the emotional logic and color psychology of visual palettes. Breaks down grading styles, color harmonies, and hue functions to aid colorists and AI prompt designers. |
+| **Comp Decoder** | Reverse-engineers visual framing into geometric compositional building blocks like rule of thirds, dynamic diagonals, and spatial balance. Teaches visual structure to improve directing, storyboarding, and prompt construction. |
+| **Film Lingo** | Translates plain-English scene concepts into precise filmmaker vocabulary complete with inline definitions and AI prompt fragments. Bridges the gap between casual audience descriptions and professional camera, lighting, and color terms. |
+| **Genre Lexicon** | Deconstructs the signature visual DNA and stylistic conventions of specific genres, film movements, or director styles. Provides categorized technique breakdowns, glossaries, and historical influences to help replicate distinct aesthetics. |
+| **Motion Lab** | Analyzes camera movement types, speed qualities, and subject relationships to map their emotional and narrative motivations. Builds motion vocabulary for writing precise camera choreography and AI video generation prompts. |
+| **Scene Lab** | Bridges screenplay dynamics and visual direction by translating character interactions into cinematic visual descriptions. Demonstrates how camera placement, lighting subtext, and color arcs convey story beats without relying on dialogue. |
+| **Shot Interp** | Breaks down finished scenes into professional shot lists, detailing camera angles, lens choices, shot sizes, and cut rhythms. Helps creators analyze scene pacing and structure shot sequences accurately. |
+| **Style Architect** | Synthesizes visual references into a comprehensive, reusable style guide with defined color rules, lighting signatures, and core aesthetic pillars. Produces structured specs designed for direct input as consistency prompts in generative workflows. |
+| **Vis Narrative** | Transforms creative ideas into director-level visual treatments with loglines, tonal maps, and key narrative beats. Outlines photographic language, camera behavior, and visual arcs for pitching and planning visual projects. |
 
 > **These presets are examples only.** PromptLab is designed for you to bring your own system instructions and prompt templates — edit freely or start from scratch via the **Configure Prompts** panel.
 

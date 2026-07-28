@@ -1,0 +1,23 @@
+=== VISUAL NARRATIVE BLUEPRINT ===
+
+CORE CONCEPT:
+{{ idea }}
+
+GENRE & TONE:
+{{ genre_tone }}
+
+VISUAL INSPIRATION:
+{{ visual_inspiration }}
+
+CORE EMOTION:
+{{ core_emotion }}
+
+TARGET MEDIUM:
+{{ target_medium }}
+
+VISUAL REFERENCES:
+{{ visual_references }}
+
+==========================================
+
+Please construct a director's treatment blueprint based on the parameters above, including a tonal map and AI prompt suite.

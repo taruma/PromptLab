@@ -47,10 +47,8 @@ Key differentiators:
 ├── /prompts
 │   ├── prompt_template.txt          # Original default prompt template fallback
 │   ├── system_prompt.txt            # Original default system instructions fallback
-│   └── /presets
-│       ├── ai_casting_screenwriter.json  # AI Casting & Screenplay preset
-│       ├── ai_director_storyboard.json   # AI Director & Storyboard preset
-│       └── vfx_worldbuilder.json         # VFX & Speculative Worldbuilder preset
+│   └── /presets                     # Built-in system presets (folder-based or JSON formats)
+│       └── /[preset_id]             # Folder per system preset containing meta.json, system_prompt.txt, prompt_template.txt
 ├── /public
 │   ├── logo_promptlab.png           # Application logo
 │   ├── favicon.ico                  # Site favicon

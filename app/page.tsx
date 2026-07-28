@@ -1513,8 +1513,8 @@ export default function PromptGeneratorPage() {
       localStorage.removeItem("prompt_generator_loaded_preset_id");
     } catch (e) {}
     setNewPresetName("");
-    setTempSystemPrompt("");
-    setTempPromptTemplate("{{ visual_references }}\n\n---\n\n{{ idea }}");
+    setTempSystemPrompt(defaultSystemPrompt);
+    setTempPromptTemplate(defaultPromptTemplate);
     setPresetStatusBanner({ message: "Reset system prompt and prompt template." });
   };
 

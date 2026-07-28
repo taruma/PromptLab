@@ -1,0 +1,20 @@
+=== CINEMATIC LANGUAGE DEEP DIVE ===
+
+YOUR SCENE OR CONCEPT:
+{{ idea }}
+
+REFERENCE TYPE:
+{{ reference_type }}
+
+SKILL FOCUS:
+{{ skill_focus }}
+
+OUTPUT USE:
+{{ output_use }}
+
+VISUAL REFERENCES:
+{{ visual_references }}
+
+===========================================================================
+
+Please perform a comprehensive multi-dimensional analysis of this scene across all cinematic layers — from shot design and composition to lighting, color, camera movement, editing rhythm, and sound — synthesizing them into a unified visual language study.

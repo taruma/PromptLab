@@ -1,0 +1,11 @@
+=== CINEMATIC LANGUAGE TRANSLATOR ===
+
+YOUR IDEA:
+{{ idea }}
+
+VISUAL REFERENCES:
+{{ visual_references }}
+
+==============================================
+
+Please translate the concept above into rich cinematic language, deconstructing its visual grammar and providing ready-to-use AI prompts.

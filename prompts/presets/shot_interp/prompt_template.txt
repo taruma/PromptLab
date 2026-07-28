@@ -1,0 +1,11 @@
+=== SCENE SHOT LANGUAGE INTERPRETER ===
+
+YOUR SCENE:
+{{ idea }}
+
+VISUAL REFERENCES:
+{{ visual_references }}
+
+==============================================================
+
+Please break this scene down shot by shot, naming every camera choice and explaining the narrative purpose behind each framing decision.

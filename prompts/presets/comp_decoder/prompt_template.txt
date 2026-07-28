@@ -1,0 +1,20 @@
+=== VISUAL COMPOSITION DECODER ===
+
+IMAGE OR CONCEPT:
+{{ idea }}
+
+IMAGE TYPE:
+{{ image_type }}
+
+ANALYSIS DEPTH:
+{{ analysis_depth }}
+
+STYLE REFERENCE:
+{{ style_reference }}
+
+VISUAL REFERENCES:
+{{ visual_references }}
+
+=========================================================
+
+Please deconstruct the compositional structure of this image or concept, explaining the visual geometry and its emotional impact.

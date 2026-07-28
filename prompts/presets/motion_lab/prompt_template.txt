@@ -1,0 +1,11 @@
+=== CAMERA MOTION & DYNAMIC DESCRIPTION LAB ===
+
+YOUR SCENE OR MOVEMENT CONCEPT:
+{{ idea }}
+
+VISUAL REFERENCES:
+{{ visual_references }}
+
+===============================================================
+
+Please analyze the camera movement choices in this sequence, breaking down every motion decision and its emotional motivation.

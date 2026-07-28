@@ -1,0 +1,20 @@
+=== COLOR LANGUAGE & MOOD MAPPER ===
+
+COLOR CONCEPT:
+{{ idea }}
+
+SOURCE TYPE:
+{{ source_type }}
+
+TARGET MOOD:
+{{ target_mood }}
+
+COLOR SYSTEM:
+{{ color_system }}
+
+VISUAL REFERENCES:
+{{ visual_references }}
+
+==========================================================
+
+Please extract or design a complete color palette based on the parameters above, including grading style, color psychology notes, and AI generation color tokens.

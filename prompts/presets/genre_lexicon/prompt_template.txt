@@ -1,0 +1,11 @@
+=== GENRE & TONE VISUAL LEXICON ===
+
+GENRE, DIRECTOR, OR STYLE TO EXPLORE:
+{{ idea }}
+
+VISUAL REFERENCES:
+{{ visual_references }}
+
+==================================================
+
+Please deconstruct the visual language and signature techniques of this genre or style, and provide a prompt toolkit for generative AI.

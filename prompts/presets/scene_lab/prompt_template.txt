@@ -1,0 +1,23 @@
+=== SCENE DESCRIPTION & VISUAL DIALOGUE LAB ===
+
+SCENE CONCEPT:
+{{ idea }}
+
+CHARACTER A ROLE:
+{{ character_a_role }}
+
+CHARACTER B ROLE:
+{{ character_b_role }}
+
+EMOTIONAL ARC:
+{{ emotional_arc }}
+
+VISUAL SETTING:
+{{ visual_setting }}
+
+VISUAL REFERENCES:
+{{ visual_references }}
+
+==========================================================
+
+Please craft a fully visualized scene description from the parameters above, with a deep emphasis on how lighting, blocking, and camera choices express emotional subtext.

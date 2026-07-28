@@ -1,0 +1,20 @@
+=== VISUAL IDENTITY & STYLE PROMPT ARCHITECT ===
+
+PROJECT OR CONCEPT:
+{{ idea }}
+
+PROJECT IDENTITY:
+{{ project_identity }}
+
+STYLE INFLUENCES:
+{{ style_influences }}
+
+OUTPUT FORMAT:
+{{ output_format }}
+
+VISUAL REFERENCES:
+{{ visual_references }}
+
+===========================================================================
+
+Please define a cohesive visual identity style guide based on the parameters above — from core pillars and detailed specifications to a ready-to-use AI style bible.
