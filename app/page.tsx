@@ -317,6 +317,9 @@ export default function PromptGeneratorPage() {
     systemPrompt: string;
     promptTemplate: string;
     url: string;
+    rawJsonText?: string;
+    importResult?: ReturnType<typeof importPresetsFromJSON>;
+    targetPreset?: UserPreset;
   } | null>(null);
   const [isUrlImportConfirmOpen, setIsUrlImportConfirmOpen] = useState<boolean>(false);
   const [urlImportPending, setUrlImportPending] = useState<boolean>(false);
@@ -949,6 +952,7 @@ export default function PromptGeneratorPage() {
       url.searchParams.delete("configUrl");
       url.searchParams.delete("preset");
       url.searchParams.delete("config");
+      url.searchParams.delete("preseturl");
       window.history.replaceState({}, "", url.pathname + url.search);
     }
   };
@@ -958,7 +962,7 @@ export default function PromptGeneratorPage() {
     if (typeof window === "undefined") return;
 
     const params = new URLSearchParams(window.location.search);
-    const urlParam = params.get("presetUrl") || params.get("configUrl") || params.get("preset") || params.get("config");
+    const urlParam = params.get("presetUrl") || params.get("configUrl") || params.get("preset") || params.get("config") || params.get("preseturl");
 
     if (urlParam) {
       let targetUrl = decodeURIComponent(urlParam);
@@ -972,18 +976,49 @@ export default function PromptGeneratorPage() {
           if (!res.ok) {
             throw new Error(`Server returned status ${res.status}`);
           }
-          const data = await res.json();
+          const text = await res.text();
           
-          if (data.systemPrompt !== undefined && data.promptTemplate !== undefined) {
+          // Use modular importPresetsFromJSON to parse & validate (matches Configure Prompts modal behavior)
+          const importResult = importPresetsFromJSON(text, customPresets, pinnedPresetIds);
+
+          if (importResult.importedCount === 0 && importResult.skippedCount === 0) {
+            throw new Error("No valid preset items found in remote file.");
+          }
+
+          // Determine target preset object to load and preview
+          let targetPreset: UserPreset | null = null;
+          if (importResult.importedCount > 0) {
+            targetPreset = importResult.updatedPresets[importResult.updatedPresets.length - 1];
+          } else {
+            // If skipped as duplicate, match against customPresets or updatedPresets
+            try {
+              const rawParsed = JSON.parse(text);
+              const raw = Array.isArray(rawParsed) ? rawParsed[0] : (rawParsed.presets?.[0] || rawParsed.items?.[0] || rawParsed.preset || rawParsed);
+              if (raw) {
+                targetPreset = customPresets.find(p => 
+                  (p.name && raw.name && p.name.trim().toLowerCase() === String(raw.name).trim().toLowerCase()) ||
+                  (p.systemPrompt === String(raw.systemPrompt || "") && p.promptTemplate === String(raw.promptTemplate || ""))
+                ) || null;
+              }
+            } catch (e) {}
+            if (!targetPreset && importResult.updatedPresets.length > 0) {
+              targetPreset = importResult.updatedPresets[importResult.updatedPresets.length - 1];
+            }
+          }
+
+          if (targetPreset) {
             setUrlPresetData({
-              name: data.name || "Imported URL Preset",
-              systemPrompt: data.systemPrompt,
-              promptTemplate: data.promptTemplate,
-              url: targetUrl
+              name: targetPreset.name || "Imported URL Preset",
+              systemPrompt: targetPreset.systemPrompt,
+              promptTemplate: targetPreset.promptTemplate,
+              url: targetUrl,
+              rawJsonText: text,
+              importResult: importResult,
+              targetPreset: targetPreset
             });
             setIsUrlImportConfirmOpen(true);
           } else {
-            throw new Error("Invalid preset format. The JSON must contain 'systemPrompt' and 'promptTemplate' fields.");
+            throw new Error("Invalid preset format. Could not process preset from URL.");
           }
         } catch (err: any) {
           console.error("Failed to fetch preset from URL:", err);
@@ -1004,13 +1039,51 @@ export default function PromptGeneratorPage() {
   const handleApplyUrlPreset = () => {
     if (!urlPresetData) return;
 
+    // 1. Save imported custom presets to customPresets state & localStorage (same as Configure Prompts modal)
+    if (urlPresetData.importResult) {
+      const { updatedPresets, newPinnedIds, importedCount } = urlPresetData.importResult;
+
+      if (importedCount > 0) {
+        setCustomPresets(updatedPresets);
+        try {
+          localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(updatedPresets));
+        } catch (err) {
+          console.error("Failed to save custom presets to localStorage:", err);
+        }
+
+        if (newPinnedIds && newPinnedIds.length > 0) {
+          const mergedPinned = Array.from(new Set([...pinnedPresetIds, ...newPinnedIds]));
+          setPinnedPresetIds(mergedPinned);
+          try {
+            localStorage.setItem("prompt_generator_pinned_presets", JSON.stringify(mergedPinned));
+          } catch (err) {
+            console.error("Failed to save pinned presets to localStorage:", err);
+          }
+        }
+      }
+    }
+
+    // 2. Set active loaded preset ID and editing preset ID
+    const presetToLoad = urlPresetData.targetPreset;
+    if (presetToLoad) {
+      setLoadedPresetId(presetToLoad.id);
+      setActiveEditingPresetId(presetToLoad.id);
+      setNewPresetName(presetToLoad.name);
+      try {
+        localStorage.setItem("prompt_generator_loaded_preset_id", presetToLoad.id);
+      } catch (e) {}
+    }
+
+    // 3. Apply system prompt and prompt template to active workspace
     setSystemPrompt(urlPresetData.systemPrompt);
     setPromptTemplate(urlPresetData.promptTemplate);
     const vars = extractVariables(urlPresetData.promptTemplate);
     setVariables(vars);
 
-    localStorage.setItem("prompt_generator_system_prompt", urlPresetData.systemPrompt);
-    localStorage.setItem("prompt_generator_prompt_template", urlPresetData.promptTemplate);
+    try {
+      localStorage.setItem("prompt_generator_system_prompt", urlPresetData.systemPrompt);
+      localStorage.setItem("prompt_generator_prompt_template", urlPresetData.promptTemplate);
+    } catch (e) {}
 
     setInputs(prev => {
       const updatedInputs: Record<string, string> = {};
@@ -1040,13 +1113,14 @@ export default function PromptGeneratorPage() {
 
     if (clearSessionOnUrlImport) {
       setUploadedImages([]);
+      setUploadedVideos([]);
       setGenerationResult("");
       setFilledPrompt("");
       setThinkingResult("");
       setIsThinking(false);
     }
 
-    setUrlImportSuccessMsg(`Successfully imported and compiled: "${urlPresetData.name}"`);
+    setUrlImportSuccessMsg(`Successfully imported preset: "${urlPresetData.name}"`);
     setTimeout(() => {
       setUrlImportSuccessMsg(null);
     }, 4000);

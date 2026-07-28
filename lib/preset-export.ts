@@ -139,6 +139,8 @@ export function importPresetsFromJSON(
     rawItems = parsedData.presets;
   } else if (parsedData && Array.isArray(parsedData.items)) {
     rawItems = parsedData.items;
+  } else if (parsedData && parsedData.preset && typeof parsedData.preset === "object") {
+    rawItems = [parsedData.preset];
   } else if (
     parsedData &&
     typeof parsedData === "object" &&
