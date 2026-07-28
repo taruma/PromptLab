@@ -44,6 +44,7 @@ import DeleteHistoryConfirmModal from "../components/DeleteHistoryConfirmModal";
 import DiscardChangesConfirmModal from "../components/DiscardChangesConfirmModal";
 import PresetExportDropdown from "../components/PresetExportDropdown";
 import AddYouTubeModal from "../components/AddYouTubeModal";
+import AddFilesApiModal from "../components/AddFilesApiModal";
 import YouTubeIcon from "../components/YouTubeIcon";
 import AppHeader from "../components/AppHeader";
 import LabManualSection from "../components/LabManualSection";
@@ -97,8 +98,8 @@ export interface HistoryItem {
   id: string;
   timestamp: string;
   variables: Record<string, string>;
-  images: { id?: string; label: string; base64: string; mimeType: string }[];
-  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; base64?: string }[];
+  images: { id?: string; label: string; base64: string; mimeType: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string }[];
+  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; base64?: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string }[];
   output: string;
   thinkingResult?: string;
   filledPrompt: string;
@@ -130,6 +131,7 @@ export default function PromptGeneratorPage() {
   const [isConfigLoaded, setIsConfigLoaded] = useState<boolean>(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState<boolean>(false);
   const [isYouTubeModalOpen, setIsYouTubeModalOpen] = useState<boolean>(false);
+  const [isFilesApiModalOpen, setIsFilesApiModalOpen] = useState<boolean>(false);
 
   // User input states
   const [inputs, setInputs] = useState<Record<string, string>>({});
@@ -1212,6 +1214,47 @@ export default function PromptGeneratorPage() {
     setUploadedVideos(prev => [...prev, newVid]);
   };
 
+  // Handle successful Files API upload (images and videos)
+  const handleFilesApiUploadSuccess = (mediaData: {
+    label: string;
+    fileUri: string;
+    mimeType: string;
+    sizeBytes: number;
+    expirationTime?: string;
+    isImage: boolean;
+    fileObj?: File;
+  }) => {
+    const localBlobUrl = mediaData.fileObj ? URL.createObjectURL(mediaData.fileObj) : "";
+
+    if (mediaData.isImage) {
+      const newImg: UploadedImage = {
+        id: `files_img_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        label: mediaData.label,
+        base64: localBlobUrl,
+        blobUrl: localBlobUrl,
+        mimeType: mediaData.mimeType,
+        isFilesApi: true,
+        fileUri: mediaData.fileUri,
+        sizeBytes: mediaData.sizeBytes,
+        expirationTime: mediaData.expirationTime,
+      };
+      setUploadedImages((prev) => [...prev, newImg]);
+    } else {
+      const newVid: UploadedVideo = {
+        id: `files_vid_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        label: mediaData.label,
+        blobUrl: localBlobUrl,
+        base64: localBlobUrl,
+        mimeType: mediaData.mimeType,
+        isFilesApi: true,
+        fileUri: mediaData.fileUri,
+        sizeBytes: mediaData.sizeBytes,
+        expirationTime: mediaData.expirationTime,
+      };
+      setUploadedVideos((prev) => [...prev, newVid]);
+    }
+  };
+
   // Update label of specific uploaded video
   const handleUpdateVideoLabel = (id: string, value: string) => {
     setUploadedVideos(prev =>
@@ -1314,6 +1357,9 @@ export default function PromptGeneratorPage() {
           label: img.label,
           base64: base64 || "",
           mimeType: img.mimeType,
+          isFilesApi: img.isFilesApi,
+          fileUri: img.fileUri,
+          expirationTime: img.expirationTime,
         };
       })
     );
@@ -1330,6 +1376,9 @@ export default function PromptGeneratorPage() {
           duration: vid.duration,
           youtubeUrl: vid.youtubeUrl,
           isYouTube: vid.isYouTube,
+          isFilesApi: vid.isFilesApi,
+          fileUri: vid.fileUri,
+          expirationTime: vid.expirationTime,
         }))
       );
     } else {
@@ -1849,12 +1898,16 @@ export default function PromptGeneratorPage() {
           label: img.label,
           base64: img.base64,
           mimeType: img.mimeType,
+          isFilesApi: img.isFilesApi,
+          fileUri: img.fileUri,
         })),
         videos: uploadedVideos.map(vid => ({
           label: vid.label,
           base64: vid.base64,
           youtubeUrl: vid.youtubeUrl,
           mimeType: vid.mimeType,
+          isFilesApi: vid.isFilesApi,
+          fileUri: vid.fileUri,
         })),
         systemPrompt,
         promptTemplate,
@@ -1889,33 +1942,62 @@ export default function PromptGeneratorPage() {
         const trimmedLine = line.trim();
         if (trimmedLine.startsWith("data: ")) {
           const jsonStr = trimmedLine.slice(6).trim();
-          if (jsonStr) {
-            try {
-              const data = JSON.parse(jsonStr);
-              if (data.error) {
-                throw new Error(data.error);
+          if (!jsonStr) return;
+          let data: any = null;
+          try {
+            data = JSON.parse(jsonStr);
+          } catch (e: any) {
+            console.error("Error parsing stream line JSON:", e, line);
+            return;
+          }
+
+          if (data?.error) {
+            let errorMsg = typeof data.error === "string" ? data.error : data.error?.message || JSON.stringify(data.error);
+            // Unwrap stringified nested JSON if present
+            for (let i = 0; i < 3; i++) {
+              if (typeof errorMsg === "string" && (errorMsg.trim().startsWith("{") || errorMsg.trim().startsWith("["))) {
+                try {
+                  const parsed = JSON.parse(errorMsg);
+                  if (parsed?.error?.message) errorMsg = parsed.error.message;
+                  else if (parsed?.message) errorMsg = parsed.message;
+                  else if (parsed?.error && typeof parsed.error === "string") errorMsg = parsed.error;
+                  else break;
+                } catch {
+                  break;
+                }
               }
-              if (data.usage) {
-                capturedUsage = data.usage;
-                setTokenUsage(data.usage);
-              }
-              if (data.filledPrompt) {
-                activeFilledPrompt = data.filledPrompt;
-                setFilledPrompt(data.filledPrompt);
-              }
-              if (data.thought) {
-                accumulatedThought += data.thought;
-                setThinkingResult(accumulatedThought);
-                setIsThinking(true);
-              }
-              if (data.text) {
-                accumulatedText += data.text;
-                setGenerationResult(accumulatedText);
-                setIsThinking(false);
-              }
-            } catch (e: any) {
-              console.error("Error parsing stream line:", e, line);
             }
+
+            if (
+              errorMsg.includes("You do not have permission to access the File") ||
+              errorMsg.includes("PERMISSION_DENIED") ||
+              (errorMsg.includes("403") && errorMsg.includes("File"))
+            ) {
+              const fileMatch = errorMsg.match(/File\s+([a-zA-Z0-9_-]+)/);
+              const fileId = fileMatch ? fileMatch[1] : "";
+              errorMsg = `Gemini Files API Error: Access denied to uploaded file resource ${fileId ? `'${fileId}'` : ""}. Note: Files API assets are linked to the specific API key used during upload and automatically expire after 48 hours. If you switched API keys or the file expired, please re-upload or re-select an active file in the 'Files API Upload' modal.`;
+            }
+
+            throw new Error(errorMsg);
+          }
+
+          if (data.usage) {
+            capturedUsage = data.usage;
+            setTokenUsage(data.usage);
+          }
+          if (data.filledPrompt) {
+            activeFilledPrompt = data.filledPrompt;
+            setFilledPrompt(data.filledPrompt);
+          }
+          if (data.thought) {
+            accumulatedThought += data.thought;
+            setThinkingResult(accumulatedThought);
+            setIsThinking(true);
+          }
+          if (data.text) {
+            accumulatedText += data.text;
+            setGenerationResult(accumulatedText);
+            setIsThinking(false);
           }
         }
       };
@@ -1948,19 +2030,22 @@ export default function PromptGeneratorPage() {
         const historyImages = await Promise.all(
           uploadedImages.map(async (img, idx) => {
             // Decouple from the active session's image ID.
-            // This ensures that deleting the active session image card or overwriting it
-            // will never break the historic reference in IndexedDB.
             const imgId = `hist-img-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
-            try {
-              await saveStoredImage(imgId, img.base64);
-            } catch (dbErr) {
-              console.error("Failed to save history image to IndexedDB:", dbErr);
+            if (!img.isFilesApi && img.base64 && !img.base64.startsWith("blob:")) {
+              try {
+                await saveStoredImage(imgId, img.base64);
+              } catch (dbErr) {
+                console.error("Failed to save history image to IndexedDB:", dbErr);
+              }
             }
             return {
               id: imgId,
               label: img.label,
               base64: "", // Strip to conserve localStorage space
               mimeType: img.mimeType,
+              isFilesApi: img.isFilesApi,
+              fileUri: img.fileUri,
+              expirationTime: img.expirationTime,
             };
           })
         );
@@ -1972,6 +2057,9 @@ export default function PromptGeneratorPage() {
           duration: vid.duration,
           youtubeUrl: vid.youtubeUrl,
           isYouTube: vid.isYouTube || Boolean(vid.youtubeUrl),
+          isFilesApi: vid.isFilesApi,
+          fileUri: vid.fileUri,
+          expirationTime: vid.expirationTime,
         }));
 
         const activeTemplateVars = new Set(extractVariables(promptTemplate));
@@ -2025,8 +2113,33 @@ export default function PromptGeneratorPage() {
         });
       }
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "An unexpected generation error occurred. Please try again.");
+      console.error("Generation error:", err);
+      let errMsg = err?.message || "An unexpected generation error occurred. Please try again.";
+      for (let i = 0; i < 3; i++) {
+        if (typeof errMsg === "string" && (errMsg.trim().startsWith("{") || errMsg.trim().startsWith("["))) {
+          try {
+            const parsed = JSON.parse(errMsg);
+            if (parsed?.error?.message) errMsg = parsed.error.message;
+            else if (parsed?.message) errMsg = parsed.message;
+            else if (parsed?.error && typeof parsed.error === "string") errMsg = parsed.error;
+            else break;
+          } catch {
+            break;
+          }
+        }
+      }
+
+      if (
+        errMsg.includes("You do not have permission to access the File") ||
+        errMsg.includes("PERMISSION_DENIED") ||
+        (errMsg.includes("403") && errMsg.includes("File"))
+      ) {
+        const fileMatch = errMsg.match(/File\s+([a-zA-Z0-9_-]+)/);
+        const fileId = fileMatch ? fileMatch[1] : "";
+        errMsg = `Gemini Files API Error: Access denied to uploaded file resource ${fileId ? `'${fileId}'` : ""}. Note: Files API assets are linked to the specific API key used during upload and automatically expire after 48 hours. If you switched API keys or the file expired, please re-upload or re-select an active file in the 'Files API Upload' modal.`;
+      }
+
+      setError(errMsg);
     } finally {
       setIsLoading(false);
       setIsThinking(false);
@@ -2099,6 +2212,7 @@ export default function PromptGeneratorPage() {
           <VisualAssetsSection
             isVisualAssetsOpen={isVisualAssetsOpen}
             onToggleVisualAssets={toggleVisualAssets}
+            onOpenFilesApiModal={() => setIsFilesApiModalOpen(true)}
             onOpenYouTubeModal={() => setIsYouTubeModalOpen(true)}
             onOpenLibrary={() => setIsLibraryOpen(true)}
             videoError={videoError}
@@ -3085,6 +3199,13 @@ export default function PromptGeneratorPage() {
         onClose={() => setIsYouTubeModalOpen(false)}
         onAddYouTube={handleAddYouTubeVideo}
         nextIndex={uploadedVideos.length + 1}
+      />
+
+      <AddFilesApiModal
+        isOpen={isFilesApiModalOpen}
+        onClose={() => setIsFilesApiModalOpen(false)}
+        onUploadSuccess={handleFilesApiUploadSuccess}
+        customApiKey={customApiKey}
       />
 
       <ProjectManagerModal

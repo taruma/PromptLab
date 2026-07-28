@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 // Initialize Gemini client on the server side
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -17,6 +20,8 @@ interface UploadedImage {
   label: string;
   base64: string; // potentially a dataURL
   mimeType: string;
+  isFilesApi?: boolean;
+  fileUri?: string;
 }
 
 interface UploadedVideo {
@@ -24,6 +29,49 @@ interface UploadedVideo {
   base64?: string; // potentially a dataURL
   youtubeUrl?: string; // YouTube video URL
   mimeType?: string;
+  isFilesApi?: boolean;
+  fileUri?: string;
+}
+
+function formatGeminiErrorMessage(rawError: any): string {
+  let message = typeof rawError === "string" ? rawError : rawError?.message || String(rawError || "An unknown error occurred.");
+  
+  // Unwrap nested JSON error strings if present
+  for (let i = 0; i < 3; i++) {
+    if (typeof message === "string" && (message.trim().startsWith("{") || message.trim().startsWith("["))) {
+      try {
+        const parsed = JSON.parse(message);
+        if (parsed?.error?.message) {
+          message = parsed.error.message;
+        } else if (parsed?.message) {
+          message = parsed.message;
+        } else if (parsed?.error && typeof parsed.error === "string") {
+          message = parsed.error;
+        } else {
+          break;
+        }
+      } catch {
+        break;
+      }
+    }
+  }
+
+  // Actionable guidance for Gemini Files API 403 / permission denied errors
+  if (
+    message.includes("You do not have permission to access the File") ||
+    message.includes("PERMISSION_DENIED") ||
+    (message.includes("403") && message.includes("File"))
+  ) {
+    const fileMatch = message.match(/File\s+([a-zA-Z0-9_-]+)/);
+    const fileId = fileMatch ? fileMatch[1] : "";
+    return `Gemini Files API Error: Access denied to uploaded file resource ${fileId ? `'${fileId}'` : ""}. Note: Files API assets are linked to the specific API key used during upload and automatically expire after 48 hours. If you switched API keys or the file expired, please re-upload or re-select an active file in the 'Files API Upload' modal.`;
+  }
+
+  if (message.includes("API_KEY_INVALID") || message.includes("API key not valid")) {
+    return "Gemini API Error: Invalid API key provided. Please check your custom API key in 'Engine Controls' or verify project settings.";
+  }
+
+  return message;
 }
 
 export async function POST(req: NextRequest) {
@@ -126,30 +174,118 @@ export async function POST(req: NextRequest) {
     // Add the visual reference images to the request parts
     for (let i = 0; i < imageList.length; i++) {
       const img = imageList[i];
-      let cleanData = img.base64;
-      const commaIndex = cleanData.indexOf(",");
-      if (commaIndex !== -1) {
-        cleanData = cleanData.substring(commaIndex + 1);
-      }
+      if ((img.isFilesApi || img.fileUri) && img.fileUri) {
+        let fileDataValid = false;
+        try {
+          const fileName = img.fileUri.includes("/files/")
+            ? "files/" + img.fileUri.split("/files/")[1]
+            : (img.fileUri.startsWith("files/") ? img.fileUri : `files/${img.fileUri}`);
 
-      parts.push({
-        inlineData: {
-          mimeType: img.mimeType || "image/jpeg",
-          data: cleanData,
+          const fileObj: any = await activeAi.files.get({ name: fileName });
+          if (fileObj && (fileObj.state === "ACTIVE" || !fileObj.state)) {
+            fileDataValid = true;
+            parts.push({
+              fileData: {
+                fileUri: img.fileUri,
+                mimeType: fileObj.mimeType || img.mimeType || "image/jpeg",
+              }
+            });
+          } else {
+            console.warn(`Files API image file '${fileName}' is in state '${fileObj?.state}'`);
+          }
+        } catch (fileErr: any) {
+          console.warn(`Files API check failed for image fileUri '${img.fileUri}':`, fileErr?.message || fileErr);
         }
-      });
+
+        if (!fileDataValid) {
+          if (img.base64 && !img.base64.startsWith("blob:")) {
+            let cleanData = img.base64;
+            const commaIndex = cleanData.indexOf(",");
+            if (commaIndex !== -1) {
+              cleanData = cleanData.substring(commaIndex + 1);
+            }
+            parts.push({
+              inlineData: {
+                mimeType: img.mimeType || "image/jpeg",
+                data: cleanData,
+              }
+            });
+          } else {
+            const fileId = img.fileUri.includes("/files/") ? img.fileUri.split("/files/")[1] : img.fileUri;
+            throw new Error(
+              `Gemini Files API Error: The uploaded reference image '@image${i + 1}' (${img.label || "Image"}) referencing '${fileId}' is no longer accessible on Gemini Files API. Files API assets automatically expire after 48 hours or require the same API key used during upload. Please remove or re-upload this asset in the 'Visual Assets' section.`
+            );
+          }
+        }
+      } else if (img.base64 && !img.base64.startsWith("blob:")) {
+        let cleanData = img.base64;
+        const commaIndex = cleanData.indexOf(",");
+        if (commaIndex !== -1) {
+          cleanData = cleanData.substring(commaIndex + 1);
+        }
+
+        parts.push({
+          inlineData: {
+            mimeType: img.mimeType || "image/jpeg",
+            data: cleanData,
+          }
+        });
+      }
     }
 
     // Add the visual reference videos to the request parts
     for (let i = 0; i < videoList.length; i++) {
       const vid = videoList[i];
-      if (vid.youtubeUrl) {
+      if ((vid.isFilesApi || vid.fileUri) && vid.fileUri) {
+        let fileDataValid = false;
+        try {
+          const fileName = vid.fileUri.includes("/files/")
+            ? "files/" + vid.fileUri.split("/files/")[1]
+            : (vid.fileUri.startsWith("files/") ? vid.fileUri : `files/${vid.fileUri}`);
+
+          const fileObj: any = await activeAi.files.get({ name: fileName });
+          if (fileObj && (fileObj.state === "ACTIVE" || !fileObj.state)) {
+            fileDataValid = true;
+            parts.push({
+              fileData: {
+                fileUri: vid.fileUri,
+                mimeType: fileObj.mimeType || vid.mimeType || "video/mp4",
+              }
+            });
+          } else {
+            console.warn(`Files API video file '${fileName}' is in state '${fileObj?.state}'`);
+          }
+        } catch (fileErr: any) {
+          console.warn(`Files API check failed for video fileUri '${vid.fileUri}':`, fileErr?.message || fileErr);
+        }
+
+        if (!fileDataValid) {
+          if (vid.base64 && !vid.base64.startsWith("blob:")) {
+            let cleanData = vid.base64;
+            const commaIndex = cleanData.indexOf(",");
+            if (commaIndex !== -1) {
+              cleanData = cleanData.substring(commaIndex + 1);
+            }
+            parts.push({
+              inlineData: {
+                mimeType: vid.mimeType || "video/mp4",
+                data: cleanData,
+              }
+            });
+          } else {
+            const fileId = vid.fileUri.includes("/files/") ? vid.fileUri.split("/files/")[1] : vid.fileUri;
+            throw new Error(
+              `Gemini Files API Error: The uploaded reference video '@video${i + 1}' (${vid.label || "Video"}) referencing '${fileId}' is no longer accessible on Gemini Files API. Files API assets automatically expire after 48 hours or require the same API key used during upload. Please remove or re-upload this asset in the 'Visual Assets' section.`
+            );
+          }
+        }
+      } else if (vid.youtubeUrl) {
         parts.push({
           fileData: {
             fileUri: vid.youtubeUrl,
           }
         });
-      } else if (vid.base64) {
+      } else if (vid.base64 && !vid.base64.startsWith("blob:")) {
         let cleanData = vid.base64;
         const commaIndex = cleanData.indexOf(",");
         if (commaIndex !== -1) {
@@ -250,8 +386,9 @@ export async function POST(req: NextRequest) {
           }
         } catch (streamError: any) {
           console.error("Error in generate stream:", streamError);
+          const formattedError = formatGeminiErrorMessage(streamError);
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ error: streamError.message })}\n\n`)
+            encoder.encode(`data: ${JSON.stringify({ error: formattedError })}\n\n`)
           );
         } finally {
           controller.close();
@@ -268,6 +405,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Gemini Generation Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const formattedError = formatGeminiErrorMessage(error);
+    return NextResponse.json({ error: formattedError }, { status: 500 });
   }
 }

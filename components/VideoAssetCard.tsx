@@ -10,8 +10,13 @@ interface VideoAssetCardProps {
   video: {
     id: string;
     base64?: string;
+    blobUrl?: string;
     youtubeUrl?: string;
     isYouTube?: boolean;
+    isFilesApi?: boolean;
+    fileUri?: string;
+    expirationTime?: string;
+    sizeBytes?: number;
     label: string;
     mimeType?: string;
   };
@@ -29,8 +34,11 @@ export default function VideoAssetCard({
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
   const isYt = Boolean(video.isYouTube || (video.youtubeUrl && video.youtubeUrl.trim().length > 0));
-  const isPlayable = isYt || Boolean(video.base64);
-  const ytThumbnail = video.youtubeUrl ? getYouTubeThumbnailUrl(video.youtubeUrl) : null;
+  const rawLocalVideoSrc = (video.blobUrl && video.blobUrl.trim().length > 0) ? video.blobUrl : (video.base64 && video.base64.trim().length > 0) ? video.base64 : null;
+  const localVideoSrc = rawLocalVideoSrc;
+  const isPlayable = isYt || Boolean(localVideoSrc);
+  const rawYtThumbnail = video.youtubeUrl ? getYouTubeThumbnailUrl(video.youtubeUrl) : null;
+  const ytThumbnail = (rawYtThumbnail && rawYtThumbnail.trim().length > 0) ? rawYtThumbnail : null;
   const ytVideoId = video.youtubeUrl ? extractYouTubeVideoId(video.youtubeUrl) : null;
 
   return (
@@ -78,24 +86,24 @@ export default function VideoAssetCard({
                   </span>
                 </div>
               )
-            ) : video.base64 ? (
-              // Local File Video with Base64 Stream
+            ) : localVideoSrc ? (
+              // Local File Video with Base64 Stream or Object URL
               <video
-                src={video.base64}
+                src={localVideoSrc}
                 muted
                 playsInline
                 preload="metadata"
                 className="w-full h-full object-cover opacity-85 group-hover/vid:opacity-100 transition-opacity"
               />
             ) : (
-              // Local MP4 Video Reference Placeholder (loaded from history without Base64)
+              // Local MP4 Video Reference Placeholder (loaded from history without stream)
               <div className="w-full h-full flex flex-col items-center justify-center bg-[#1A1A1A] text-stone-400 gap-1 p-2 text-center select-none">
                 <Film className="w-7 h-7 text-amber-400/90 mb-0.5" />
                 <span className="text-[9px] font-mono font-bold uppercase text-stone-200 truncate max-w-full">
-                  MP4 REFERENCE
+                  {video.isFilesApi ? "FILES API VIDEO" : "MP4 REFERENCE"}
                 </span>
                 <span className="text-[7px] font-mono uppercase text-stone-500 tracking-wider">
-                  (NO LOCAL STREAM)
+                  {video.isFilesApi ? "(URI LINKED)" : "(NO LOCAL STREAM)"}
                 </span>
               </div>
             )}
@@ -124,7 +132,11 @@ export default function VideoAssetCard({
             </div>
 
             {/* Top-Right Badge for type */}
-            {isYt ? (
+            {video.isFilesApi ? (
+              <div className="absolute top-1 right-8 bg-emerald-700 text-emerald-100 text-[7px] font-mono font-bold px-1.5 py-0.5 uppercase tracking-wider select-none z-10" title={video.fileUri || "Gemini Files API"}>
+                FILES API
+              </div>
+            ) : isYt ? (
               <div className="absolute top-1 right-8 bg-red-600 text-white text-[7px] font-mono font-bold px-1.5 py-0.5 uppercase tracking-wider select-none z-10">
                 YT
               </div>

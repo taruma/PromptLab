@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Upload, AlertTriangle, Layers, RefreshCw, CheckCircle2 } from "lucide-react";
+import { X, Upload, AlertTriangle, Layers, RefreshCw, CheckCircle2, Image as ImageIcon } from "lucide-react";
 import {
   AssetExportItem,
   readAndValidateAssetLibraryJSON,
@@ -169,11 +169,17 @@ export default function AssetImportModal({
                       className="aspect-square bg-[#EAEAE8] border border-[#D1D1CF] relative overflow-hidden group"
                       title={asset.label}
                     >
-                      <img
-                        src={asset.base64}
-                        alt={asset.label}
-                        className="w-full h-full object-cover"
-                      />
+                      {asset.base64 && asset.base64.trim().length > 0 ? (
+                        <img
+                          src={asset.base64}
+                          alt={asset.label}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-[#EAEAE8]">
+                          <ImageIcon className="w-5 h-5 text-stone-400" />
+                        </div>
+                      )}
                       <div className="absolute inset-x-0 bottom-0 bg-[#1A1A1A]/80 text-white text-[7px] font-mono px-1 py-0.5 truncate text-center opacity-0 group-hover:opacity-100 transition-opacity">
                         {asset.label}
                       </div>

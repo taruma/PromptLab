@@ -18,7 +18,8 @@ import {
   Square,
   Download,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Image as ImageIcon
 } from "lucide-react";
 
 import {
@@ -821,11 +822,15 @@ export default function AssetLibrarySidebar({
                       >
                         {/* Thumbnail box */}
                         <div className="aspect-square bg-[#EAEAE8] relative overflow-hidden flex items-center justify-center">
-                          <img 
-                            src={img.base64} 
-                            alt={img.label}
-                            className="w-full h-full object-cover"
-                          />
+                          {img.base64 && img.base64.trim().length > 0 ? (
+                            <img 
+                              src={img.base64} 
+                              alt={img.label}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <ImageIcon className="w-6 h-6 text-stone-400" />
+                          )}
                           
                           {/* Selection checkbox button */}
                           <button
@@ -932,11 +937,15 @@ export default function AssetLibrarySidebar({
 
                           {/* Thumbnail */}
                           <div className="w-10 h-10 bg-[#EAEAE8] border border-[#D1D1CF] shrink-0 overflow-hidden flex items-center justify-center relative">
-                            <img 
-                              src={img.base64} 
-                              alt={img.label}
-                              className="w-full h-full object-cover"
-                            />
+                            {img.base64 && img.base64.trim().length > 0 ? (
+                              <img 
+                                src={img.base64} 
+                                alt={img.label}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <ImageIcon className="w-4 h-4 text-stone-400" />
+                            )}
                           </div>
 
                           {/* Label input */}

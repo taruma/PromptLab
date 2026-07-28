@@ -38,10 +38,12 @@ export default function VideoPlayerModal({
 
   if (!isOpen) return null;
 
-  const effectiveYoutubeUrl = youtubeUrl || (videoUrl && isYouTubeUrl(videoUrl) ? videoUrl : undefined);
+  const cleanVideoUrl = (videoUrl && videoUrl.trim().length > 0) ? videoUrl : undefined;
+  const cleanYoutubeUrl = (youtubeUrl && youtubeUrl.trim().length > 0) ? youtubeUrl : undefined;
+  const effectiveYoutubeUrl = cleanYoutubeUrl || (cleanVideoUrl && isYouTubeUrl(cleanVideoUrl) ? cleanVideoUrl : undefined);
   const ytVideoId = effectiveYoutubeUrl ? extractYouTubeVideoId(effectiveYoutubeUrl) : null;
 
-  if (!effectiveYoutubeUrl && !videoUrl) return null;
+  if (!effectiveYoutubeUrl && !cleanVideoUrl) return null;
 
   return (
     <div
@@ -106,9 +108,9 @@ export default function VideoPlayerModal({
               className="w-full h-full border-0"
               id="active-modal-youtube-iframe"
             />
-          ) : videoUrl ? (
+          ) : cleanVideoUrl ? (
             <video
-              src={videoUrl}
+              src={cleanVideoUrl}
               controls
               autoPlay
               loop

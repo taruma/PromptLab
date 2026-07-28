@@ -38,8 +38,9 @@ Key differentiators:
 ```
 ├── /app
 │   ├── /api
-│   │   ├── /generate/route.ts       # Main Gemini multi-modal generation handler (passes active prompts)
-│   │   └── /prompt-config/route.ts  # Dynamic fallback template loading & presets lookup
+│   │   ├── /generate/route.ts       # Main Gemini multi-modal generation handler (passes active prompts & fileUri parts)
+│   │   ├── /prompt-config/route.ts  # Dynamic fallback template loading & presets lookup
+│   │   └── /upload-file/route.ts    # Gemini Files API upload & polling proxy handler
 │   ├── globals.css                  # Global Tailwind imports (@import "tailwindcss";) + @keyframes slideFadeIn animation
 │   ├── layout.tsx                   # Font configurations (Inter, Space Grotesk & JetBrains Mono variables)
 │   └── page.tsx                     # Core Interactive UI Workspace & Prompt Editor Sidebar
@@ -57,6 +58,7 @@ Key differentiators:
 │   ├── android-chrome-*.png         # Android Chrome web app icons
 │   └── apple-touch-icon.png         # Apple touch icon
 ├── /components
+│   ├── AddFilesApiModal.tsx         # Modal for uploading files (images/videos up to 2 GB) to Gemini Files API
 │   ├── AddYouTubeModal.tsx          # Modal for adding YouTube video URL references
 │   ├── AppHeader.tsx                # Top navigation bar with logo and action buttons
 │   ├── AssetExportDropdown.tsx      # Dropdown for exporting asset library items (All/Selected)
@@ -180,13 +182,15 @@ The workspace reads dynamic template specifications from the currently configure
 - **Defaults Reset**: An interactive **Reset Defaults** action is available within the modal footer to restore the system's baseline configuration instantly.
 - **Metadata Visibility**: The active Engine, Reasoning Level, and Temperature parameters are constantly reported in the workspace footer next to the system status indicator.
 
-### Rule D: Multi-modal Reference Handling (Images & Video)
+### Rule D: Multi-modal Reference Handling (Images, Videos & Files API)
 
-- **Image References**: Visual reference images are uploaded by the user, processed through the Canvas compression pipeline (Rule H), and stored as Base64 in IndexedDB. Uploaded images are mapped in sequence order to `@imageN` label annotations (e.g. `@image1` as "Character Name", `@image2` as "Setting Background").
-- **Video References & YouTube URLs**: MP4 video files can be uploaded alongside images or added via YouTube URLs ("ADD YOUTUBE URL" modal). MP4 uploads are validated via `lib/video-utils.ts` (`validateAndProcessVideo`) and encoded as Base64. YouTube links are validated via regex (`isYouTubeUrl`) and the video ID is extracted with `extractYouTubeVideoId`. Thumbnails are fetched with `getYouTubeThumbnailUrl`. YouTube URLs are passed as `fileData` (`fileUri: youtubeUrl`) to the Gemini API. Both local videos and YouTube URLs map to `@videoN` label annotations (e.g. `@video1` as "Reference Clip"). Unlike images, videos are held in-memory/in-state during active sessions without IndexedDB blob caching. The `UploadedVideo` interface includes optional `youtubeUrl`, `isYouTube`, and `base64` fields — YouTube references carry a URL but no Base64 data.
-- **Unified Reference Pipeline**: Images and videos (both file uploads and YouTube references) are combined into a single `referenceTags` array server-side in `/app/api/generate/route.ts`, producing a consolidated `{{ visual_references }}` template variable that lists all media assets with their labels (e.g. `@image1 as Character Name, @video1 as YouTube Clip`).
-- **API Transmission**: Image Base64 data is passed as `inlineData` parts, MP4 video Base64 as `inlineData` parts, and YouTube URLs as `fileData` (`fileUri`) parts to the Gemini API alongside the compiled prompt text.
-- **Video Preview**: Uploaded videos and YouTube references can be previewed in a full-screen `VideoPlayerModal` component (rendering HTML5 video or embedded YouTube iframe) before generation.
+- **Image References**: Visual reference images can be uploaded directly by the user, processed through the Canvas compression pipeline (Rule H), and stored as Base64 in IndexedDB. Uploaded images are mapped in sequence order to `@imageN` label annotations (e.g. `@image1` as "Character Name", `@image2` as "Setting Background").
+- **Video References & YouTube URLs**: MP4 video files can be uploaded alongside images or added via YouTube URLs ("ADD YOUTUBE URL" modal). MP4 uploads are validated via `lib/video-utils.ts` (`validateAndProcessVideo`) and encoded as Base64. YouTube links are validated via regex (`isYouTubeUrl`) and the video ID is extracted with `extractYouTubeVideoId`. Thumbnails are fetched with `getYouTubeThumbnailUrl`. YouTube URLs are passed as `fileData` (`fileUri: youtubeUrl`) to the Gemini API. Both local videos and YouTube URLs map to `@videoN` label annotations (e.g. `@video1` as "Reference Clip").
+- **Gemini Files API Integration**: For larger images and videos (up to 2 GB per file), users can upload media directly to Google's Gemini Files API via the "FILES API UPLOAD" modal (`AddFilesApiModal.tsx`). The backend endpoint `/app/api/upload-file/route.ts` uploads the file using `ai.files.upload` with custom API key support, polls `ai.files.get` until the state becomes `ACTIVE`, and returns the `fileUri` and metadata. In the workspace, Files API assets display an emerald-green `FILES API` badge on their asset cards (`VisualAssetCard` and `VideoAssetCard`) with local blob URL playback support.
+- **Unified Reference Pipeline**: Images and videos (local Base64, YouTube references, and Files API URIs) are combined into a single `referenceTags` array server-side in `/app/api/generate/route.ts`, producing a consolidated `{{ visual_references }}` template variable listing all media assets with their label mappings (e.g. `@image1 as Character Name, @video1 as Reference Clip`).
+- **API Transmission**: Inline Base64 images/videos are passed as `inlineData` parts, YouTube URLs and Files API URIs as `fileData` (`fileUri`) parts to the Gemini API alongside compiled prompt text.
+- **Video & Asset Preview**: Uploaded videos, YouTube links, and Files API video assets can be previewed in the full-screen `VideoPlayerModal` component (rendering HTML5 video or embedded YouTube iframe) before generation.
+- **History Persistence**: Files API media references are persisted in `HistoryItem` objects with `isFilesApi`, `fileUri`, and `expirationTime` fields, allowing historical generations to recall and re-run using active Files API URIs within their 48-hour lifecycle.
 
 ### Rule E: Real-time Streaming & Reasoning Traces (SSE Architecture)
 - **Streaming Output**: The workspace utilizes high-performance text streaming via Server-Sent Events (SSE). The server-side proxy `/app/api/generate/route.ts` streams chunks using the modern `generateContentStream` method.

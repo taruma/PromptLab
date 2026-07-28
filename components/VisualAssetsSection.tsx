@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { FolderOpen, ChevronDown, ChevronRight, CloudUpload } from "lucide-react";
 import YouTubeIcon from "./YouTubeIcon";
 import VisualAssetCard from "./VisualAssetCard";
 import VideoAssetCard from "./VideoAssetCard";
@@ -12,11 +12,17 @@ export interface UploadedImage {
   label: string;
   base64: string;
   mimeType: string;
+  isFilesApi?: boolean;
+  fileUri?: string;
+  blobUrl?: string;
+  sizeBytes?: number;
+  expirationTime?: string;
 }
 
 interface VisualAssetsSectionProps {
   isVisualAssetsOpen: boolean;
   onToggleVisualAssets: () => void;
+  onOpenFilesApiModal: () => void;
   onOpenYouTubeModal: () => void;
   onOpenLibrary: () => void;
   videoError: string | null;
@@ -39,6 +45,7 @@ interface VisualAssetsSectionProps {
 export default function VisualAssetsSection({
   isVisualAssetsOpen,
   onToggleVisualAssets,
+  onOpenFilesApiModal,
   onOpenYouTubeModal,
   onOpenLibrary,
   videoError,
@@ -77,6 +84,15 @@ export default function VisualAssetsSection({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpenFilesApiModal}
+            className="px-2 py-0.5 border border-[#D1D1CF] hover:border-emerald-600 bg-white text-[8px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 text-[#1A1A1A] hover:text-emerald-700"
+            id="open-files-api-modal-btn"
+          >
+            <CloudUpload className="w-3.5 h-3.5 text-emerald-600" />
+            Files API Upload
+          </button>
           <button
             type="button"
             onClick={onOpenYouTubeModal}

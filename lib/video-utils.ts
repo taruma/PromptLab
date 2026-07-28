@@ -2,12 +2,17 @@ export interface UploadedVideo {
   id: string;
   label: string;
   base64?: string;
+  blobUrl?: string;
   mimeType?: string;
   duration?: number;
   width?: number;
   height?: number;
   youtubeUrl?: string;
   isYouTube?: boolean;
+  isFilesApi?: boolean;
+  fileUri?: string;
+  sizeBytes?: number;
+  expirationTime?: string;
 }
 
 export interface VideoValidationResult {

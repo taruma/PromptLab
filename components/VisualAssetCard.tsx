@@ -1,15 +1,19 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Trash2 } from "lucide-react";
+import { Trash2, ImageIcon } from "lucide-react";
 
 interface VisualAssetCardProps {
   img: {
     id: string;
     base64: string;
+    blobUrl?: string;
     label: string;
     mimeType: string;
+    isFilesApi?: boolean;
+    fileUri?: string;
+    expirationTime?: string;
   };
   index: number;
   onUpdateLabel: (id: string, newLabel: string) => void;
@@ -25,6 +29,12 @@ export default function VisualAssetCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [previewPos, setPreviewPos] = useState({ top: 0, left: 0 });
+
+  const imgSrc = (img.blobUrl && img.blobUrl.trim().length > 0)
+    ? img.blobUrl
+    : (img.base64 && img.base64.trim().length > 0)
+    ? img.base64
+    : null;
 
   const handleMouseEnter = () => {
     if (!cardRef.current) return;
@@ -79,21 +89,37 @@ export default function VisualAssetCard({
       <div className="flex flex-col gap-1.5">
         {/* Thumbnail Box */}
         <div className="aspect-square bg-[#EAEAE8] relative overflow-hidden flex items-center justify-center">
-          <img
-            src={img.base64}
-            alt={img.label}
-            className="w-full h-full object-cover"
-          />
+          {imgSrc ? (
+            <img
+              src={imgSrc}
+              alt={img.label}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-[#EAEAE8] text-stone-400 gap-1 p-2 text-center select-none">
+              <ImageIcon className="w-6 h-6 text-stone-400 mb-0.5" />
+              <span className="text-[8px] font-mono font-bold uppercase text-stone-600 truncate max-w-full">
+                {img.isFilesApi ? "FILES API IMAGE" : "REFERENCE IMAGE"}
+              </span>
+            </div>
+          )}
           
           {/* Top-Left Image Index Identifier */}
-          <div className="absolute top-1 left-1 bg-[#1A1A1A] text-white text-[8px] font-mono font-bold px-1.5 py-0.5 select-none">
+          <div className="absolute top-1 left-1 bg-[#1A1A1A] text-white text-[8px] font-mono font-bold px-1.5 py-0.5 select-none z-10">
             @image{index + 1}
           </div>
+
+          {/* Top-Right Files API Badge */}
+          {img.isFilesApi && (
+            <div className="absolute top-1 right-8 bg-emerald-700 text-emerald-100 text-[7px] font-mono font-bold px-1.5 py-0.5 uppercase tracking-wider select-none z-10" title={img.fileUri || "Gemini Files API"}>
+              FILES API
+            </div>
+          )}
 
           {/* Delete Asset Button */}
           <button
             onClick={() => onDeleteImage(img.id)}
-            className="absolute top-1 right-1 bg-white border border-[#D1D1CF] hover:border-red-600 hover:text-red-600 text-stone-500 p-1 transition-all cursor-pointer shadow-sm"
+            className="absolute top-1 right-1 bg-white border border-[#D1D1CF] hover:border-red-600 hover:text-red-600 text-stone-500 p-1 transition-all cursor-pointer shadow-sm z-10"
             title="Delete reference image"
           >
             <Trash2 className="w-3 h-3" />
@@ -121,7 +147,7 @@ export default function VisualAssetCard({
       </div>
 
       {/* Floating Smart Viewport Portal Preview on the Right */}
-      {isHovered &&
+      {isHovered && imgSrc &&
         createPortal(
           <div
             style={{
@@ -133,7 +159,7 @@ export default function VisualAssetCard({
           >
             <div className="border border-[#D1D1CF] overflow-hidden flex items-center justify-center">
               <img
-                src={img.base64}
+                src={imgSrc}
                 alt={img.label}
                 className="block w-auto h-auto max-w-[320px] max-h-[380px] object-contain"
               />

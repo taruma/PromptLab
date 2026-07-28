@@ -7,8 +7,8 @@ export interface HistoryItem {
   id: string;
   timestamp: string;
   variables: Record<string, string>;
-  images: { id?: string; label: string; base64: string; mimeType: string }[];
-  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean }[];
+  images: { id?: string; label: string; base64: string; mimeType: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string }[];
+  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; isFilesApi?: boolean; fileUri?: string; expirationTime?: string }[];
   output: string;
   filledPrompt: string;
   promptTemplate?: string;

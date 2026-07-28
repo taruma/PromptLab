@@ -31,8 +31,8 @@ interface HistoryItem {
   id: string;
   timestamp: string;
   variables: Record<string, string>;
-  images: { id?: string; label: string; base64: string; mimeType: string }[];
-  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean }[];
+  images: { id?: string; label: string; base64: string; mimeType: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string }[];
+  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; isFilesApi?: boolean; fileUri?: string; expirationTime?: string }[];
   output: string;
   filledPrompt: string;
   promptTemplate?: string;
@@ -833,7 +833,7 @@ export default function HistoryViewerModal({
                         return (
                           <div key={img.id || idx} className="flex items-center gap-2.5 border border-[#D1D1CF] bg-[#F4F4F2] p-1.5 pr-3 text-[10px] font-mono shrink-0">
                             <div className="w-9 h-9 relative shrink-0 border border-[#D1D1CF] bg-white overflow-hidden">
-                              {b64 ? (
+                              {b64 && b64.trim().length > 0 ? (
                                 <img src={b64} alt={img.label} className="w-full h-full object-cover" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-[#EAEAE8] animate-pulse">
