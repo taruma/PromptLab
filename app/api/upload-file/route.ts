@@ -7,16 +7,33 @@ import os from "os";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
+function getActiveApiKey(customApiKey?: string): { apiKey?: string; error?: string } {
+  const allowServerEnvKey = process.env.ALLOW_SERVER_ENV_KEY?.toLowerCase() !== "false" && process.env.ALLOW_SERVER_ENV_KEY !== "0";
+  const trimmedCustom = customApiKey?.trim();
+  const apiKey = trimmedCustom || (allowServerEnvKey ? process.env.GEMINI_API_KEY : undefined);
+
+  if (!apiKey) {
+    if (!allowServerEnvKey && !trimmedCustom) {
+      return {
+        error: "Server environment API key usage is disabled on this deployment. Please enter your custom Gemini API key in 'Engine Controls'."
+      };
+    }
+    return {
+      error: "No Gemini API key found. Please input a custom API key in 'Engine Controls' or verify configuration."
+    };
+  }
+
+  return { apiKey };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const customApiKey = req.headers.get("x-api-key") || searchParams.get("customApiKey") || undefined;
-    const activeApiKey = customApiKey?.trim() || process.env.GEMINI_API_KEY;
+    const { apiKey: activeApiKey, error: keyError } = getActiveApiKey(customApiKey);
 
     if (!activeApiKey) {
-      return NextResponse.json({
-        error: "No Gemini API key found. Please input a custom API key in 'Engine Controls' or verify configuration."
-      }, { status: 400 });
+      return NextResponse.json({ error: keyError }, { status: 400 });
     }
 
     const ai = new GoogleGenAI({
@@ -89,12 +106,10 @@ export async function POST(req: NextRequest) {
       const mimeType = isJson ? jsonBody?.mimeType : (formData?.get("mimeType") as string);
       const fileSize = isJson ? jsonBody?.fileSize : Number(formData?.get("fileSize"));
       const customApiKey = isJson ? jsonBody?.customApiKey : (formData?.get("customApiKey") as string) || req.headers.get("x-api-key") || undefined;
-      const activeApiKey = customApiKey?.trim() || process.env.GEMINI_API_KEY;
+      const { apiKey: activeApiKey, error: keyError } = getActiveApiKey(customApiKey);
 
       if (!activeApiKey) {
-        return NextResponse.json({
-          error: "No Gemini API key found. Please input a custom API key in 'Engine Controls' or verify configuration."
-        }, { status: 400 });
+        return NextResponse.json({ error: keyError }, { status: 400 });
       }
 
       if (!fileName || !fileSize) {
@@ -140,12 +155,10 @@ export async function POST(req: NextRequest) {
     // ACTION: LIST
     if (action === "list") {
       const customApiKey = isJson ? jsonBody?.customApiKey : (formData?.get("customApiKey") as string) || req.headers.get("x-api-key") || undefined;
-      const activeApiKey = customApiKey?.trim() || process.env.GEMINI_API_KEY;
+      const { apiKey: activeApiKey, error: keyError } = getActiveApiKey(customApiKey);
 
       if (!activeApiKey) {
-        return NextResponse.json({
-          error: "No Gemini API key found. Please input a custom API key in 'Engine Controls' or verify configuration."
-        }, { status: 400 });
+        return NextResponse.json({ error: keyError }, { status: 400 });
       }
 
       const ai = new GoogleGenAI({
@@ -191,9 +204,9 @@ export async function POST(req: NextRequest) {
       if (!fileName) {
         return NextResponse.json({ error: "Missing file resource name to delete." }, { status: 400 });
       }
-      const activeApiKey = customApiKey?.trim() || process.env.GEMINI_API_KEY;
+      const { apiKey: activeApiKey, error: keyError } = getActiveApiKey(customApiKey);
       if (!activeApiKey) {
-        return NextResponse.json({ error: "No Gemini API key found." }, { status: 400 });
+        return NextResponse.json({ error: keyError }, { status: 400 });
       }
 
       const ai = new GoogleGenAI({
@@ -268,11 +281,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Staged file upload session not found or expired." }, { status: 404 });
       }
 
-      const activeApiKey = customApiKey?.trim() || process.env.GEMINI_API_KEY;
+      const { apiKey: activeApiKey, error: keyError } = getActiveApiKey(customApiKey);
       if (!activeApiKey) {
-        return NextResponse.json({
-          error: "No Gemini API key found. Please input a custom API key in 'Engine Controls' or verify configuration."
-        }, { status: 400 });
+        return NextResponse.json({ error: keyError }, { status: 400 });
       }
 
       const ai = new GoogleGenAI({
@@ -351,11 +362,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided in form data." }, { status: 400 });
     }
 
-    const activeApiKey = customApiKey?.trim() || process.env.GEMINI_API_KEY;
+    const { apiKey: activeApiKey, error: keyError } = getActiveApiKey(customApiKey);
     if (!activeApiKey) {
-      return NextResponse.json({
-        error: "No Gemini API key found. Please input a custom API key in 'Engine Controls' or verify configuration."
-      }, { status: 400 });
+      return NextResponse.json({ error: keyError }, { status: 400 });
     }
 
     const ai = new GoogleGenAI({

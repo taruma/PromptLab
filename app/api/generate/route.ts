@@ -6,16 +6,6 @@ import path from "path";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-// Initialize Gemini client on the server side
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
-    }
-  }
-});
-
 interface UploadedImage {
   label: string;
   base64: string; // potentially a dataURL
@@ -101,23 +91,29 @@ export async function POST(req: NextRequest) {
     };
 
     // Determine the active API key and dynamic client instantiation
-    const activeApiKey = customApiKey?.trim() || process.env.GEMINI_API_KEY;
+    const allowServerEnvKey = process.env.ALLOW_SERVER_ENV_KEY?.toLowerCase() !== "false" && process.env.ALLOW_SERVER_ENV_KEY !== "0";
+    const trimmedCustomKey = customApiKey?.trim();
+    const activeApiKey = trimmedCustomKey || (allowServerEnvKey ? process.env.GEMINI_API_KEY : undefined);
+
     if (!activeApiKey) {
+      if (!allowServerEnvKey && !trimmedCustomKey) {
+        return NextResponse.json({ 
+          error: "Server environment API key usage is disabled on this deployment. Please enter your custom Gemini API key in 'Engine Controls' to generate." 
+        }, { status: 400 });
+      }
       return NextResponse.json({ 
         error: "No Gemini API key found. Please input a custom API key in 'Engine Controls' or verify the project settings." 
       }, { status: 400 });
     }
 
-    const activeAi = customApiKey?.trim()
-      ? new GoogleGenAI({
-          apiKey: customApiKey.trim(),
-          httpOptions: {
-            headers: {
-              'User-Agent': 'aistudio-build-custom',
-            }
-          }
-        })
-      : ai;
+    const activeAi = new GoogleGenAI({
+      apiKey: activeApiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': trimmedCustomKey ? 'aistudio-build-custom' : 'aistudio-build',
+        }
+      }
+    });
 
     // Load original prompt and template from files if not supplied (undefined/null) by the client
     if (systemPrompt === undefined || systemPrompt === null || promptTemplate === undefined || promptTemplate === null) {
