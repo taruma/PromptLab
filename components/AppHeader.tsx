@@ -1,6 +1,6 @@
 import React from "react";
 import Image from "next/image";
-import { FolderOpen, Sparkles, Settings, FolderKanban } from "lucide-react";
+import { FolderOpen, Sparkles, Settings, FolderKanban, RotateCcw } from "lucide-react";
 import QuickPresetSelector, { PresetItem } from "./QuickPresetSelector";
 import { UserPreset } from "../lib/preset-export";
 import KofiButton from "./KofiButton";
@@ -87,43 +87,44 @@ export default function AppHeader({
         )}
       </div>
       
-      <div className="flex items-center gap-2 md:gap-3">
-        <KofiButton variant="header" label="Support me on Ko-fi" />
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <KofiButton variant="header" label="Support" />
 
         <button
           onClick={onOpenLibrary}
-          className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 bg-white"
+          className="px-2.5 py-1.5 bg-teal-50/80 hover:bg-teal-100/90 border border-teal-300/80 hover:border-teal-400 text-teal-950 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs rounded-none font-mono"
           title="Open Asset Library & Casting Bank"
           id="open-library-header-btn"
         >
-          <FolderOpen className="w-3.5 h-3.5 text-[#1A1A1A] shrink-0" />
-          Asset Library
+          <FolderOpen className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+          <span className="hidden sm:inline">Assets</span>
         </button>
         <button
           onClick={onOpenEngineConfig}
-          className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 bg-white"
+          className="px-2.5 py-1.5 bg-indigo-50/80 hover:bg-indigo-100/90 border border-indigo-300/80 hover:border-indigo-400 text-indigo-950 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs rounded-none font-mono"
           title="Configure Engine Model & Parameters"
           id="engine-controls-btn"
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-          Engine Controls
+          <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+          <span className="hidden sm:inline">Engine</span>
         </button>
         <button
           onClick={onOpenPromptConfig}
-          className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 bg-white"
+          className="px-2.5 py-1.5 bg-amber-50/80 hover:bg-amber-100/90 border border-amber-300/80 hover:border-amber-400 text-amber-950 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs rounded-none font-mono"
           title="Configure System Prompt & Template"
           id="configure-prompts-btn"
         >
-          <Settings className="w-3.5 h-3.5 shrink-0" />
-          Configure Prompts
+          <Settings className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+          <span className="hidden sm:inline">Prompts</span>
         </button>
         <button
           onClick={onClearSession}
-          className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-[#F4F4F2] text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer"
+          className="px-2.5 py-1.5 bg-rose-50/80 hover:bg-rose-100/90 border border-rose-200 hover:border-rose-300 text-rose-900 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs rounded-none font-mono"
           title="Clear all active inputs, uploaded files, and generation results"
           id="clear-session-btn"
         >
-          Clear Session
+          <RotateCcw className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+          <span className="hidden sm:inline">Clear</span>
         </button>
       </div>
     </header>
