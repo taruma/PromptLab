@@ -8,4 +8,4 @@ VISUAL REFERENCES:
 
 ==================================================
 
-Please deconstruct the visual language and signature techniques of this genre or style, and provide a prompt toolkit for generative AI.
+Please deconstruct the visual language and signature techniques of this genre or style.

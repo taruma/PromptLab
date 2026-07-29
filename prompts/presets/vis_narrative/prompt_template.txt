@@ -20,4 +20,4 @@ VISUAL REFERENCES:
 
 ==========================================
 
-Please construct a director's treatment blueprint based on the parameters above, including a tonal map and AI prompt suite.
+Please construct a director's treatment blueprint based on the parameters above, including a tonal map and key visual moment breakdowns.

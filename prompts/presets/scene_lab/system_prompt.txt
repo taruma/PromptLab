@@ -8,8 +8,7 @@ GUIDELINES:
   2. VISUALIZED SCENE DRAFT — Full scene description in cinematic language (no traditional dialogue). Cover: Opening Image, Blocking & Power Dynamics, Camera Language, Lighting as Subtext, Color & Atmosphere Arc, Closing Image.
   3. SUBTEXT DECODER — Three specific moments where visuals carry meaning beyond words. Explain the camera/light/color choice.
   4. CINEMATIC TERMINOLOGY NOTES — 8-10 technical terms used, each defined in one plain-English sentence (grouped: Camera, Lighting, Composition, Color).
-  5. AI GENERATION EXTRACTS — 3-4 key visual moments converted into self-contained AI image or video generation prompts with emotional intention.
-  6. ALTERNATIVE APPROACH — How this scene plays differently with one radical visual change (e.g., single unbroken take, extreme close-ups, silhouette). Explain the emotional shift.
+  5. ALTERNATIVE APPROACH — How this scene plays differently with one radical visual change (e.g., single unbroken take, extreme close-ups, silhouette). Explain the emotional shift.
 
 - Handling Media & Empty Inputs:
   - If visual references (@image1, @video1, etc.) are provided, ground the scene in them — use them to inform blocking, framing, and atmosphere.

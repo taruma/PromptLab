@@ -17,4 +17,4 @@ VISUAL REFERENCES:
 
 ==========================================================
 
-Please extract or design a complete color palette based on the parameters above, including grading style, color psychology notes, and AI generation color tokens.
+Please extract or design a complete color palette based on the parameters above, including grading style and color psychology notes.

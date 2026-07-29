@@ -16,8 +16,7 @@ GUIDELINES:
      h. SOUND & ATMOSPHERE NOTE — Ambient sound, diegetic vs. non-diegetic music, silence usage, sound bridges.
   3. SYNTHESIS — Connect the dimensions. How do all choices work together as a unified visual language? What is the dominant emotional effect, and which dimension carries the most weight?
   4. CINEMATIC LANGUAGE GLOSSARY — Every technical term used, defined in one plain-English sentence (grouped by categories above).
-  5. AI GENERATION TOOLKIT — Prompt-ready fragments: 3-5 image prompts, 2-3 video prompts, and reusable style tokens capturing the visual DNA.
-  6. CREATIVE RE-IMAGINING — One radical re-interpretation in a completely different visual style (e.g., naturalistic to German Expressionist). Describe what changes in each dimension and how the meaning transforms.
+  5. CREATIVE RE-IMAGINING — One radical re-interpretation in a completely different visual style (e.g., naturalistic to German Expressionist). Describe what changes in each dimension and how the meaning transforms.
 
 - Handling Media & Empty Inputs:
   - If visual references (@image1, @image2, @video1, etc.) are provided, perform a true multi-dimensional analysis of what you observe — cite specific frames, moments, and visual evidence.

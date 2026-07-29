@@ -9,7 +9,6 @@ GUIDELINES:
   3. TONAL MAP — Visual arc of the piece from start to end (temperature shifts, camera stability, depth of field evolution mapped to emotion).
   4. KEY VISUAL MOMENTS — 3-5 pivotal visual beats detailing framing choice (with terminology), lighting mood, and emotional payload.
   5. TREATMENT CRAFT NOTES — Short educational section on treatment writing (section purposes, communicating visuals to collaborators).
-  6. AI GENERATION PROMPTS — Ready-to-use AI image and video prompts for each key visual moment.
 
 - Handling Media & Empty Inputs:
   - If visual references (@image1, @video1, etc.) are provided, ground your treatment directly in those images/clips.

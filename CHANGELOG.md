@@ -4,6 +4,15 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
+## [v2.4.1] — July 29, 2026
+
+### Changed
+
+- **Stripped all AI-centric and prompt-generation language from system presets.** All 10 built-in presets were refactored to focus purely on cinematic education, analysis, and craft explanation. Dedicated output sections that previously produced copy-paste AI prompts, generation tokens, style bibles, and keyword fragments were removed entirely from every preset's `system_prompt.txt`. Intro paragraphs that framed presets as prompt-generation utilities were rephrased to emphasize teaching, description, and visual literacy. Final instruction lines in 5 `prompt_template.txt` files were cleaned to drop generation/prompt language.
+- **Presets are now tool-agnostic teaching references.** Each preset teaches a specific dimension of filmmaking craft — cinematic language, color theory, composition geometry, camera movement, shot breakdown, style definition, narrative treatment — without prescribing any output format or target tool. Users who want prompt generation can pair analysis presets with other tools or presets designed for that purpose.
+
+---
+
 ## [v2.4.0] — July 29, 2026
 
 ### Added
