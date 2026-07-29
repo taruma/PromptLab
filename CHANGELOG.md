@@ -4,7 +4,7 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
-## [UNRELEASED] — July 28, 2026
+## [v2.4.0] — July 29, 2026
 
 ### Added
 
