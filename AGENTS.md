@@ -72,6 +72,7 @@ Key differentiators:
 │   ├── HistoryCardSummary.tsx       # Reusable history item preview card (timestamp, media badges, model, preset, excerpt)
 │   ├── HistorySection.tsx           # Collapsible history section in sidebar
 │   ├── HistoryViewerModal.tsx       # Full-screen history browser with import/export
+│   ├── KofiButton.tsx               # Standalone Ko-fi tipping / support link button component
 │   ├── LabManualSection.tsx         # Collapsible quick-start guide section in sidebar
 │   ├── LoadWorkspaceConfirmModal.tsx # Confirmation modal for loading workspace history item
 │   ├── MainIdeaSection.tsx          # Main Objective / Idea textarea section
@@ -109,7 +110,7 @@ Key differentiators:
 ├── eslint.config.mjs                # Flat ESLint config (extends eslint-config-next)
 ├── .eslintrc.json                   # Legacy ESLint config (extends "next")
 ├── .gitignore                       # Git ignore rules
-├── .env.example                     # Environment configuration documentation (GEMINI_API_KEY, ALLOW_SERVER_ENV_KEY, APP_URL)
+├── .env.example                     # Environment configuration documentation (GEMINI_API_KEY, ALLOW_SERVER_ENV_KEY, APP_URL, NEXT_PUBLIC_ENABLE_KOFI_BUTTON)
 ├── next-env.d.ts                    # Next.js TypeScript declarations
 ├── metadata.json                    # Platform capabilities and application metadata
 └── README.md                        # Project README

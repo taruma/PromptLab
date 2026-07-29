@@ -1,8 +1,9 @@
 import React from "react";
 import Image from "next/image";
-import { FolderOpen, Sparkles, Settings, FolderKanban, ExternalLink } from "lucide-react";
+import { FolderOpen, Sparkles, Settings, FolderKanban } from "lucide-react";
 import QuickPresetSelector, { PresetItem } from "./QuickPresetSelector";
 import { UserPreset } from "../lib/preset-export";
+import KofiButton from "./KofiButton";
 
 interface AppHeaderProps {
   onOpenLibrary: () => void;
@@ -10,6 +11,7 @@ interface AppHeaderProps {
   onOpenPromptConfig: () => void;
   onClearSession: () => void;
   onOpenProjects?: () => void;
+  onOpenKofiSupport?: () => void;
   currentProjectName?: string;
   presets?: PresetItem[];
   customPresets?: UserPreset[];
@@ -85,7 +87,9 @@ export default function AppHeader({
         )}
       </div>
       
-      <div className="flex items-center gap-3 md:gap-4">
+      <div className="flex items-center gap-2 md:gap-3">
+        <KofiButton variant="header" label="Support me on Ko-fi" />
+
         <button
           onClick={onOpenLibrary}
           className="px-3 py-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-white text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 bg-white"
