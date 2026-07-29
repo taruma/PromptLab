@@ -1,4 +1,4 @@
-**PromptLab v2** transforms from a single-session prompt tester into a **persistent, multi-modal, multi-project creative environment**. Every generation is automatically archived with full context. A reusable asset library supports images, MP4 videos, and YouTube links — all combined into a unified reference pipeline. Large media files (up to 2 GB) stream directly to Gemini's Files API with real-time progress tracking and a built-in file browser for reusing previously uploaded assets. Independent workspaces keep your projects organized, a git-style diff viewer lets you compare prompt configurations side-by-side, and the redesigned thinking trace panel visualizes the engine's reasoning in real time. Real-time token usage and estimated API costs are tracked for every generation. All of this runs on modern IndexedDB storage, so nothing gets lost between sessions.
+**PromptLab** is a playground for drafting and iterating on AI prompt templates — compile rich, structured prompts with dynamic placeholders, attach images and videos as visual references, and generate with Gemini models. PromptLab v2 adds persistent history, a reusable asset library, multi-project workspaces, 10 specialized cinematic presets, Files API direct uploads (up to 2 GB), token usage tracking with cost estimation, and a polished mobile-responsive interface.
 
 ---
 
@@ -6,13 +6,15 @@
 
 ### 🕘 Session History & Recall
 
-Every generation is now automatically saved with its complete context — template variables, image and video references, engine parameters, and reasoning traces. Finding past work is fast and forgiving.
+Every generation is automatically saved with its complete context — template variables, image and video references, engine parameters, and reasoning traces. Finding past work is fast and forgiving.
 
 - Browse, search, rename, and restore any past generation from a full-screen history browser
 - Mark favorites and filter by All, Favorites, or Recent
 - Fuzzy search handles typos and hyphenated terms (e.g., "sci-fi" matches "sci fi")
+- Search by Title, Visual References, Main Idea, Output Text, or Compiled Prompt Specs
+- Each history item shows a rich preview card with timestamp, media badges, model, preset, and a cleaned output excerpt
 - A compact inline panel in the sidebar shows recent work without opening the full browser
-- Export your history as JSON for backup or cross-device migration
+- Export your history as JSON for backup or cross-device migration; import to restore
 - Compare any saved generation's prompt configuration against your current workspace with a diff viewer
 
 ### 🖼️ Asset Library & Video References
@@ -36,36 +38,61 @@ Create independent workspaces — each with its own prompts, presets, history, a
 - Export entire projects as portable JSON files with all images bundled in; import with automatic name collision handling
 - Your existing data is automatically migrated into a default workspace on first launch — nothing is lost
 
-### ⚙️ Presets, Diff & Bulk Export
+### 🎬 10 New Presets & Smarter Imports
 
-Preset management now tracks exactly where you stand, lets you compare any two configurations, and supports bulk operations.
+Ten specialized presets replace the original three, covering every facet of cinematic creation — each with its own formatting rules so you get the right output style for the job. Importing presets is now smarter and safer, with full control over what comes in.
 
+- **Cine DeepDive** — cinematic language educator for multi-dimensional scene analysis
+- **Color Mapper** — color language specialist for extracting and designing palettes
+- **Comp Decoder** — visual composition analyst for reverse-engineering images
+- **Film Lingo** — cinematic language translator for AI generation prompts
+- **Genre Lexicon** — genre and tone specialist for visual signatures
+- **Motion Lab** — camera motion specialist for movement analysis and video tokens
+- **Scene Lab** — scene construction coach for character-driven visual descriptions
+- **Shot Interp** — shot language interpreter for professional breakdowns
+- **Style Architect** — visual identity architect for comprehensive style guides
+- **Vis Narrative** — visual narrative architect for director's treatment blueprints
+- Choose between **Create Duplicate** (safe, keeps your existing presets) or **Replace Existing** when importing — switch strategies live and see what changes
+- A four-column summary shows Detected / New / Replaced / Skipped counts before you commit
+- Expand any item to see why it was skipped — nothing is silently dropped
+- Import presets from a URL or a local JSON file through the same unified pipeline
+- Apply an imported preset directly to your workspace with one checkbox
+
+### ⚙️ Workspace Safety & Preset Management
+
+Preset management protects your unsaved work and keeps you oriented, with clear visual feedback everywhere.
+
+- Switching presets while you have unsaved edits now asks for confirmation — choose to keep your edits or replace them
+- Your active preset stays loaded even after a page refresh, badge and all
+- Closing the Configure Prompts modal now restores exactly what you had open — no surprises
 - Update an existing preset or save as a new one — visual `[ACTIVE]` and `[EDITED]` badges show whether your editor matches the saved version
-- Jump between presets from the top bar with the Quick Preset Selector without opening the full editor
+- Jump between presets from the top bar with the Quick Preset Selector — each row now shows a snippet of what the preset does
 - Search presets by name and filter by All, System, or User tabs with live count badges
 - Compare any preset against your current editor with a side-by-side diff viewer — green additions, red deletions, and a "Changes Only" filter to skip unchanged regions
 - Bulk export presets (All, Favorites, or Active) as versioned JSON; import with duplicate detection
 
 ### 🧠 Reasoning Visualization & Output Rendering
 
-Generation output now supports two view modes, and the engine's thinking process is visualized in a redesigned panel.
+Generation output supports two view modes, and the engine's thinking process is visualized in a redesigned panel.
 
 - Toggle between richly formatted Markdown and raw monospace text in the output panel
+- A live character count badge shows output length at a glance
 - Collapse the output area to reclaim workspace; the setting persists across sessions
 - An amber dot pulses next to a `PROCESSING` label while the model is thinking
 - Each new reasoning block fades in with a smooth animation during streaming
 - The reasoning panel auto-collapses once output begins, keeping the workspace clean
 - The complete thinking trace is saved alongside your history
 
-### 🎛️ Engine Controls & API Key Vault
+### 🎛️ Engine Controls, API Key Vault & Deployment Control
 
-All engine settings are centralized in a dedicated modal with a multi-key vault for managing API credentials.
+All engine settings are centralized in a dedicated modal with a multi-key vault for managing API credentials. Deployments can now require users to bring their own keys.
 
 - Switch models, tune temperature, set reasoning effort, and cap max tokens from one dialog
 - Add, label, switch between, and delete multiple Gemini API keys in a collapsible vault
 - Your active key's label is always visible in the status bar
 - Temperature and max token controls are tucked behind an expandable "Advanced" section
 - Existing legacy keys are automatically migrated into the vault
+- Deployments can disable the server-side API key, requiring every user to supply their own — perfect for public or shared instances
 
 ### 📤 Gemini Files API — Direct Uploads & Smart Browser
 
@@ -88,6 +115,18 @@ A comprehensive token tracking and cost estimation system gives you real-time vi
 - Token usage and estimated cost are stored in HistoryItem objects at generation time and preserved across JSON import/export, keeping your historical cost data stable even if pricing rates change
 - Active token usage persists to localStorage so counts survive page refreshes
 
+### 🖌️ Polished Interface & Mobile Support
+
+A cleaner, more glanceable interface with mobile responsiveness and thoughtful details throughout.
+
+- Color-coded header buttons — Teal for Assets, Indigo for Engine, Amber for Prompts, Rose for Clear — with single-word labels
+- A Ko-fi support button sits in the top bar for those who want to support the project
+- The header adapts to mobile with a two-row layout and compact icon-only buttons
+- The Quick Preset Selector now shows a brief description under each preset name so you know what it does at a glance
+- The in-app quick-start guide was refreshed to cover Files API uploads, preset sharing, and the latest features
+- Each preset now defines its own output formatting style (plain text, Markdown, JSON, etc.) — no more one-size-fits-all rules
+- Contextual help tooltips explain `{{ variable }}` syntax right where you need them
+
 ---
 
 ## ✨ What's New
@@ -100,7 +139,11 @@ A comprehensive token tracking and cost estimation system gives you real-time vi
 - 🔄 Project switcher in the top bar and "Copy from Current" for instant workspace cloning
 - 📤 Project export with bundled images — portable, versioned, and importable
 - ⚙️ Update existing presets with active/edited state tracking badges
-- 🎛️ Quick Preset Selector for rapid switching without opening the full editor
+- 🎬 10 new cinematic presets — Cine DeepDive, Color Mapper, Comp Decoder, Film Lingo, Genre Lexicon, Motion Lab, Scene Lab, Shot Interp, Style Architect, Vis Narrative
+- 🔀 Smart preset import — choose Duplicate or Replace, see a summary grid, inspect every item before committing
+- 🌐 Import presets from URLs or files through the same pipeline with live strategy switching
+- 🎛️ Quick Preset Selector with snippet previews — each row shows a brief description of what the preset does
+- 🛡️ Preset replace confirmation — switching presets with unsaved edits now asks first
 - 🔍 Git-style diff viewer — unified/split views, changes-only filter, preset and history comparison
 - 📤 Bulk preset export (All / Favorites / Active) with duplicate-aware import
 - 📝 Dual-mode output — Formatted Markdown and Raw Monospace with a toggle
@@ -116,7 +159,13 @@ A comprehensive token tracking and cost estimation system gives you real-time vi
 - 💵 Estimated API cost badge with 6-model pricing table and tiered rate support
 - 🎛️ Per-model IN/OUT pricing rate badges in the engine controls model selector
 - 💾 Cost and token data persisted in history for stable archival and export
+- 🏷️ Color-coded header — Assets (Teal), Engine (Indigo), Prompts (Amber), Clear (Rose)
+- 💙 Ko-fi support button with environment toggle for deployments
+- 📱 Mobile-responsive header — two-row layout with icon-only buttons on small screens
+- 🚦 ALLOW_SERVER_ENV_KEY — deployments can require users to bring their own API keys
+- 📐 Per-preset output formatting — each preset defines its own style (plain text, Markdown, JSON, etc.)
 - 📌 Preset selection survives page refreshes — active preset stays loaded with an [EDIT] badge when modified
+- 📸 Snapshot-based discard — closing the prompt editor accurately restores your previous preset state
 - 🚫 Chunked upload pipeline prevents 413 "Request Entity Too Large" errors on large files
 - 🧹 Improved SSE error messages — 403 PERMISSION_DENIED on expired files now shows clear actionable guidance
 - 🖼️ Empty src attribute sanitization across six media components eliminates browser console warnings
