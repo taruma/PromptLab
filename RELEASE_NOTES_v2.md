@@ -45,9 +45,9 @@ Ten specialized presets replace the original three, covering every facet of cine
 - **Cine DeepDive** — cinematic language educator for multi-dimensional scene analysis
 - **Color Mapper** — color language specialist for extracting and designing palettes
 - **Comp Decoder** — visual composition analyst for reverse-engineering images
-- **Film Lingo** — cinematic language translator for AI generation prompts
+- **Film Lingo** — cinematic language translator for precise visual communication
 - **Genre Lexicon** — genre and tone specialist for visual signatures
-- **Motion Lab** — camera motion specialist for movement analysis and video tokens
+- **Motion Lab** — camera motion specialist for movement analysis and precise motion descriptors
 - **Scene Lab** — scene construction coach for character-driven visual descriptions
 - **Shot Interp** — shot language interpreter for professional breakdowns
 - **Style Architect** — visual identity architect for comprehensive style guides
