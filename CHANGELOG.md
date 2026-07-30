@@ -8,8 +8,21 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Added
 
+- **IndexedDB v3 Schema & Content-Hash Image Payload Deduplication (`lib/indexeddb.ts`, `lib/content-hash.ts`).**
+  - Upgraded IndexedDB schema version from v2 to v3, adding a `contentHash` index on the `images` object store.
+  - Implemented automatic SHA-256 content-hash deduplication in `saveStoredImage(id, base64, contentHash)`. When saving an image whose binary payload matches an existing record in IndexedDB, the store saves a light reference pointer (`dedupRefId`) to the master image record instead of storing duplicate base64 strings, drastically reducing storage usage when reusing images across projects, asset libraries, or history items.
+  - Enhanced `getStoredImage(id)` to transparently resolve `dedupRefId` pointer chains, retrieving original image data seamlessly for all components without altering existing application logic.
+  - Built reference-aware deletion in `deleteStoredImage(id)`: if a master image record holding base64 data is deleted, the system automatically promotes the first dependent record to master and re-points remaining dependents before deleting, guaranteeing zero broken image links.
+- **Automatic Startup Image Deduplication & Migration Engine (`deduplicateStoredImages()` in `lib/indexeddb.ts`).**
+  - Integrated a background migration and deduplication task triggered automatically when opening the application in `app/page.tsx`.
+  - Scans stored IndexedDB images on launch, backfills missing `contentHash` identifiers, and consolidates pre-existing duplicate base64 payloads into `dedupRefId` references without requiring user intervention.
 - **Storage & Quota Monitor Modal (`components/StorageUsageModal.tsx`, `lib/storage-utils.ts`).** Integrated a real-time browser storage diagnostic modal displaying LocalStorage usage percentage, standard 5 MB quota bar, high quota alerts (>=75%), key-by-key size breakdown table, and IndexedDB (`promptlab_db`) origin storage usage metrics (`navigator.storage.estimate()`).
 - **Interactive Storage Usage Indicator in Footer (`components/FooterStatusBar.tsx`).** Added a live storage usage badge in the application footer showing real-time LocalStorage usage (e.g., `STORAGE: 2.6 MB (52%)`) with auto-refresh every 8 seconds, pulsing red in high-capacity states (>=80%), and opening the Storage Usage modal on click.
+
+### Changed
+
+- **Content-Hash Integration in Upload & Library Handlers (`app/page.tsx`).** Threaded `contentHash` computation into the workspace image uploader (`handleImageUpload`) and library asset importer (`handleAddLibraryImageToWorkspace`), ensuring new image additions immediately benefit from content-hash deduplication.
+- **Updated System Documentation (`AGENTS.md`).** Updated core project documentation to reflect IndexedDB v3 schema, `contentHash` indexing, and transparent payload deduplication mechanisms.
 
 ### Fixed
 
