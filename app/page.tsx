@@ -97,12 +97,13 @@ import {
   validateAndProcessVideo,
   type UploadedVideo
 } from "../lib/video-utils";
+import { computeContentHash, ensureHistoryHasContentHashes } from "../lib/content-hash";
 
 export interface HistoryItem {
   id: string;
   timestamp: string;
   variables: Record<string, string>;
-  images: { id?: string; label: string; base64: string; mimeType: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string }[];
+  images: { id?: string; label: string; base64: string; mimeType: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; contentHash?: string }[];
   videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; base64?: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string }[];
   output: string;
   thinkingResult?: string;
@@ -492,26 +493,27 @@ export default function PromptGeneratorPage() {
               const parsedImages = JSON.parse(savedImages) as UploadedImage[];
               const resolvedImages = await Promise.all(
                 parsedImages.map(async (img) => {
-                  if (img.base64) {
+                  let b64 = img.base64;
+                  if (b64) {
                     // Backward compatibility: base64 exists in localStorage. Migrate to IndexedDB.
                     try {
-                      await saveStoredImage(img.id, img.base64);
+                      await saveStoredImage(img.id, b64);
                     } catch (err) {
                       console.error("Failed to migrate existing localStorage image to IndexedDB:", err);
                     }
-                    return img;
                   } else {
                     // Fetch from IndexedDB
                     try {
                       const dbBase64 = await getStoredImage(img.id);
                       if (dbBase64) {
-                        return { ...img, base64: dbBase64 };
+                        b64 = dbBase64;
                       }
                     } catch (err) {
                       console.error(`Failed to load image ${img.id} from IndexedDB:`, err);
                     }
-                    return img;
                   }
+                  const contentHash = img.contentHash || (b64 ? await computeContentHash(b64) : undefined);
+                  return { ...img, base64: b64 || "", contentHash };
                 })
               );
               setUploadedImages(resolvedImages);
@@ -683,7 +685,7 @@ export default function PromptGeneratorPage() {
     try {
       const savedHistory = localStorage.getItem("prompt_generator_history");
       if (savedHistory) {
-        setTimeout(() => {
+        setTimeout(async () => {
           const parsedHistory: HistoryItem[] = JSON.parse(savedHistory);
           let wasModified = false;
 
@@ -720,15 +722,17 @@ export default function PromptGeneratorPage() {
             return item;
           });
 
-          if (wasModified) {
+          const { updatedHistory, modified: hashesAdded } = await ensureHistoryHasContentHashes(cleanedHistory);
+
+          if (wasModified || hashesAdded) {
             try {
-              localStorage.setItem("prompt_generator_history", JSON.stringify(cleanedHistory));
+              localStorage.setItem("prompt_generator_history", JSON.stringify(updatedHistory));
             } catch (err) {
               console.error("Failed to save cleaned history back to localStorage", err);
             }
           }
 
-          setHistory(cleanedHistory);
+          setHistory(updatedHistory);
         }, 0);
       }
     } catch (e) {
@@ -1010,6 +1014,7 @@ export default function PromptGeneratorPage() {
       const file = validImages[i];
       try {
         const base64 = await compressImageToJpeg(file, 0.9);
+        const contentHash = await computeContentHash(base64);
         // Suggest a nice default label based on filename or numbering
         const rawName = file.name.split(".")[0];
         const cleanLabel = rawName
@@ -1028,6 +1033,7 @@ export default function PromptGeneratorPage() {
           label: cleanLabel,
           base64: base64,
           mimeType: "image/jpeg",
+          contentHash,
         });
       } catch (err) {
         console.error("Error loading file: ", file.name, err);
@@ -1219,6 +1225,7 @@ export default function PromptGeneratorPage() {
   // Add image from library to workspace active session
   const handleAddImageFromLibrary = async (label: string, base64: string) => {
     const imgId = `${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const contentHash = await computeContentHash(base64);
     try {
       await saveStoredImage(imgId, base64);
     } catch (dbErr) {
@@ -1231,6 +1238,7 @@ export default function PromptGeneratorPage() {
         label,
         base64,
         mimeType: "image/jpeg",
+        contentHash,
       }
     ]);
   };
@@ -1289,6 +1297,8 @@ export default function PromptGeneratorPage() {
           }
         }
 
+        const contentHash = img.contentHash || (base64 ? await computeContentHash(base64) : undefined);
+
         return {
           id: newImgId,
           label: img.label,
@@ -1297,6 +1307,7 @@ export default function PromptGeneratorPage() {
           isFilesApi: img.isFilesApi,
           fileUri: img.fileUri,
           expirationTime: img.expirationTime,
+          contentHash,
         };
       })
     );
@@ -1988,6 +1999,7 @@ export default function PromptGeneratorPage() {
                 console.error("Failed to save history image to IndexedDB:", dbErr);
               }
             }
+            const contentHash = img.contentHash || (img.base64 ? await computeContentHash(img.base64) : undefined);
             return {
               id: imgId,
               label: img.label,
@@ -1996,6 +2008,7 @@ export default function PromptGeneratorPage() {
               isFilesApi: img.isFilesApi,
               fileUri: img.fileUri,
               expirationTime: img.expirationTime,
+              contentHash,
             };
           })
         );

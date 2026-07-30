@@ -17,6 +17,7 @@ export interface UploadedImage {
   blobUrl?: string;
   sizeBytes?: number;
   expirationTime?: string;
+  contentHash?: string;
 }
 
 interface VisualAssetsSectionProps {

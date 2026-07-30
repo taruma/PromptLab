@@ -14,6 +14,7 @@ interface VisualAssetCardProps {
     isFilesApi?: boolean;
     fileUri?: string;
     expirationTime?: string;
+    contentHash?: string;
   };
   index: number;
   onUpdateLabel: (id: string, newLabel: string) => void;
@@ -157,6 +158,11 @@ export default function VisualAssetCard({
             }}
             className="bg-white border border-[#1A1A1A] p-2 shadow-[4px_4px_0px_0px_rgba(26,26,26,1)] pointer-events-none z-50 flex flex-col gap-1.5 animate-fade-in w-fit max-w-[340px]"
           >
+            {img.contentHash && (
+              <span className="text-[8px] text-emerald-800 font-mono block truncate max-w-full bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 select-all font-bold text-center">
+                HASH: {img.contentHash}
+              </span>
+            )}
             <div className="border border-[#D1D1CF] overflow-hidden flex items-center justify-center">
               <img
                 src={imgSrc}
@@ -164,7 +170,7 @@ export default function VisualAssetCard({
                 className="block w-auto h-auto max-w-[320px] max-h-[380px] object-contain"
               />
             </div>
-            <div className="text-center font-mono leading-none py-0.5">
+            <div className="text-center font-mono leading-none py-0.5 flex flex-col gap-1">
               <span className="text-[9px] text-[#1A1A1A] font-bold block truncate max-w-full">
                 @image{index + 1} as {img.label || `Cast member ${index + 1}`}
               </span>

@@ -1,10 +1,12 @@
 import { getStoredImage, saveStoredImage } from "./indexeddb";
+import { computeContentHash } from "./content-hash";
 
 export interface HistoryImageRef {
   id?: string;
   label: string;
   base64: string;
   mimeType: string;
+  contentHash?: string;
 }
 
 export interface HistoryVideoRef {
@@ -101,11 +103,13 @@ export async function exportHistoryToJSON(
               console.error(`Failed to fetch image ${img.id} for export:`, err);
             }
           }
+          const contentHash = img.contentHash || (b64 ? await computeContentHash(b64) : undefined);
           return {
             id: img.id,
             label: img.label,
             base64: b64,
             mimeType: img.mimeType || "image/jpeg",
+            contentHash,
           };
         })
       );
@@ -211,11 +215,14 @@ export async function importHistoryFromJSON(
             }
           }
 
+          const contentHash = rawImg.contentHash || (base64 ? await computeContentHash(base64) : undefined);
+
           images.push({
             id: newImgId,
             label: rawImg.label || `Image ${i + 1}`,
             base64: "", // Keep base64 empty in local storage to prevent quota limits
             mimeType: rawImg.mimeType || "image/jpeg",
+            contentHash,
           });
         }
       }
