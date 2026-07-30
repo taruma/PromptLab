@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { HardDrive } from "lucide-react";
 import { getStorageEstimate, StorageInfo } from "../lib/storage-utils";
+import pkg from "../package.json";
 
 interface FooterStatusBarProps {
   selectedModel: string;
@@ -74,7 +75,7 @@ export default function FooterStatusBar({
         )}
       </div>
       <div className="uppercase opacity-50 tracking-wider hidden sm:block">
-        PromptLab by Taruma Sakti
+        PromptLab v{pkg.version} by Taruma Sakti
       </div>
     </footer>
   );

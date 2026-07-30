@@ -1,6 +1,6 @@
 {
   "name": "promptlab",
-  "version": "2.4.1",
+  "version": "2.4.2-dev",
   "private": true,
   "scripts": {
     "dev": "next dev",
