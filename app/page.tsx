@@ -86,7 +86,8 @@ import {
   openDB,
   getStoredImage,
   saveStoredImage,
-  deleteStoredImage
+  deleteStoredImage,
+  deduplicateStoredImages
 } from "../lib/indexeddb";
 import {
   getRawUrl,
@@ -402,6 +403,11 @@ export default function PromptGeneratorPage() {
             );
             setProjects(loadedProjects);
             setActiveProject(currentProj);
+
+            // Run background IndexedDB image deduplication & contentHash migration
+            deduplicateStoredImages().catch((dedupErr) => {
+              console.warn("Background IndexedDB deduplication failed:", dedupErr);
+            });
           } catch (projErr) {
             console.error("Failed to initialize projects subsystem:", projErr);
           }
@@ -1023,7 +1029,7 @@ export default function PromptGeneratorPage() {
 
         const imgId = `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
         try {
-          await saveStoredImage(imgId, base64);
+          await saveStoredImage(imgId, base64, contentHash);
         } catch (dbErr) {
           console.error("Failed to save image to IndexedDB:", dbErr);
         }
@@ -1227,7 +1233,7 @@ export default function PromptGeneratorPage() {
     const imgId = `${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
     const contentHash = await computeContentHash(base64);
     try {
-      await saveStoredImage(imgId, base64);
+      await saveStoredImage(imgId, base64, contentHash);
     } catch (dbErr) {
       console.error("Failed to save image from library to IndexedDB:", dbErr);
     }
