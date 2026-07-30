@@ -346,7 +346,20 @@ export default function AssetLibrarySidebar({
   };
 
   const handleDeleteLibraryItem = async (id: string) => {
-    setLibraryImages(prev => prev.filter(img => img.id !== id));
+    const nextImages = libraryImages.filter(img => img.id !== id);
+    setLibraryImages(nextImages);
+
+    // Sync current active project asset list immediately so reference check reflects deletion
+    const stripped = nextImages.map(({ base64, ...rest }) => rest);
+    try {
+      localStorage.setItem("prompt_generator_library_images", JSON.stringify(stripped));
+      if (onAssetLibraryUpdatedRef.current) {
+        onAssetLibraryUpdatedRef.current(stripped as ProjectAsset[]);
+      }
+    } catch (e) {
+      console.warn("Failed to update active project library state on item deletion:", e);
+    }
+
     try {
       await deleteStoredImage(id);
     } catch (err) {

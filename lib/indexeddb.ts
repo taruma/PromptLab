@@ -151,12 +151,104 @@ export async function saveStoredImage(id: string, base64: string, contentHash?: 
 }
 
 /**
+ * Check if an image ID is currently referenced in any project's assetLibrary
+ * or history items across IndexedDB "projects" store and current localStorage.
+ */
+export async function isImageReferencedInAnyProject(imageId: string): Promise<boolean> {
+  if (!imageId || typeof window === "undefined" || !window.indexedDB) return false;
+
+  try {
+    const db = await openDB();
+    if (!db.objectStoreNames.contains(STORE_PROJECTS)) return false;
+
+    // 1. Scan all projects in IndexedDB "projects" store
+    const projects: any[] = await new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_PROJECTS, "readonly");
+      const store = transaction.objectStore(STORE_PROJECTS);
+      const request = store.getAll();
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result || []);
+    });
+
+    for (const proj of projects) {
+      // Check asset library
+      if (Array.isArray(proj.assetLibrary)) {
+        if (proj.assetLibrary.some((asset: any) => asset.id === imageId)) {
+          return true;
+        }
+      }
+      // Check history items
+      if (Array.isArray(proj.history)) {
+        for (const item of proj.history) {
+          if (Array.isArray(item.uploadedImages)) {
+            if (
+              item.uploadedImages.some(
+                (img: any) => img.id === imageId || img.libraryImgId === imageId
+              )
+            ) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Check active session state in localStorage as a fallback
+    try {
+      const activeLib = localStorage.getItem("prompt_generator_library_images");
+      if (activeLib) {
+        const parsed = JSON.parse(activeLib);
+        if (Array.isArray(parsed) && parsed.some((asset: any) => asset.id === imageId)) {
+          return true;
+        }
+      }
+
+      const activeHist = localStorage.getItem("prompt_generator_history");
+      if (activeHist) {
+        const parsed = JSON.parse(activeHist);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (Array.isArray(item.uploadedImages)) {
+              if (
+                item.uploadedImages.some(
+                  (img: any) => img.id === imageId || img.libraryImgId === imageId
+                )
+              ) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    return false;
+  } catch (err) {
+    console.warn("Failed to check project image references:", err);
+    // If check fails, assume referenced to prevent premature data loss
+    return true;
+  }
+}
+
+/**
  * Safely delete an image record from IndexedDB.
+ * Checks if the image is still referenced by any other project or history item before deleting.
  * If this record is a master image holding base64 data and other records depend on it,
  * promotes the first dependent record to master before deleting this record.
  */
-export async function deleteStoredImage(id: string): Promise<void> {
+export async function deleteStoredImage(id: string, forceDelete = false): Promise<void> {
   if (!id) return;
+
+  // Protect shared assets across projects: Skip actual DB deletion if still in use
+  if (!forceDelete) {
+    const isReferenced = await isImageReferencedInAnyProject(id);
+    if (isReferenced) {
+      console.info(
+        `[PromptLab IndexedDB] Image ${id} is still referenced by another project workspace or history item. Preserving binary payload in database.`
+      );
+      return;
+    }
+  }
 
   const db = await openDB();
 

@@ -412,7 +412,7 @@ export default function ProjectManagerModal({
                       onChange={(e) => setCopyWithAssets(e.target.checked)}
                       className="rounded-none border-[#D1D1CF] text-[#1A1A1A] focus:ring-0"
                     />
-                    <span>Copy system prompt, prompt template & custom presets from current project</span>
+                    <span>Copy system prompt, prompt template, custom presets & asset library from current project</span>
                   </label>
                 )}
               </div>

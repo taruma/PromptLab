@@ -139,17 +139,32 @@ export async function saveProject(project: Project): Promise<void> {
 }
 
 /**
- * Delete project from IndexedDB
+ * Delete project from IndexedDB and garbage-collect unreferenced image assets
  */
 export async function deleteProject(id: string): Promise<void> {
+  const project = await getProject(id);
+
   const db = await openDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(STORE_PROJECTS, "readwrite");
     const store = transaction.objectStore(STORE_PROJECTS);
     const request = store.delete(id);
     request.onerror = () => reject(request.error);
     request.onsuccess = () => resolve();
   });
+
+  // Clean up unused image records in IndexedDB if they are no longer referenced by any remaining projects
+  if (project?.assetLibrary && project.assetLibrary.length > 0) {
+    for (const asset of project.assetLibrary) {
+      if (asset.id) {
+        try {
+          await deleteStoredImage(asset.id);
+        } catch (err) {
+          console.warn(`Failed to clean up image ${asset.id} on project deletion:`, err);
+        }
+      }
+    }
+  }
 }
 
 /**
