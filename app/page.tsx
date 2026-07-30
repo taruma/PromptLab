@@ -54,6 +54,7 @@ import MainIdeaSection from "../components/MainIdeaSection";
 import VisualAssetsSection, { type UploadedImage } from "../components/VisualAssetsSection";
 import ParameterInputsSection from "../components/ParameterInputsSection";
 import FooterStatusBar from "../components/FooterStatusBar";
+import StorageUsageModal from "../components/StorageUsageModal";
 import PromptTemplateHelpTooltip from "../components/PromptTemplateHelpTooltip";
 import GenerationResultView from "../components/GenerationResultView";
 import { useUrlPresetImport } from "../hooks/use-url-preset-import";
@@ -164,6 +165,7 @@ export default function PromptGeneratorPage() {
   const [isLabManualOpen, setIsLabManualOpen] = useState<boolean>(true);
   const [isVisualAssetsOpen, setIsVisualAssetsOpen] = useState<boolean>(true);
   const [storageWarningMessage, setStorageWarningMessage] = useState<string | null>(null);
+  const [isStorageModalOpen, setIsStorageModalOpen] = useState<boolean>(false);
   const [pendingLoadItem, setPendingLoadItem] = useState<HistoryItem | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
@@ -2255,6 +2257,7 @@ export default function PromptGeneratorPage() {
         thinkingLevel={thinkingLevel}
         temperature={temperature}
         activeApiKeyLabel={getActiveApiKeyLabel()}
+        onOpenStorageModal={() => setIsStorageModalOpen(true)}
       />
 
       {/* Prompt Configuration Modal */}
@@ -3061,6 +3064,12 @@ export default function PromptGeneratorPage() {
         defaultPromptTemplate={defaultPromptTemplate}
         onSwitchProject={handleSwitchProject}
         onProjectsUpdated={handleProjectsUpdated}
+      />
+
+      <StorageUsageModal
+        isOpen={isStorageModalOpen}
+        onClose={() => setIsStorageModalOpen(false)}
+        onClearHistory={() => setIsHistoryClearConfirmOpen(true)}
       />
     </div>
   );

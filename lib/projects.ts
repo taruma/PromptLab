@@ -159,6 +159,12 @@ export function syncActiveProjectToLocalStorage(project: Project): void {
   if (typeof window === "undefined") return;
   try {
     setCurrentProjectId(project.id);
+
+    // Clean up legacy v1 duplicate key to free up ~2.6MB of storage space
+    try {
+      localStorage.removeItem("prompt_generator_history_v1");
+    } catch (_) {}
+
     if (project.systemPrompt !== undefined) {
       localStorage.setItem("prompt_generator_system_prompt", project.systemPrompt);
     }
@@ -169,8 +175,11 @@ export function syncActiveProjectToLocalStorage(project: Project): void {
       localStorage.setItem("prompt_generator_custom_presets", JSON.stringify(project.customPresets));
     }
     if (project.history) {
-      localStorage.setItem("prompt_generator_history_v1", JSON.stringify(project.history));
-      localStorage.setItem("prompt_generator_history", JSON.stringify(project.history));
+      try {
+        localStorage.setItem("prompt_generator_history", JSON.stringify(project.history));
+      } catch (e) {
+        console.warn("LocalStorage quota exceeded when caching history preview (History is safely preserved in IndexedDB):", e);
+      }
     }
     if (project.assetLibrary) {
       localStorage.setItem("prompt_generator_library_images", JSON.stringify(project.assetLibrary));

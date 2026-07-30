@@ -4,6 +4,19 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Storage & Quota Monitor Modal (`components/StorageUsageModal.tsx`, `lib/storage-utils.ts`).** Integrated a real-time browser storage diagnostic modal displaying LocalStorage usage percentage, standard 5 MB quota bar, high quota alerts (>=75%), key-by-key size breakdown table, and IndexedDB (`promptlab_db`) origin storage usage metrics (`navigator.storage.estimate()`).
+- **Interactive Storage Usage Indicator in Footer (`components/FooterStatusBar.tsx`).** Added a live storage usage badge in the application footer showing real-time LocalStorage usage (e.g., `STORAGE: 2.6 MB (52%)`) with auto-refresh every 8 seconds, pulsing red in high-capacity states (>=80%), and opening the Storage Usage modal on click.
+
+### Fixed
+
+- **LocalStorage QuotaExceededError Prevention & Legacy Key Cleanup (`lib/projects.ts`).** Fixed `QuotaExceededError` crashes by removing redundant legacy `prompt_generator_history_v1` LocalStorage writes in `syncActiveProjectToLocalStorage()`, immediately freeing up ~2.6 MB of duplicate storage space. Wrapped remaining `localStorage.setItem` history syncing calls in `try/catch` blocks so full project state remains safely preserved in IndexedDB even if LocalStorage hits browser quota limits.
+
+---
+
 ## [v2.4.1] — July 29, 2026
 
 ### Changed
