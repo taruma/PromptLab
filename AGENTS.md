@@ -61,13 +61,13 @@ Key differentiators:
 │   ├── AppHeader.tsx                # Top navigation bar with logo and action buttons
 │   ├── AssetExportDropdown.tsx      # Dropdown for exporting asset library items (All/Selected)
 │   ├── AssetImportModal.tsx         # Modal for importing asset library JSON with duplicate detection
-│   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed)
+│   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed) with automatic cross-project asset-list sync on deletion
 │   ├── ClearHistoryConfirmModal.tsx # Confirmation modal for clearing all history
 │   ├── ClearSessionConfirmModal.tsx # Confirmation modal for clearing active session
 │   ├── DeleteHistoryConfirmModal.tsx # Confirmation modal for deleting single history slot
 │   ├── DiscardChangesConfirmModal.tsx # Confirmation modal for discarding unsaved prompt config changes
 │   ├── EngineControlsModal.tsx      # Engine configuration modal (model, temperature, API key vault)
-│   ├── FooterStatusBar.tsx          # Bottom status bar showing engine, reasoning, and temperature
+│   ├── FooterStatusBar.tsx          # Bottom status bar showing engine, reasoning, temperature, API key label, live LocalStorage usage indicator, and dynamic version number from package.json
 │   ├── GenerationResultView.tsx     # Generation output panel with formatted markdown / raw toggle, thinking trace visualization, token count display, and estimated cost badge
 │   ├── HistoryCardSummary.tsx       # Reusable history item preview card (timestamp, media badges, model, preset, excerpt)
 │   ├── HistorySection.tsx           # Collapsible history section in sidebar
@@ -88,17 +88,20 @@ Key differentiators:
 │   ├── VideoPlayerModal.tsx         # Full-screen video playback modal for previewing uploaded videos
 │   ├── VisualAssetCard.tsx          # Reusable image asset card with hover preview
 │   ├── VisualAssetsSection.tsx       # Collapsible visual assets & casting maps reference section
+│   ├── StorageUsageModal.tsx        # Full-screen browser storage diagnostic modal showing LocalStorage & IndexedDB origin quota usage with key-by-key breakdown
 │   └── YouTubeIcon.tsx              # Custom SVG YouTube icon component (replaces lucide-react Youtube)
 ├── /lib
 │   ├── utils.ts                     # UI utility functions (cn(), diff engine, image compression, date formatting)
-│   ├── indexeddb.ts                 # IndexedDB helper module (open, get, save, delete)
+│   ├── indexeddb.ts                 # IndexedDB helper module with content-hash deduplication (v3 schema), cross-project image reference protection, master promotion on deletion, and background deduplication migration
 │   ├── asset-library-export.ts     # Asset library JSON import/export utilities
 │   ├── history-export.ts           # History JSON import/export utilities
 │   ├── preset-export.ts            # User preset bulk export/import utilities with duplicate detection, configurable import strategy (duplicate/replace), unique name generation, and skip-reason differentiation
-│   ├── projects.ts                 # Multi-project workspace management (CRUD, import/export, cross-tab sync)
+│   ├── projects.ts                 # Multi-project workspace management (CRUD, import/export, cross-tab sync) with automatic garbage-collection of unreferenced image assets on project deletion
 │   ├── pricing.ts                   # Model pricing table, cost estimation & token usage utilities
 │   ├── video-utils.ts              # Video validation and Base64 encoding utilities
-│   └── search-utils.ts             # Fuzzy search utilities (normalizeText, matchesSearchQuery) with tokenized matching
+│   ├── search-utils.ts             # Fuzzy search utilities (normalizeText, matchesSearchQuery) with tokenized matching
+│   ├── storage-utils.ts            # Browser storage diagnostics (LocalStorage key-by-key breakdown, IndexedDB origin quota via navigator.storage.estimate)
+│   └── content-hash.ts             # SHA-256 content hashing for image deduplication with FNV-1a fallback, and legacy history contentHash backfill utility
 ├── /hooks
 │   ├── use-mobile.ts                # Screen size hook helper (< 768px breakpoint)
 │   └── use-url-preset-import.ts     # URL preset import logic hook: query param detection, fetch, validation, dedup, workspace application, and openJsonPresetImport for local file workflow
