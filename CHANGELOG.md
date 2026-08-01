@@ -10,6 +10,15 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Added
 
+- **Quick API Key Switcher (`components/QuickApiKeySelector.tsx`, `components/AppHeader.tsx`, `app/page.tsx`).**
+  - Added a streamlined, compact quick API key switcher dropdown in the header navigation bar (`AppHeader.tsx`) beside the Quick Preset Selector for instant key switching.
+  - Displays the active key label and status badge (`OVERRIDE` or `ENV`) directly on the trigger button.
+  - Features a simplified, un-cluttered dropdown menu:
+    - Header with "API KEY VAULT" title, total key count badge `(N)` positioned directly adjacent to the title, and a compact top-right **Manage** button with `Settings` icon to open key management in Engine Controls.
+    - Active configuration status banner showing the currently active key name and masked string.
+    - Filter search bar for quickly searching saved vault keys when multiple keys exist.
+    - Dedicated list items for selecting the Default System Key (`process.env.GEMINI_API_KEY`) or any custom vault key override with active checkmarks.
+    - Live synchronization with `localStorage` (`prompt_generator_custom_api_keys` and `prompt_generator_active_api_key_id`) across workspace reloads and browser tabs.
 - **Asset Pinning & Favoriting in Asset Library (`components/AssetLibrarySidebar.tsx`).**
   - Added `isPinned` and `isFavorite` properties to library assets (`StoredImage`), enabling users to pin important reference images to the top of the asset list or mark them as favorites.
   - Added interactive Pin (📌) and Favorite (★) toggle controls to both grid thumbnails and list row items with high-contrast dark button backgrounds and golden amber highlights when active.

@@ -2,6 +2,7 @@ import React from "react";
 import Image from "next/image";
 import { FolderOpen, Sparkles, Settings, FolderKanban, RotateCcw } from "lucide-react";
 import QuickPresetSelector, { PresetItem } from "./QuickPresetSelector";
+import QuickApiKeySelector from "./QuickApiKeySelector";
 import { UserPreset } from "../lib/preset-export";
 import KofiButton from "./KofiButton";
 
@@ -21,6 +22,8 @@ interface AppHeaderProps {
   pinnedPresetIds?: string[];
   onSelectPreset?: (preset: PresetItem) => void;
   onTogglePinPreset?: (id: string, e?: React.MouseEvent) => void;
+  customApiKey?: string;
+  setCustomApiKey?: (key: string) => void;
 }
 
 export default function AppHeader({
@@ -38,6 +41,8 @@ export default function AppHeader({
   pinnedPresetIds = [],
   onSelectPreset,
   onTogglePinPreset,
+  customApiKey = "",
+  setCustomApiKey,
 }: AppHeaderProps) {
   return (
     <header className="border-b border-[#D1D1CF] px-3 md:px-10 flex flex-col md:flex-row items-stretch md:items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-30 py-2.5 md:py-0 md:h-20 gap-2 md:gap-4" id="app-header">
@@ -67,7 +72,7 @@ export default function AppHeader({
               id="project-manager-btn"
             >
               <FolderKanban className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-              <span className="max-w-[80px] sm:max-w-[150px] md:max-w-[200px] truncate font-black text-amber-950">
+              <span className="max-w-[80px] sm:max-w-[120px] md:max-w-[160px] truncate font-black text-amber-950">
                 {currentProjectName}
               </span>
               <FolderOpen className="w-3.5 h-3.5 text-amber-600 shrink-0 hidden sm:inline ml-0.5" />
@@ -75,7 +80,7 @@ export default function AppHeader({
           )}
 
           {onSelectPreset && (
-            <div className="hidden md:block">
+            <div className="hidden sm:block">
               <QuickPresetSelector
                 presets={presets}
                 customPresets={customPresets}
@@ -89,6 +94,14 @@ export default function AppHeader({
               />
             </div>
           )}
+
+          <div className="hidden md:block">
+            <QuickApiKeySelector
+              customApiKey={customApiKey}
+              setCustomApiKey={setCustomApiKey}
+              onOpenEngineConfig={onOpenEngineConfig}
+            />
+          </div>
         </div>
       </div>
       

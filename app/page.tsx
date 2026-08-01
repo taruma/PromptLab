@@ -2147,6 +2147,8 @@ export default function PromptGeneratorPage() {
         pinnedPresetIds={pinnedPresetIds}
         onSelectPreset={handleSelectQuickPreset}
         onTogglePinPreset={togglePinPreset}
+        customApiKey={customApiKey}
+        setCustomApiKey={setCustomApiKey}
       />
 
       {/* Main Container Split */}
