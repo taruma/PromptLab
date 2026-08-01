@@ -99,6 +99,7 @@ import {
   type UploadedVideo
 } from "../lib/video-utils";
 import { computeContentHash, ensureHistoryHasContentHashes } from "../lib/content-hash";
+import { saveHistoryToLocalStorage, loadHistoryFromStorage } from "../lib/history-storage";
 
 export interface HistoryItem {
   id: string;
@@ -687,15 +688,14 @@ export default function PromptGeneratorPage() {
       console.error("Failed to parse configurations on mount", e);
     }
 
-    // Load local storage history safely on mount (client-side only) and sanitize dead parameters
-    try {
-      const savedHistory = localStorage.getItem("prompt_generator_history");
-      if (savedHistory) {
-        setTimeout(async () => {
-          const parsedHistory: HistoryItem[] = JSON.parse(savedHistory);
+    // Load history safely on mount (IndexedDB first, localStorage fallback) and sanitize dead parameters
+    setTimeout(async () => {
+      try {
+        const loadedHistory = await loadHistoryFromStorage();
+        if (loadedHistory && loadedHistory.length > 0) {
           let wasModified = false;
 
-          const cleanedHistory = parsedHistory.map((item) => {
+          const cleanedHistory = loadedHistory.map((item) => {
             if (!item.variables) return item;
 
             // Clean variables strictly if promptTemplate is stored with the history item
@@ -731,19 +731,15 @@ export default function PromptGeneratorPage() {
           const { updatedHistory, modified: hashesAdded } = await ensureHistoryHasContentHashes(cleanedHistory);
 
           if (wasModified || hashesAdded) {
-            try {
-              localStorage.setItem("prompt_generator_history", JSON.stringify(updatedHistory));
-            } catch (err) {
-              console.error("Failed to save cleaned history back to localStorage", err);
-            }
+            saveHistoryToLocalStorage(updatedHistory);
           }
 
           setHistory(updatedHistory);
-        }, 0);
+        }
+      } catch (e) {
+        console.error("Failed to load generation history", e);
       }
-    } catch (e) {
-      console.error("Failed to parse generation history", e);
-    }
+    }, 0);
   }, []);
 
   // Project Helper Methods & Sync Effects
@@ -1417,11 +1413,7 @@ export default function PromptGeneratorPage() {
     });
 
     setHistory(favoritedItems);
-    try {
-      localStorage.setItem("prompt_generator_history", JSON.stringify(favoritedItems));
-    } catch (err) {
-      console.error("Failed to update history in local storage:", err);
-    }
+    saveHistoryToLocalStorage(favoritedItems);
   };
 
   // Clear all local session history and their images from IndexedDB
@@ -1440,17 +1432,15 @@ export default function PromptGeneratorPage() {
       }
     });
     setHistory([]);
-    localStorage.removeItem("prompt_generator_history");
+    try {
+      localStorage.removeItem("prompt_generator_history");
+    } catch (_) {}
   };
 
   // Import new history items and persist to local storage
   const handleImportHistory = (newHistory: HistoryItem[]) => {
     setHistory(newHistory);
-    try {
-      localStorage.setItem("prompt_generator_history", JSON.stringify(newHistory));
-    } catch (err) {
-      console.error("Failed to save imported history to local storage:", err);
-    }
+    saveHistoryToLocalStorage(newHistory);
   };
 
   // We manage engine controls configuration via the external EngineControlsModal component.
@@ -1789,7 +1779,7 @@ export default function PromptGeneratorPage() {
     }
     const updated = history.filter(item => item.id !== id);
     setHistory(updated);
-    localStorage.setItem("prompt_generator_history", JSON.stringify(updated));
+    saveHistoryToLocalStorage(updated);
   };
 
   // Delete a specific history card
@@ -1808,7 +1798,7 @@ export default function PromptGeneratorPage() {
       return item;
     });
     setHistory(updated);
-    localStorage.setItem("prompt_generator_history", JSON.stringify(updated));
+    saveHistoryToLocalStorage(updated);
   };
 
   // Rename a specific history slot
@@ -1820,7 +1810,7 @@ export default function PromptGeneratorPage() {
       return item;
     });
     setHistory(updated);
-    localStorage.setItem("prompt_generator_history", JSON.stringify(updated));
+    saveHistoryToLocalStorage(updated);
   };
 
   // Open preset compare modal to compare history item prompts with active workspace
@@ -2077,7 +2067,7 @@ export default function PromptGeneratorPage() {
 
         setHistory(prev => {
           const updatedHistory = [newHistoryItem, ...prev];
-          localStorage.setItem("prompt_generator_history", JSON.stringify(updatedHistory));
+          saveHistoryToLocalStorage(updatedHistory);
           return updatedHistory;
         });
       }

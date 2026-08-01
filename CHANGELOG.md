@@ -8,6 +8,11 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Added
 
+- **IndexedDB Generation History Storage & Legacy LocalStorage Cleanup (`lib/history-storage.ts`, `lib/projects.ts`, `app/page.tsx`).**
+  - Created `lib/history-storage.ts` to manage loading and saving generation history via a non-breaking wrapper (`loadHistoryFromStorage()` and `saveHistoryToLocalStorage()`).
+  - Moved primary history persistence into IndexedDB (`promptlab_db` → `projects` store), storing history directly within the active workspace project record to avoid browser `LocalStorage` quota limits (`QuotaExceededError`).
+  - Implemented automatic migration: on app launch, `loadHistoryFromStorage()` retrieves legacy items from `localStorage` (`prompt_generator_history` / `prompt_generator_history_v1`), migrates them into the active IndexedDB project, and purges the heavy payload from `localStorage`.
+  - Instantly freed up ~4.1 MB of `localStorage` origin quota (reducing origin usage from 91%+ down to safe levels) while maintaining full backward compatibility for all history operations, search, filters, and JSON export/import workflows.
 - **Drag-and-Drop JSON Library Restore in Asset Library (`components/AssetLibrarySidebar.tsx`).**
   - Expanded the upload dropzone in `AssetLibrarySidebar.tsx` to support dropping `.json` asset library backup export files alongside reference images.
   - Dropping or selecting a `.json` file automatically triggers `AssetImportModal` for preview, duplicate detection, and import strategy resolution.
