@@ -6,8 +6,18 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ## [Unreleased]
 
+## [v2.5.0] — August 1, 2026
+
 ### Added
 
+- **Asset Pinning & Favoriting in Asset Library (`components/AssetLibrarySidebar.tsx`).**
+  - Added `isPinned` and `isFavorite` properties to library assets (`StoredImage`), enabling users to pin important reference images to the top of the asset list or mark them as favorites.
+  - Added interactive Pin (📌) and Favorite (★) toggle controls to both grid thumbnails and list row items with high-contrast dark button backgrounds and golden amber highlights when active.
+  - Added filter tabs (`All`, `Pinned`, `Favs`) with dynamic item count badges to filter library assets seamlessly.
+- **Select Mode & Bulk Operations Toolbar (`components/AssetLibrarySidebar.tsx`).**
+  - Introduced a dedicated `Select` button in the toolbar that toggles bulk selection checkboxes on demand.
+  - Keeps the browsing view clean by hiding checkboxes by default, showing them only when `Select` mode is active or assets are checked.
+  - Added a `Select All` / `Deselect All` toggle button when in select mode for fast batch export and deletion workflows.
 - **IndexedDB Generation History Storage & Legacy LocalStorage Cleanup (`lib/history-storage.ts`, `lib/projects.ts`, `app/page.tsx`).**
   - Created `lib/history-storage.ts` to manage loading and saving generation history via a non-breaking wrapper (`loadHistoryFromStorage()` and `saveHistoryToLocalStorage()`).
   - Moved primary history persistence into IndexedDB (`promptlab_db` → `projects` store), storing history directly within the active workspace project record to avoid browser `LocalStorage` quota limits (`QuotaExceededError`).
@@ -37,6 +47,10 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Changed
 
+- **Streamlined 2-Row Asset Library Toolbar Layout (`components/AssetLibrarySidebar.tsx`).**
+  - Consolidated search input, view mode toggles (`Grid` / `List`), `Select` mode toggle button, filter tabs (`All`, `Pinned`, `Favs`), and compact sorting dropdown (`Newest`, `Oldest`, `A-Z`, `Z-A`) into a compact, seamlessly aligned 2-row layout.
+  - Removed disruptive horizontal border lines between control rows for a unified, un-cluttered visual design in the retro brutalist style.
+  - Optimized responsive label display for filter tabs (`Layers`, `Pin`, `Star` icons) and shortened sorting labels to prevent horizontal scrolling and layout overflow.
 - **Asset Library Backup & Restore Dropdown Labeling & Z-Index Layering (`components/AssetExportDropdown.tsx`, `components/AssetLibrarySidebar.tsx`).**
   - Renamed the asset library header dropdown button from "Port Assets" to **"Backup / Restore"** (with header subtext `"ASSET BACKUP & RESTORE (JSON)"`) for clearer, user-friendly intent.
   - Added `relative z-30` styling to `#asset-library-header` in `AssetLibrarySidebar.tsx`, fixing z-index clipping issues and ensuring dropdown menus overlay smoothly over the upload dropzone and asset list.

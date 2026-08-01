@@ -61,7 +61,7 @@ Key differentiators:
 │   ├── AppHeader.tsx                # Top navigation bar with logo and action buttons
 │   ├── AssetExportDropdown.tsx      # Dropdown for backing up and restoring asset library items (JSON)
 │   ├── AssetImportModal.tsx         # Modal for importing asset library JSON with duplicate detection
-│   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed) with drag & drop JSON restore, 2-step deletion safety, and cross-project asset sync
+│   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed) with drag & drop JSON restore, 2-step deletion safety, asset pinning/favoriting, select mode, and compact 2-row toolbar
 │   ├── ClearHistoryConfirmModal.tsx # Confirmation modal for clearing all history
 │   ├── ClearSessionConfirmModal.tsx # Confirmation modal for clearing active session
 │   ├── DeleteHistoryConfirmModal.tsx # Confirmation modal for deleting single history slot
@@ -262,9 +262,11 @@ The workspace reads dynamic template specifications from the currently configure
 - **Collapsible Sections**: System Presets, Custom Presets, and Lab Manual sidebar sections persist their open/closed state in localStorage.
 
 ### Rule K: Asset Library Sidebar
-- **Persistent Image Library**: A slide-out sidebar (`components/AssetLibrarySidebar.tsx`) enables users to upload, browse, search, rename, delete, and reuse images across workspaces.
-- **IndexedDB Storage**: Asset images are stored in IndexedDB (`promptlab_db` / `images` store) with metadata (label, mimeType, createdAt) persisted in localStorage under `promptlab_asset_library_images`.
-- **Search & Sort**: Library images can be searched by label name and sorted by name or date, with a toggle between list and grid views.
+- **Persistent Image Library**: A slide-out sidebar (`components/AssetLibrarySidebar.tsx`) enables users to upload, browse, search, rename, delete, pin, favorite, and reuse images across workspaces.
+- **IndexedDB Storage**: Asset images are stored in IndexedDB (`promptlab_db` / `images` store) with metadata (label, mimeType, createdAt, isPinned, isFavorite) persisted in localStorage under `promptlab_asset_library_images`.
+- **Search, Filter & Sort Toolbar**: Library images can be searched by label name, filtered by category tabs (`All`, `Pinned`, `Favs`), and sorted (`Newest`, `Oldest`, `A-Z`, `Z-A`), with a toggle between list and grid views. The controls are organized into a seamless, compact 2-row toolbar layout without distracting horizontal divider borders.
+- **Asset Pinning & Favoriting**: Users can toggle Pin (📌) and Favorite (★) flags on both grid thumbnails and list row items. Pinned items float to the top of the library, and filter tabs allow instant viewing of favorited or pinned assets with live count badges.
+- **Select Mode & Bulk Operations**: An explicit `Select` button toggles bulk selection checkboxes on demand, keeping the browsing view clean when not in select mode. In select mode, users can perform batch actions including `Select All` / `Deselect All`, bulk JSON export, and multi-item deletion.
 - **Two-Step Deletion Safety**: Clicking the trash button on an asset transforms it into a highlighted red state ("CONFIRM" / Check icon) with a 4-second confirmation window before auto-canceling, preventing accidental deletions without intrusive popup modals.
 - **Drag-and-Drop JSON Library Restore**: The upload dropzone in `AssetLibrarySidebar.tsx` supports dropping both image references and `.json` asset library backup exports. Dropping or selecting a `.json` file automatically triggers `AssetImportModal` for preview, duplicate detection, and import strategy resolution.
 - **Backup / Restore Menu Dropdown**: The header action button in `AssetExportDropdown.tsx` is clearly labeled "Backup / Restore" for intuitive user understanding. The header container uses `relative z-30` styling to ensure dropdown menus overlay properly over the upload dropzone and asset list.

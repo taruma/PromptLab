@@ -6,6 +6,8 @@ export interface ProjectAsset {
   label: string;
   mimeType: string;
   createdAt?: number;
+  isFavorite?: boolean;
+  isPinned?: boolean;
 }
 
 export interface Project {

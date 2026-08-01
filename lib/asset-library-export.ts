@@ -6,6 +6,8 @@ export interface AssetExportItem {
   base64: string;
   mimeType: string;
   createdAt?: number;
+  isFavorite?: boolean;
+  isPinned?: boolean;
 }
 
 export interface AssetLibraryExportData {
@@ -128,6 +130,8 @@ export async function readAndValidateAssetLibraryJSON(
           base64,
           mimeType,
           createdAt: typeof createdAt === "number" ? createdAt : Date.now(),
+          ...(item.isFavorite !== undefined ? { isFavorite: Boolean(item.isFavorite) } : {}),
+          ...(item.isPinned !== undefined ? { isPinned: Boolean(item.isPinned) } : {}),
         });
       }
     }

@@ -20,7 +20,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Image as ImageIcon,
-  FolderKanban
+  FolderKanban,
+  Star,
+  Pin,
+  Layers
 } from "lucide-react";
 
 import {
@@ -46,6 +49,8 @@ interface LibraryImage {
   base64: string;
   mimeType: string;
   createdAt?: number;
+  isFavorite?: boolean;
+  isPinned?: boolean;
 }
 
 interface AssetLibrarySidebarProps {
@@ -69,12 +74,32 @@ export default function AssetLibrarySidebar({
   const [dragActive, setDragActive] = useState<boolean>(false);
   const [addedFeedbackIds, setAddedFeedbackIds] = useState<Record<string, boolean>>({});
   
-  // Selection & Import/Export State
+  // Selection, Filtering & Import/Export State
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelectMode, setIsSelectMode] = useState<boolean>(false);
+  const [filterTab, setFilterTab] = useState<"all" | "pinned" | "favorites">("all");
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [statusToast, setStatusToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const jsonFileInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleFavoriteAsset = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setLibraryImages((prev) =>
+      prev.map((img) =>
+        img.id === id ? { ...img, isFavorite: !img.isFavorite } : img
+      )
+    );
+  };
+
+  const togglePinAsset = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setLibraryImages((prev) =>
+      prev.map((img) =>
+        img.id === id ? { ...img, isPinned: !img.isPinned } : img
+      )
+    );
+  };
   
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const deleteConfirmTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -541,11 +566,20 @@ export default function AssetLibrarySidebar({
 
   // Filter and sort items dynamically
   const getSortedAndFilteredImages = () => {
-    const filtered = libraryImages.filter(img =>
-      img.label.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filtered = libraryImages.filter((img) => {
+      const matchesSearch = img.label.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+
+      if (filterTab === "pinned") return Boolean(img.isPinned);
+      if (filterTab === "favorites") return Boolean(img.isFavorite);
+      return true;
+    });
 
     return [...filtered].sort((a, b) => {
+      // Pinned items always float to top
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+
       if (sortBy === "az") {
         return a.label.localeCompare(b.label);
       }
@@ -576,6 +610,8 @@ export default function AssetLibrarySidebar({
   };
 
   const sortedAndFilteredImages = getSortedAndFilteredImages();
+  const pinnedCount = libraryImages.filter((img) => img.isPinned).length;
+  const favoritesCount = libraryImages.filter((img) => img.isFavorite).length;
 
   if (!isOpen) return null;
 
@@ -704,63 +740,138 @@ export default function AssetLibrarySidebar({
             <span className="text-[8px] text-[#888884] font-mono uppercase tracking-tight">Drag images or JSON / Click to select</span>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative" id="library-search-wrapper">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <Search className="w-3.5 h-3.5 text-[#888884]" />
-            </span>
-            <input
-              type="text"
-              placeholder="Search library assets..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#F4F4F2]/60 border border-[#D1D1CF] pl-9 pr-4 py-2.5 text-xs outline-none focus:border-[#1A1A1A] focus:bg-white transition-all text-[#1A1A1A]"
-              id="library-search-input"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery("")}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#888884] hover:text-[#1A1A1A]"
+          {/* Row 1: Search Bar + View Mode + Select Mode */}
+          <div className="flex items-center gap-1.5" id="library-row-1">
+            {/* Search Bar */}
+            <div className="relative flex-1 min-w-0" id="library-search-wrapper">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none">
+                <Search className="w-3.5 h-3.5 text-[#888884]" />
+              </span>
+              <input
+                type="text"
+                placeholder="Search assets..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-8 bg-[#F4F4F2]/60 border border-[#D1D1CF] pl-8 pr-7 py-1 text-xs outline-none focus:border-[#1A1A1A] focus:bg-white transition-all text-[#1A1A1A]"
+                id="library-search-input"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery("")}
+                  className="absolute inset-y-0 right-0 flex items-center pr-2 text-[#888884] hover:text-[#1A1A1A]"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center border border-[#D1D1CF] h-8 shrink-0" id="library-view-toggles">
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={`h-full px-2 flex items-center justify-center transition-all cursor-pointer ${
+                  viewMode === "grid" 
+                    ? "bg-[#1A1A1A] text-white" 
+                    : "bg-[#F4F4F2] text-[#888884] hover:text-[#1A1A1A] hover:bg-[#EAEAE8]"
+                }`}
+                title="Grid View"
+                id="view-grid-btn"
               >
-                <X className="w-3 h-3" />
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={`h-full px-2 border-l border-[#D1D1CF] flex items-center justify-center transition-all cursor-pointer ${
+                  viewMode === "list" 
+                    ? "bg-[#1A1A1A] text-white" 
+                    : "bg-[#F4F4F2] text-[#888884] hover:text-[#1A1A1A] hover:bg-[#EAEAE8]"
+                }`}
+                title="Compact List View"
+                id="view-list-btn"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Select Mode Toggle */}
+            {libraryImages.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const nextMode = !isSelectMode;
+                  setIsSelectMode(nextMode);
+                  if (!nextMode) {
+                    setSelectedIds(new Set());
+                  }
+                }}
+                className={`h-8 px-2.5 text-[9px] font-mono uppercase font-bold border transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                  isSelectMode
+                    ? "bg-amber-400 text-[#1A1A1A] border-amber-500 shadow-xs"
+                    : "bg-[#F4F4F2] text-[#888884] border-[#D1D1CF] hover:text-[#1A1A1A] hover:border-[#1A1A1A]"
+                }`}
+                title={isSelectMode ? "Exit export selection mode" : "Enter select mode for bulk export/delete"}
+                id="toggle-select-mode-btn"
+              >
+                <CheckSquare className="w-3 h-3" />
+                <span>{isSelectMode ? "Done" : "Select"}</span>
               </button>
             )}
           </div>
 
-          {/* View Mode & Sorter Controls Row */}
-          <div className="flex items-center justify-between gap-4 mt-1" id="library-controls-row">
-            {/* Left: View Mode Toggles & Select All */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center border border-[#D1D1CF]" id="library-view-toggles">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("grid")}
-                  className={`p-1.5 transition-all cursor-pointer ${
-                    viewMode === "grid" 
-                      ? "bg-[#1A1A1A] text-white" 
-                      : "bg-[#F4F4F2] text-[#888884] hover:text-[#1A1A1A] hover:bg-[#EAEAE8]"
-                  }`}
-                  title="Grid View"
-                  id="view-grid-btn"
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("list")}
-                  className={`p-1.5 border-l border-[#D1D1CF] transition-all cursor-pointer ${
-                    viewMode === "list" 
-                      ? "bg-[#1A1A1A] text-white" 
-                      : "bg-[#F4F4F2] text-[#888884] hover:text-[#1A1A1A] hover:bg-[#EAEAE8]"
-                  }`}
-                  title="Compact List View"
-                  id="view-list-btn"
-                >
-                  <List className="w-3.5 h-3.5" />
-                </button>
-              </div>
+          {/* Row 2: Filter Tabs & Sort Dropdown */}
+          <div className="flex items-center justify-between gap-1.5 mt-1" id="library-row-2">
+            {/* Left: Filter Tabs & Select All */}
+            <div className="flex items-center gap-1 overflow-x-auto py-0.5 no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setFilterTab("all")}
+                className={`px-1.5 py-1 text-[9px] font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                  filterTab === "all"
+                    ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                    : "bg-[#F4F4F2] text-[#888884] border-[#D1D1CF] hover:text-[#1A1A1A] hover:border-[#1A1A1A]"
+                }`}
+                title="All Assets"
+                id="filter-all-btn"
+              >
+                <Layers className="w-2.5 h-2.5" />
+                <span className="hidden min-[380px]:inline">All</span>
+                <span>({libraryImages.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterTab("pinned")}
+                className={`px-1.5 py-1 text-[9px] font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                  filterTab === "pinned"
+                    ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                    : "bg-[#F4F4F2] text-[#888884] border-[#D1D1CF] hover:text-[#1A1A1A] hover:border-[#1A1A1A]"
+                }`}
+                title="Pinned Assets"
+                id="filter-pinned-btn"
+              >
+                <Pin className={`w-2.5 h-2.5 ${filterTab === "pinned" ? "text-amber-400 fill-amber-400" : ""}`} />
+                <span className="hidden min-[380px]:inline">Pinned</span>
+                <span>({pinnedCount})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterTab("favorites")}
+                className={`px-1.5 py-1 text-[9px] font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap ${
+                  filterTab === "favorites"
+                    ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                    : "bg-[#F4F4F2] text-[#888884] border-[#D1D1CF] hover:text-[#1A1A1A] hover:border-[#1A1A1A]"
+                }`}
+                title="Favorite Assets"
+                id="filter-favs-btn"
+              >
+                <Star className={`w-2.5 h-2.5 ${filterTab === "favorites" ? "text-amber-400 fill-amber-400" : ""}`} />
+                <span className="hidden min-[380px]:inline">Favs</span>
+                <span>({favoritesCount})</span>
+              </button>
 
-              {libraryImages.length > 0 && (
+              {/* Select All Checkbox when in select mode */}
+              {isSelectMode && libraryImages.length > 0 && (
                 <button
                   type="button"
                   onClick={
@@ -768,7 +879,7 @@ export default function AssetLibrarySidebar({
                       ? handleDeselectAll
                       : handleSelectAll
                   }
-                  className="px-2 py-1 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-[#F4F4F2] text-[9px] font-mono uppercase font-bold text-[#1A1A1A] transition-all cursor-pointer flex items-center gap-1"
+                  className="px-1.5 py-1 border border-[#D1D1CF] hover:border-[#1A1A1A] hover:bg-[#F4F4F2] text-[9px] font-mono uppercase font-bold text-[#1A1A1A] transition-all cursor-pointer flex items-center gap-1 shrink-0"
                   title={selectedIds.size === libraryImages.length ? "Deselect All" : "Select All"}
                   id="select-all-toggle-btn"
                 >
@@ -777,29 +888,25 @@ export default function AssetLibrarySidebar({
                   ) : (
                     <Square className="w-3 h-3 text-[#888884]" />
                   )}
-                  <span>
-                    {selectedIds.size === libraryImages.length ? "All" : "Select"}
-                  </span>
+                  <span>{selectedIds.size === libraryImages.length ? "All" : "Select All"}</span>
                 </button>
               )}
             </div>
 
             {/* Right: Sort By Dropdown */}
-            <div className="flex items-center gap-1.5" id="library-sort-wrapper">
-              <span className="text-[9px] font-mono text-[#888884] uppercase tracking-wider flex items-center gap-1">
-                <ArrowUpDown className="w-3 h-3 text-[#888884]" />
-                Sort:
-              </span>
+            <div className="flex items-center gap-1 shrink-0" id="library-sort-wrapper">
+              <ArrowUpDown className="w-2.5 h-2.5 text-[#888884]" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="bg-[#F4F4F2] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider py-1.5 px-2 outline-none font-mono cursor-pointer transition-all text-[#1A1A1A]"
+                className="bg-[#F4F4F2] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider py-1 px-1.5 outline-none font-mono cursor-pointer transition-all text-[#1A1A1A]"
                 id="library-sort-select"
+                title="Sort Assets"
               >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="az">Name (A-Z)</option>
-                <option value="za">Name (Z-A)</option>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="az">A-Z</option>
+                <option value="za">Z-A</option>
               </select>
             </div>
           </div>
@@ -876,7 +983,7 @@ export default function AssetLibrarySidebar({
             </div>
           ) : (
             <>
-               {viewMode === "grid" ? (
+                {viewMode === "grid" ? (
                 <div 
                   className={`grid gap-3 ${
                     sidebarWidth >= 860 
@@ -898,6 +1005,8 @@ export default function AssetLibrarySidebar({
                         className={`bg-white border p-2 flex flex-col gap-1.5 group relative transition-all ${
                           isSelected 
                             ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A] bg-stone-50/50" 
+                            : img.isPinned
+                            ? "border-amber-400/70 bg-amber-50/20 hover:border-[#1A1A1A]"
                             : "border-[#D1D1CF] hover:border-[#1A1A1A]"
                         }`}
                         id={`lib-card-${img.id}`}
@@ -914,23 +1023,79 @@ export default function AssetLibrarySidebar({
                             <ImageIcon className="w-6 h-6 text-stone-400" />
                           )}
                           
-                          {/* Selection checkbox button */}
-                          <button
-                            type="button"
-                            onClick={() => toggleSelectAsset(img.id)}
-                            className={`absolute top-1 left-1 p-1 border transition-all cursor-pointer ${
-                              isSelected
-                                ? "bg-[#1A1A1A] border-[#1A1A1A] text-white opacity-100"
-                                : "bg-white/90 border-[#D1D1CF] text-stone-500 hover:text-[#1A1A1A] opacity-80 group-hover:opacity-100"
-                            }`}
-                            title={isSelected ? "Deselect item" : "Select item"}
-                          >
-                            {isSelected ? (
-                              <CheckSquare className="w-2.5 h-2.5 text-white" />
-                            ) : (
-                              <Square className="w-2.5 h-2.5" />
+                          {/* Top Left Controls: Selection Checkbox & Pin Button */}
+                          <div className="absolute top-1 left-1 flex items-center gap-1 z-10">
+                            {(isSelectMode || isSelected) && (
+                              <button
+                                type="button"
+                                onClick={() => toggleSelectAsset(img.id)}
+                                className={`p-1 border transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "bg-[#1A1A1A] border-[#1A1A1A] text-white opacity-100"
+                                    : "bg-white/90 border-[#D1D1CF] text-stone-500 hover:text-[#1A1A1A] opacity-80 group-hover:opacity-100"
+                                }`}
+                                title={isSelected ? "Deselect item" : "Select item"}
+                              >
+                                {isSelected ? (
+                                  <CheckSquare className="w-2.5 h-2.5 text-white" />
+                                ) : (
+                                  <Square className="w-2.5 h-2.5" />
+                                )}
+                              </button>
                             )}
-                          </button>
+
+                            {/* Pin Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => togglePinAsset(img.id, e)}
+                              className={`p-1 border transition-all cursor-pointer ${
+                                img.isPinned
+                                  ? "bg-[#1A1A1A] border-[#1A1A1A] text-amber-400 opacity-100 shadow-xs"
+                                  : "bg-white/90 border-[#D1D1CF] text-stone-400 hover:text-stone-900 opacity-0 group-hover:opacity-100"
+                              }`}
+                              title={img.isPinned ? "Unpin asset" : "Pin asset to top"}
+                            >
+                              <Pin className={`w-2.5 h-2.5 ${img.isPinned ? "fill-amber-400" : ""}`} />
+                            </button>
+                          </div>
+
+                          {/* Top Right Controls: Favorite Star & Delete */}
+                          <div className="absolute top-1 right-1 flex items-center gap-1 z-10">
+                            {/* Favorite Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => toggleFavoriteAsset(img.id, e)}
+                              className={`p-1 border transition-all cursor-pointer ${
+                                img.isFavorite
+                                  ? "bg-[#1A1A1A] border-[#1A1A1A] text-amber-400 opacity-100 shadow-xs"
+                                  : "bg-white/90 border-[#D1D1CF] text-stone-400 hover:text-stone-900 opacity-0 group-hover:opacity-100"
+                              }`}
+                              title={img.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                            >
+                              <Star className={`w-2.5 h-2.5 ${img.isFavorite ? "fill-amber-400" : ""}`} />
+                            </button>
+
+                            {/* Delete Button */}
+                            {deleteConfirmId === img.id ? (
+                              <button
+                                onClick={(e) => handleDeleteClick(img.id, e)}
+                                className="bg-red-600 border border-red-700 text-white p-1 transition-all cursor-pointer opacity-100 z-20 animate-pulse flex items-center justify-center shadow-xs"
+                                title="Click again to confirm deletion"
+                                id={`lib-del-btn-${img.id}`}
+                              >
+                                <Check className="w-2.5 h-2.5" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => handleDeleteClick(img.id, e)}
+                                className="bg-white/90 border border-[#D1D1CF] hover:border-red-600 hover:text-red-600 text-stone-500 p-1 transition-all cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                title="Delete from library"
+                                id={`lib-del-btn-${img.id}`}
+                              >
+                                <Trash2 className="w-2.5 h-2.5" />
+                              </button>
+                            )}
+                          </div>
 
                           {/* Shared overlay badge on bottom left of thumbnail */}
                           {sharedProjectsMap[img.id] && sharedProjectsMap[img.id].length > 0 && (
@@ -942,32 +1107,11 @@ export default function AssetLibrarySidebar({
                               <span>{sharedProjectsMap[img.id].length}</span>
                             </div>
                           )}
-
-                          {/* Delete item */}
-                          {deleteConfirmId === img.id ? (
-                            <button
-                              onClick={(e) => handleDeleteClick(img.id, e)}
-                              className="absolute top-1 right-1 bg-red-600 border border-red-700 text-white p-1 transition-all cursor-pointer opacity-100 z-20 animate-pulse flex items-center justify-center shadow-xs"
-                              title="Click again to confirm deletion"
-                              id={`lib-del-btn-${img.id}`}
-                            >
-                              <Check className="w-2.5 h-2.5" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={(e) => handleDeleteClick(img.id, e)}
-                              className="absolute top-1 right-1 bg-white border border-[#D1D1CF] hover:border-red-600 hover:text-red-600 text-stone-500 p-1 transition-all cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
-                              title="Delete from library"
-                              id={`lib-del-btn-${img.id}`}
-                            >
-                              <Trash2 className="w-2.5 h-2.5" />
-                            </button>
-                          )}
                         </div>
 
                         {/* Centered ID Caption */}
-                        <div className="text-center font-mono text-[7px] text-[#888884] select-all tracking-tighter leading-tight break-all">
-                          ID: {img.id}
+                        <div className="text-center font-mono text-[7px] text-[#888884] select-all tracking-tighter leading-tight break-all flex items-center justify-center gap-1">
+                          <span>ID: {img.id}</span>
                         </div>
 
                         {/* Inline Label editing */}
@@ -1027,25 +1171,29 @@ export default function AssetLibrarySidebar({
                         className={`bg-white border p-1.5 flex items-center justify-between gap-2 group transition-all ${
                           isSelected 
                             ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A] bg-stone-50/50" 
+                            : img.isPinned
+                            ? "border-amber-400/70 bg-amber-50/20 hover:border-[#1A1A1A]"
                             : "border-[#D1D1CF] hover:border-[#1A1A1A]"
                         }`}
                         id={`lib-row-${img.id}`}
                       >
                         {/* Left: Checkbox, Thumbnail & Input */}
                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                          {/* Selection Checkbox */}
-                          <button
-                            type="button"
-                            onClick={() => toggleSelectAsset(img.id)}
-                            className="p-0.5 text-stone-400 hover:text-[#1A1A1A] transition-colors cursor-pointer shrink-0"
-                            title={isSelected ? "Deselect item" : "Select item"}
-                          >
-                            {isSelected ? (
-                              <CheckSquare className="w-3.5 h-3.5 text-[#1A1A1A]" />
-                            ) : (
-                              <Square className="w-3.5 h-3.5" />
-                            )}
-                          </button>
+                          {/* Selection Checkbox (visible in select mode or if selected) */}
+                          {(isSelectMode || isSelected) && (
+                            <button
+                              type="button"
+                              onClick={() => toggleSelectAsset(img.id)}
+                              className="p-0.5 text-stone-400 hover:text-[#1A1A1A] transition-colors cursor-pointer shrink-0"
+                              title={isSelected ? "Deselect item" : "Select item"}
+                            >
+                              {isSelected ? (
+                                <CheckSquare className="w-3.5 h-3.5 text-[#1A1A1A]" />
+                              ) : (
+                                <Square className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          )}
 
                           {/* Thumbnail */}
                           <div className="w-9 h-9 bg-[#EAEAE8] border border-[#D1D1CF] shrink-0 overflow-hidden flex items-center justify-center relative">
@@ -1082,8 +1230,36 @@ export default function AssetLibrarySidebar({
                           </div>
                         </div>
 
-                        {/* Right: Action Buttons */}
+                        {/* Right: Action Buttons (Pin, Favorite, Use, Delete) */}
                         <div className="flex items-center gap-1 shrink-0">
+                          {/* Pin Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => togglePinAsset(img.id, e)}
+                            className={`p-1 border transition-all cursor-pointer h-7 w-7 flex items-center justify-center ${
+                              img.isPinned
+                                ? "bg-[#1A1A1A] border-[#1A1A1A] text-amber-400"
+                                : "bg-white border-[#D1D1CF] text-stone-400 hover:text-[#1A1A1A] hover:border-[#1A1A1A]"
+                            }`}
+                            title={img.isPinned ? "Unpin asset" : "Pin asset to top"}
+                          >
+                            <Pin className={`w-3 h-3 ${img.isPinned ? "fill-amber-400" : ""}`} />
+                          </button>
+
+                          {/* Favorite Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => toggleFavoriteAsset(img.id, e)}
+                            className={`p-1 border transition-all cursor-pointer h-7 w-7 flex items-center justify-center ${
+                              img.isFavorite
+                                ? "bg-[#1A1A1A] border-[#1A1A1A] text-amber-400"
+                                : "bg-white border-[#D1D1CF] text-stone-400 hover:text-[#1A1A1A] hover:border-[#1A1A1A]"
+                            }`}
+                            title={img.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                          >
+                            <Star className={`w-3 h-3 ${img.isFavorite ? "fill-amber-400" : ""}`} />
+                          </button>
+
                           {/* Use Button */}
                           <button
                             onClick={() => handleAddToWorkspace(img)}
