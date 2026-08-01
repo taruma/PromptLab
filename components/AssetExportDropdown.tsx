@@ -41,12 +41,12 @@ export default function AssetExportDropdown({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
-        className="px-2.5 py-1.5 bg-[#1A1A1A] hover:bg-[#333333] text-white border border-[#1A1A1A] text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed font-mono"
-        title="Export or Import Asset Library (JSON)"
+        className="px-2 py-1.5 sm:px-2.5 bg-[#1A1A1A] hover:bg-[#333333] text-white border border-[#1A1A1A] text-[8.5px] sm:text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed font-mono whitespace-nowrap"
+        title="Backup or Restore Asset Library (JSON)"
         id="asset-library-port-btn"
       >
         <FolderDown className="w-3.5 h-3.5 shrink-0 text-white" />
-        <span>Port Assets</span>
+        <span>Backup / Restore</span>
         <ChevronDown className={`w-3 h-3 text-white transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
@@ -56,7 +56,7 @@ export default function AssetExportDropdown({
           id="asset-export-menu"
         >
           <div className="px-2 py-1 text-[8px] text-[#888884] border-b border-[#D1D1CF]/50 mb-1 font-sans">
-            ASSET LIBRARY I/O (JSON)
+            ASSET BACKUP & RESTORE (JSON)
           </div>
 
           <button

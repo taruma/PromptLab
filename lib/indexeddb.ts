@@ -231,6 +231,88 @@ export async function isImageReferencedInAnyProject(imageId: string): Promise<bo
 }
 
 /**
+ * Return a mapping of imageId -> array of other project names referencing this image asset.
+ * Checks IndexedDB "projects" store for assetLibrary and history items across other projects.
+ */
+export async function getSharedProjectsForImages(
+  imageIds: string[],
+  currentProjectId?: string
+): Promise<Record<string, string[]>> {
+  const result: Record<string, string[]> = {};
+  if (!imageIds || imageIds.length === 0 || typeof window === "undefined" || !window.indexedDB) {
+    return result;
+  }
+
+  for (const id of imageIds) {
+    result[id] = [];
+  }
+
+  try {
+    const activeId =
+      currentProjectId ||
+      (typeof localStorage !== "undefined"
+        ? localStorage.getItem("promptlab_current_project_id") ||
+          localStorage.getItem("prompt_generator_active_project_id")
+        : null);
+
+    const db = await openDB();
+    if (!db.objectStoreNames.contains(STORE_PROJECTS)) return result;
+
+    const projects: any[] = await new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_PROJECTS, "readonly");
+      const store = transaction.objectStore(STORE_PROJECTS);
+      const request = store.getAll();
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result || []);
+    });
+
+    const targetSet = new Set(imageIds);
+
+    for (const proj of projects) {
+      if (!proj) continue;
+      // Skip the current active project
+      if (activeId && proj.id === activeId) continue;
+
+      const projName = proj.name || "Untitled Project";
+      const matchedIds = new Set<string>();
+
+      // Check asset library
+      if (Array.isArray(proj.assetLibrary)) {
+        for (const asset of proj.assetLibrary) {
+          if (asset?.id && targetSet.has(asset.id)) {
+            matchedIds.add(asset.id);
+          }
+        }
+      }
+
+      // Check history items
+      if (Array.isArray(proj.history)) {
+        for (const item of proj.history) {
+          if (Array.isArray(item?.uploadedImages)) {
+            for (const img of item.uploadedImages) {
+              const imgId = img?.id || img?.libraryImgId;
+              if (imgId && targetSet.has(imgId)) {
+                matchedIds.add(imgId);
+              }
+            }
+          }
+        }
+      }
+
+      for (const matchedId of matchedIds) {
+        if (!result[matchedId].includes(projName)) {
+          result[matchedId].push(projName);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to get shared projects for images:", err);
+  }
+
+  return result;
+}
+
+/**
  * Safely delete an image record from IndexedDB.
  * Checks if the image is still referenced by any other project or history item before deleting.
  * If this record is a master image holding base64 data and other records depend on it,

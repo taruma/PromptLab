@@ -59,9 +59,9 @@ Key differentiators:
 │   ├── AddFilesApiModal.tsx         # Modal for uploading files (images/videos up to 2 GB) to Gemini Files API
 │   ├── AddYouTubeModal.tsx          # Modal for adding YouTube video URL references
 │   ├── AppHeader.tsx                # Top navigation bar with logo and action buttons
-│   ├── AssetExportDropdown.tsx      # Dropdown for exporting asset library items (All/Selected)
+│   ├── AssetExportDropdown.tsx      # Dropdown for backing up and restoring asset library items (JSON)
 │   ├── AssetImportModal.tsx         # Modal for importing asset library JSON with duplicate detection
-│   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed) with automatic cross-project asset-list sync on deletion
+│   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed) with drag & drop JSON restore, 2-step deletion safety, and cross-project asset sync
 │   ├── ClearHistoryConfirmModal.tsx # Confirmation modal for clearing all history
 │   ├── ClearSessionConfirmModal.tsx # Confirmation modal for clearing active session
 │   ├── DeleteHistoryConfirmModal.tsx # Confirmation modal for deleting single history slot
@@ -264,6 +264,9 @@ The workspace reads dynamic template specifications from the currently configure
 - **Persistent Image Library**: A slide-out sidebar (`components/AssetLibrarySidebar.tsx`) enables users to upload, browse, search, rename, delete, and reuse images across workspaces.
 - **IndexedDB Storage**: Asset images are stored in IndexedDB (`promptlab_db` / `images` store) with metadata (label, mimeType, createdAt) persisted in localStorage under `promptlab_asset_library_images`.
 - **Search & Sort**: Library images can be searched by label name and sorted by name or date, with a toggle between list and grid views.
+- **Two-Step Deletion Safety**: Clicking the trash button on an asset transforms it into a highlighted red state ("CONFIRM" / Check icon) with a 4-second confirmation window before auto-canceling, preventing accidental deletions without intrusive popup modals.
+- **Drag-and-Drop JSON Library Restore**: The upload dropzone in `AssetLibrarySidebar.tsx` supports dropping both image references and `.json` asset library backup exports. Dropping or selecting a `.json` file automatically triggers `AssetImportModal` for preview, duplicate detection, and import strategy resolution.
+- **Backup / Restore Menu Dropdown**: The header action button in `AssetExportDropdown.tsx` is clearly labeled "Backup / Restore" for intuitive user understanding. The header container uses `relative z-30` styling to ensure dropdown menus overlay properly over the upload dropzone and asset list.
 - **Cross-Workspace Reuse**: Images from the library can be added to the active workspace via `onAddImageToWorkspace` callback, creating a `@imageN` reference with the library label.
 - **Library Cleanup**: Deleting a library image removes both the IndexedDB blob and its localStorage metadata entry. Upload deduplication prevents duplicate images with matching base64 content.
 

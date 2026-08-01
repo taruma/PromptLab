@@ -19,13 +19,15 @@ import {
   Download,
   CheckCircle2,
   AlertCircle,
-  Image as ImageIcon
+  Image as ImageIcon,
+  FolderKanban
 } from "lucide-react";
 
 import {
   getStoredImage,
   saveStoredImage,
-  deleteStoredImage
+  deleteStoredImage,
+  getSharedProjectsForImages
 } from "../lib/indexeddb";
 
 import AssetExportDropdown from "./AssetExportDropdown";
@@ -36,7 +38,7 @@ import {
   AssetExportItem
 } from "../lib/asset-library-export";
 
-import { ProjectAsset } from "../lib/projects";
+import { ProjectAsset, getCurrentProjectId } from "../lib/projects";
 
 interface LibraryImage {
   id: string;
@@ -61,6 +63,7 @@ export default function AssetLibrarySidebar({
   projectName,
 }: AssetLibrarySidebarProps) {
   const [libraryImages, setLibraryImages] = useState<LibraryImage[]>([]);
+  const [sharedProjectsMap, setSharedProjectsMap] = useState<Record<string, string[]>>({});
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [dragActive, setDragActive] = useState<boolean>(false);
@@ -73,6 +76,38 @@ export default function AssetLibrarySidebar({
   const [statusToast, setStatusToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const jsonFileInputRef = useRef<HTMLInputElement>(null);
   
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const deleteConfirmTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (deleteConfirmTimerRef.current) {
+        clearTimeout(deleteConfirmTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleDeleteClick = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
+    if (deleteConfirmId === id) {
+      if (deleteConfirmTimerRef.current) {
+        clearTimeout(deleteConfirmTimerRef.current);
+        deleteConfirmTimerRef.current = null;
+      }
+      setDeleteConfirmId(null);
+      handleDeleteLibraryItem(id);
+    } else {
+      setDeleteConfirmId(id);
+      if (deleteConfirmTimerRef.current) {
+        clearTimeout(deleteConfirmTimerRef.current);
+      }
+      deleteConfirmTimerRef.current = setTimeout(() => {
+        setDeleteConfirmId(null);
+      }, 4000);
+    }
+  };
+
   // Dynamic width and dragging states
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     if (typeof window !== "undefined") {
@@ -204,6 +239,27 @@ export default function AssetLibrarySidebar({
     };
   }, []);
 
+  // Check cross-project image references for asset library items
+  useEffect(() => {
+    let isMounted = true;
+    async function checkSharedProjects() {
+      if (!isOpen || libraryImages.length === 0) {
+        if (isMounted) setSharedProjectsMap({});
+        return;
+      }
+      const currentProjId = getCurrentProjectId();
+      const imageIds = libraryImages.map((img) => img.id);
+      const sharedMap = await getSharedProjectsForImages(imageIds, currentProjId || undefined);
+      if (isMounted) {
+        setSharedProjectsMap(sharedMap);
+      }
+    }
+    void checkSharedProjects();
+    return () => {
+      isMounted = false;
+    };
+  }, [libraryImages, isOpen]);
+
   const onAssetLibraryUpdatedRef = useRef(onAssetLibraryUpdated);
   useEffect(() => {
     onAssetLibraryUpdatedRef.current = onAssetLibraryUpdated;
@@ -280,8 +336,21 @@ export default function AssetLibrarySidebar({
     });
   };
 
-  const handleLibraryFiles = async (files: FileList) => {
-    const validFiles = Array.from(files).filter(f => f.type.startsWith("image/"));
+  const handleLibraryFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+
+    // Check if any dropped/selected file is a JSON asset library export
+    const jsonFile = fileArray.find(
+      (f) => f.name.toLowerCase().endsWith(".json") || f.type === "application/json"
+    );
+
+    if (jsonFile) {
+      setImportFile(jsonFile);
+      setIsImportModalOpen(true);
+    }
+
+    // Process image reference files
+    const validFiles = fileArray.filter((f) => f.type.startsWith("image/"));
     if (validFiles.length === 0) return;
 
     const newLibraryItems: LibraryImage[] = [];
@@ -293,10 +362,10 @@ export default function AssetLibrarySidebar({
         const rawName = file.name.split(".")[0];
         const cleanLabel = rawName
           .replace(/[_-]/g, " ")
-          .replace(/\b\w/g, c => c.toUpperCase());
+          .replace(/\b\w/g, (c) => c.toUpperCase());
 
         const libraryImgId = `lib-img-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
-        
+
         await saveStoredImage(libraryImgId, base64);
 
         newLibraryItems.push({
@@ -311,7 +380,7 @@ export default function AssetLibrarySidebar({
       }
     }
 
-    setLibraryImages(prev => [...newLibraryItems, ...prev]);
+    setLibraryImages((prev) => [...newLibraryItems, ...prev]);
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -544,17 +613,17 @@ export default function AssetLibrarySidebar({
         </div>
 
         {/* Header */}
-        <div className="h-20 border-b border-[#D1D1CF] bg-white px-6 flex items-center justify-between shrink-0" id="asset-library-header">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-[#EAEAE8] border border-[#D1D1CF] flex items-center justify-center">
+        <div className="h-20 border-b border-[#D1D1CF] bg-white px-4 sm:px-6 flex items-center justify-between gap-2 shrink-0 relative z-30" id="asset-library-header">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 pr-1">
+            <div className="w-8 h-8 bg-[#EAEAE8] border border-[#D1D1CF] flex items-center justify-center shrink-0">
               <FolderOpen className="w-4 h-4 text-[#1A1A1A]" />
             </div>
-            <div>
-              <h2 className="text-xs uppercase font-black tracking-widest text-[#1A1A1A]">Asset Library</h2>
-              <p className="text-[9px] text-[#888884] font-mono uppercase tracking-wider">Casting & Reference Bank</p>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xs uppercase font-black tracking-widest text-[#1A1A1A] truncate">Asset Library</h2>
+              <p className="text-[9px] text-[#888884] font-mono uppercase tracking-wider truncate">Casting & Reference Bank</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Asset Import/Export Dropdown */}
             <AssetExportDropdown
               totalCount={libraryImages.length}
@@ -625,14 +694,14 @@ export default function AssetLibrarySidebar({
               ref={fileInputRef}
               type="file"
               multiple
-              accept="image/*"
+              accept="image/*,.json,application/json"
               onChange={handleFileChange}
               className="hidden"
               id="library-file-uploader"
             />
             <Upload className="w-4 h-4 text-[#888884]" />
-            <span className="text-[10px] uppercase font-bold tracking-wider text-[#1A1A1A]">Upload reference to library</span>
-            <span className="text-[8px] text-[#888884] font-mono uppercase tracking-tight">Drag images / Click to select</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#1A1A1A]">Upload reference or JSON library</span>
+            <span className="text-[8px] text-[#888884] font-mono uppercase tracking-tight">Drag images or JSON / Click to select</span>
           </div>
 
           {/* Search Bar */}
@@ -863,14 +932,37 @@ export default function AssetLibrarySidebar({
                             )}
                           </button>
 
+                          {/* Shared overlay badge on bottom left of thumbnail */}
+                          {sharedProjectsMap[img.id] && sharedProjectsMap[img.id].length > 0 && (
+                            <div 
+                              className="absolute bottom-1 left-1 bg-[#1A1A1A]/85 text-amber-400 border border-amber-400/40 px-1 py-0.5 text-[8px] font-mono font-bold flex items-center gap-0.5 shadow-xs cursor-help leading-none"
+                              title={`Shared across projects (${sharedProjectsMap[img.id].length} other project${sharedProjectsMap[img.id].length > 1 ? "s" : ""}): ${sharedProjectsMap[img.id].join(", ")}`}
+                            >
+                              <FolderKanban className="w-2.5 h-2.5 shrink-0 text-amber-400" />
+                              <span>{sharedProjectsMap[img.id].length}</span>
+                            </div>
+                          )}
+
                           {/* Delete item */}
-                          <button
-                            onClick={() => handleDeleteLibraryItem(img.id)}
-                            className="absolute top-1 right-1 bg-white border border-[#D1D1CF] hover:border-red-600 hover:text-red-600 text-stone-500 p-1 transition-all cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
-                            title="Delete from library"
-                          >
-                            <Trash2 className="w-2.5 h-2.5" />
-                          </button>
+                          {deleteConfirmId === img.id ? (
+                            <button
+                              onClick={(e) => handleDeleteClick(img.id, e)}
+                              className="absolute top-1 right-1 bg-red-600 border border-red-700 text-white p-1 transition-all cursor-pointer opacity-100 z-20 animate-pulse flex items-center justify-center shadow-xs"
+                              title="Click again to confirm deletion"
+                              id={`lib-del-btn-${img.id}`}
+                            >
+                              <Check className="w-2.5 h-2.5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => handleDeleteClick(img.id, e)}
+                              className="absolute top-1 right-1 bg-white border border-[#D1D1CF] hover:border-red-600 hover:text-red-600 text-stone-500 p-1 transition-all cursor-pointer opacity-0 group-hover:opacity-100 focus:opacity-100"
+                              title="Delete from library"
+                              id={`lib-del-btn-${img.id}`}
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                            </button>
+                          )}
                         </div>
 
                         {/* Centered ID Caption */}
@@ -918,14 +1010,21 @@ export default function AssetLibrarySidebar({
                   })}
                 </div>
               ) : (
-                <div className="flex flex-col gap-2.5" id="library-assets-list">
+                <div 
+                  className={`grid gap-2 ${
+                    sidebarWidth >= 460 
+                      ? "grid-cols-2" 
+                      : "grid-cols-1"
+                  }`} 
+                  id="library-assets-list"
+                >
                   {sortedAndFilteredImages.map((img) => {
                     const isAdded = addedFeedbackIds[img.id];
                     const isSelected = selectedIds.has(img.id);
                     return (
                       <div 
                         key={img.id}
-                        className={`bg-white border p-2 flex items-center justify-between gap-3 group transition-all ${
+                        className={`bg-white border p-1.5 flex items-center justify-between gap-2 group transition-all ${
                           isSelected 
                             ? "border-[#1A1A1A] ring-1 ring-[#1A1A1A] bg-stone-50/50" 
                             : "border-[#D1D1CF] hover:border-[#1A1A1A]"
@@ -933,23 +1032,23 @@ export default function AssetLibrarySidebar({
                         id={`lib-row-${img.id}`}
                       >
                         {/* Left: Checkbox, Thumbnail & Input */}
-                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
                           {/* Selection Checkbox */}
                           <button
                             type="button"
                             onClick={() => toggleSelectAsset(img.id)}
-                            className="p-1 text-stone-400 hover:text-[#1A1A1A] transition-colors cursor-pointer shrink-0"
+                            className="p-0.5 text-stone-400 hover:text-[#1A1A1A] transition-colors cursor-pointer shrink-0"
                             title={isSelected ? "Deselect item" : "Select item"}
                           >
                             {isSelected ? (
-                              <CheckSquare className="w-4 h-4 text-[#1A1A1A]" />
+                              <CheckSquare className="w-3.5 h-3.5 text-[#1A1A1A]" />
                             ) : (
-                              <Square className="w-4 h-4" />
+                              <Square className="w-3.5 h-3.5" />
                             )}
                           </button>
 
                           {/* Thumbnail */}
-                          <div className="w-10 h-10 bg-[#EAEAE8] border border-[#D1D1CF] shrink-0 overflow-hidden flex items-center justify-center relative">
+                          <div className="w-9 h-9 bg-[#EAEAE8] border border-[#D1D1CF] shrink-0 overflow-hidden flex items-center justify-center relative">
                             {img.base64 && img.base64.trim().length > 0 ? (
                               <img 
                                 src={img.base64} 
@@ -957,29 +1056,38 @@ export default function AssetLibrarySidebar({
                                 className="w-full h-full object-cover"
                               />
                             ) : (
-                              <ImageIcon className="w-4 h-4 text-stone-400" />
+                              <ImageIcon className="w-3.5 h-3.5 text-stone-400" />
                             )}
                           </div>
 
                           {/* Label input */}
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 flex flex-col justify-center">
                             <input
                               type="text"
                               value={img.label}
                               onChange={(e) => handleUpdateLabel(img.id, e.target.value)}
                               placeholder="Name or description"
-                              className="text-[11px] font-bold bg-transparent border-b border-transparent hover:border-[#D1D1CF] focus:border-[#1A1A1A] outline-none text-[#1A1A1A] focus:text-stone-900 transition-colors w-full py-0.5 px-1 font-sans"
+                              className="text-[10.5px] font-bold bg-transparent border-b border-transparent hover:border-[#D1D1CF] focus:border-[#1A1A1A] outline-none text-[#1A1A1A] focus:text-stone-900 transition-colors w-full py-0 px-0.5 font-sans truncate"
                               id={`lib-row-input-${img.id}`}
                             />
+                            {sharedProjectsMap[img.id] && sharedProjectsMap[img.id].length > 0 && (
+                              <div 
+                                className="inline-flex items-center gap-1 text-[7.5px] font-mono font-bold text-amber-800 uppercase tracking-tight px-0.5 py-0 cursor-help w-max truncate"
+                                title={`Shared across projects (${sharedProjectsMap[img.id].length} other project${sharedProjectsMap[img.id].length > 1 ? "s" : ""}): ${sharedProjectsMap[img.id].join(", ")}`}
+                              >
+                                <FolderKanban className="w-2.5 h-2.5 text-amber-600 shrink-0" />
+                                <span className="truncate">Shared ({sharedProjectsMap[img.id].length}: {sharedProjectsMap[img.id].join(", ")})</span>
+                              </div>
+                            )}
                           </div>
                         </div>
 
                         {/* Right: Action Buttons */}
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0">
                           {/* Use Button */}
                           <button
                             onClick={() => handleAddToWorkspace(img)}
-                            className={`px-2.5 py-1.5 border text-[9px] uppercase tracking-wider font-bold transition-all flex items-center gap-1 cursor-pointer h-8 ${
+                            className={`px-2 py-1 border text-[8.5px] uppercase tracking-wider font-bold transition-all flex items-center gap-1 cursor-pointer h-7 ${
                               isAdded
                                 ? "bg-emerald-500 border-emerald-500 text-white"
                                 : "bg-white border-[#D1D1CF] text-[#1A1A1A] hover:border-[#1A1A1A] hover:bg-[#F4F4F2]"
@@ -1001,14 +1109,26 @@ export default function AssetLibrarySidebar({
                           </button>
 
                           {/* Delete button */}
-                          <button
-                            onClick={() => handleDeleteLibraryItem(img.id)}
-                            className="p-1.5 border border-[#D1D1CF] hover:border-red-600 hover:text-red-600 hover:bg-stone-50 text-stone-500 transition-all cursor-pointer h-8 flex items-center justify-center opacity-60 group-hover:opacity-100 focus:opacity-100"
-                            title="Delete from library"
-                            id={`lib-row-del-btn-${img.id}`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {deleteConfirmId === img.id ? (
+                            <button
+                              onClick={(e) => handleDeleteClick(img.id, e)}
+                              className="p-1 border border-red-600 bg-red-600 text-white hover:bg-red-700 transition-all cursor-pointer h-7 px-1.5 flex items-center justify-center gap-1 opacity-100 font-bold text-[8.5px] uppercase tracking-wider animate-pulse shadow-xs"
+                              title="Click again to confirm deletion"
+                              id={`lib-row-del-btn-${img.id}`}
+                            >
+                              <Check className="w-3 h-3 shrink-0" />
+                              <span>Confirm</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => handleDeleteClick(img.id, e)}
+                              className="p-1 border border-[#D1D1CF] hover:border-red-600 hover:text-red-600 hover:bg-stone-50 text-stone-500 transition-all cursor-pointer h-7 w-7 flex items-center justify-center opacity-60 group-hover:opacity-100 focus:opacity-100"
+                              title="Delete from library"
+                              id={`lib-row-del-btn-${img.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     );

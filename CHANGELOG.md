@@ -8,6 +8,13 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Added
 
+- **Drag-and-Drop JSON Library Restore in Asset Library (`components/AssetLibrarySidebar.tsx`).**
+  - Expanded the upload dropzone in `AssetLibrarySidebar.tsx` to support dropping `.json` asset library backup export files alongside reference images.
+  - Dropping or selecting a `.json` file automatically triggers `AssetImportModal` for preview, duplicate detection, and import strategy resolution.
+  - Updated file input `accept` attribute to `image/*,.json,application/json` and updated dropzone label text ("Upload reference or JSON library").
+- **Two-Step Asset Deletion Safety in Asset Library (`components/AssetLibrarySidebar.tsx`).**
+  - Replaced single-click instant asset deletion with an inline 2-step confirmation mechanism across both grid hover view and list row views.
+  - Clicking the delete button transforms it into a highlighted red confirmation state ("Confirm" / Check icon) with a 4-second auto-cancel timer, preventing accidental asset removal without disruptive modal dialogs.
 - **IndexedDB v3 Schema & Content-Hash Image Payload Deduplication (`lib/indexeddb.ts`, `lib/content-hash.ts`).**
   - Upgraded IndexedDB schema version from v2 to v3, adding a `contentHash` index on the `images` object store.
   - Implemented automatic SHA-256 content-hash deduplication in `saveStoredImage(id, base64, contentHash)`. When saving an image whose binary payload matches an existing record in IndexedDB, the store saves a light reference pointer (`dedupRefId`) to the master image record instead of storing duplicate base64 strings, drastically reducing storage usage when reusing images across projects, asset libraries, or history items.
@@ -25,6 +32,9 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Changed
 
+- **Asset Library Backup & Restore Dropdown Labeling & Z-Index Layering (`components/AssetExportDropdown.tsx`, `components/AssetLibrarySidebar.tsx`).**
+  - Renamed the asset library header dropdown button from "Port Assets" to **"Backup / Restore"** (with header subtext `"ASSET BACKUP & RESTORE (JSON)"`) for clearer, user-friendly intent.
+  - Added `relative z-30` styling to `#asset-library-header` in `AssetLibrarySidebar.tsx`, fixing z-index clipping issues and ensuring dropdown menus overlay smoothly over the upload dropzone and asset list.
 - **Content-Hash Integration Across the Full Image Lifecycle (`app/page.tsx`, `lib/history-export.ts`).** Threaded `contentHash` computation into the workspace image uploader (`handleImageUpload`), library asset importer (`handleAddLibraryImageToWorkspace`), history save (on generation completion), history restore (when recalling saved generations), and history export/import (`lib/history-export.ts` — both `exportHistoryToJSON()` and `importHistoryFromJSON()`), ensuring new image additions immediately benefit from content-hash deduplication and that historical entries preserve hash-based asset traceability. Added a legacy history contentHash backfill step via `ensureHistoryHasContentHashes()` on application load, which scans existing history items for missing hashes, pulls missing base64 data from IndexedDB, and computes and stores hashes in-place. The `lib/content-hash.ts` module also includes an automatic FNV-1a 64-bit fallback hash function for browser environments where Web Crypto SHA-256 is unavailable, ensuring consistent deduplication across all platforms.
 - **Updated System Documentation (`AGENTS.md`).** Updated core project documentation to reflect IndexedDB v3 schema, `contentHash` indexing, and transparent payload deduplication mechanisms.
 
