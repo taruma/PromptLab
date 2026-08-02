@@ -127,7 +127,7 @@ export default function VisualAssetsSection({
       {isVisualAssetsOpen && (
         <>
           <p className="text-[11px] text-[#888884] font-medium tracking-tight leading-normal">
-            Upload images, MP4 reference videos (&le;30s, &le;35MB), or attach Gemini Files API media up to 2GB. Local images are compressed for browser storage; use <strong className="text-[#1A1A1A] font-semibold">Files API Upload</strong> to retain full original quality. Assets are auto-mapped (e.g., <code className="font-mono text-[10px] bg-[#EAEAE8] px-1 py-0.5 text-[#1A1A1A]">@image1</code>, <code className="font-mono text-[10px] bg-[#EAEAE8] px-1 py-0.5 text-[#1A1A1A]">@video1</code>) and injected into your template.
+            Upload images, MP4 reference videos (&le;30s, &le;35MB), or attach Gemini Files API media (video, audio, PDF, text documents) up to 2GB. Local images are compressed for browser storage; use <strong className="text-[#1A1A1A] font-semibold">Files API Upload</strong> to retain full original quality or attach non-image formats. Assets are auto-mapped (e.g., <code className="font-mono text-[10px] bg-[#EAEAE8] px-1 py-0.5 text-[#1A1A1A]">@image1</code>, <code className="font-mono text-[10px] bg-[#EAEAE8] px-1 py-0.5 text-[#1A1A1A]">@video1</code>) and injected into your template.
           </p>
 
           {videoError && (

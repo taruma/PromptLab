@@ -15,6 +15,8 @@ import {
   Check,
   Search,
   FileText,
+  FileCode,
+  Music,
   Plus,
   Clock,
   ExternalLink
@@ -164,9 +166,13 @@ export default function AddFilesApiModal({
     setError(null);
     const isImage = file.type.startsWith("image/");
     const isVideo = file.type.startsWith("video/");
+    const isAudio = file.type.startsWith("audio/");
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isText = file.type.startsWith("text/") || /\.(txt|md|csv|json|html|xml|py|js|ts|cpp|c|h|css)$/i.test(file.name);
+    const isDocument = isPdf || isText;
 
-    if (!isImage && !isVideo) {
-      setError("Please select a valid image (JPEG, PNG, WebP) or video (MP4, WebM, MOV) file.");
+    if (!isImage && !isVideo && !isAudio && !isDocument) {
+      setError("Please select a supported file format: Image, Video, Audio, or Document (PDF, TXT, CSV, JSON, Markdown).");
       return;
     }
 
@@ -741,17 +747,17 @@ export default function AddFilesApiModal({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*,video/*,.mp4,.webm,.mov,.avi,.mkv"
+                  accept="image/*,video/*,audio/*,.pdf,text/*,.txt,.md,.csv,.json,.html,.xml,.py,.js,.ts,.mp3,.wav,.ogg,.m4a,.flac"
                   onChange={handleFileChange}
                   className="hidden"
                   id="files-api-input"
                 />
                 <CloudUpload className="w-8 h-8 text-[#888884]" />
                 <span className="text-[11px] uppercase font-bold tracking-widest text-[#1A1A1A]">
-                  Drop Video or Image Here
+                  Drop Audio, Document, Video, or Image Here
                 </span>
                 <span className="text-[9px] text-[#888884] font-mono uppercase tracking-tight text-center">
-                  Supports MP4, WebM, MOV, JPEG, PNG, WebP (Max 2 GB)
+                  Supports MP4, WebM, MP3, WAV, PDF, TXT, CSV, JSON, JPEG, PNG & more (Max 2 GB)
                 </span>
               </div>
             ) : (
@@ -761,8 +767,12 @@ export default function AddFilesApiModal({
                     <div className="w-9 h-9 bg-white border border-[#D1D1CF] flex items-center justify-center shrink-0">
                       {selectedFile.type.startsWith("video/") ? (
                         <Film className="w-5 h-5 text-amber-600" />
-                      ) : (
+                      ) : selectedFile.type.startsWith("image/") ? (
                         <ImageIcon className="w-5 h-5 text-blue-600" />
+                      ) : selectedFile.type.startsWith("audio/") ? (
+                        <Music className="w-5 h-5 text-purple-600" />
+                      ) : (
+                        <FileText className="w-5 h-5 text-emerald-600" />
                       )}
                     </div>
                     <div className="flex flex-col min-w-0">
@@ -908,6 +918,8 @@ export default function AddFilesApiModal({
                   const isSelected = selectedExistingFile?.name === file.name;
                   const isVid = (file.mimeType || "").startsWith("video/");
                   const isImg = (file.mimeType || "").startsWith("image/");
+                  const isAud = (file.mimeType || "").startsWith("audio/");
+                  const isDoc = (file.mimeType || "").startsWith("text/") || file.mimeType === "application/pdf";
                   const isDeleting = deletingFile === file.name;
 
                   return (
@@ -927,8 +939,12 @@ export default function AddFilesApiModal({
                               <Film className="w-4 h-4 text-amber-600" />
                             ) : isImg ? (
                               <ImageIcon className="w-4 h-4 text-blue-600" />
+                            ) : isAud ? (
+                              <Music className="w-4 h-4 text-purple-600" />
+                            ) : isDoc ? (
+                              <FileText className="w-4 h-4 text-emerald-600" />
                             ) : (
-                              <FileText className="w-4 h-4 text-stone-600" />
+                              <FileCode className="w-4 h-4 text-stone-600" />
                             )}
                           </div>
                           <div className="flex flex-col min-w-0">

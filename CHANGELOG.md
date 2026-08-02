@@ -6,6 +6,15 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ## [Unreleased]
 
+### Added
+
+- **Multi-Modal Gemini Files API Support (Audio, PDF & Documents) (`components/AddFilesApiModal.tsx`, `components/VideoAssetCard.tsx`, `components/AudioPlayerModal.tsx`, `components/VisualAssetsSection.tsx`).**
+  - Expanded Files API upload picker and drag-and-drop dropzone in `AddFilesApiModal.tsx` to support audio files (MP3, WAV, OGG, M4A, FLAC) and document formats (PDF, TXT, CSV, JSON, Markdown, Code snippets) up to 2 GB.
+  - Created **`AudioPlayerModal.tsx`** for dedicated audio previewing and playback with custom HTML5 audio controls, volume indicators, and MIME type metadata display.
+  - Updated `VideoAssetCard.tsx` to render distinct visual placeholders for audio assets (purple theme + music icon) and text/PDF documents (teal theme + document icon).
+  - Reserved video Play overlays and `VideoPlayerModal` strictly for video files, introducing a "Listen Audio" action button for audio assets.
+  - Updated section helper copy in `VisualAssetsSection.tsx` to guide users on attaching non-video/non-image multi-modal media up to 2 GB via Files API.
+
 ## [v2.5.0] — August 1, 2026
 
 ### Added

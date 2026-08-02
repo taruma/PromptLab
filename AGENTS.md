@@ -56,12 +56,13 @@ Key differentiators:
 │   ├── android-chrome-*.png         # Android Chrome web app icons
 │   └── apple-touch-icon.png         # Apple touch icon
 ├── /components
-│   ├── AddFilesApiModal.tsx         # Modal for uploading files (images/videos up to 2 GB) to Gemini Files API
+│   ├── AddFilesApiModal.tsx         # Modal for uploading multi-modal files (video, image, audio, PDF, text docs up to 2 GB) to Gemini Files API
 │   ├── AddYouTubeModal.tsx          # Modal for adding YouTube video URL references
 │   ├── AppHeader.tsx                # Top navigation bar with logo and action buttons
 │   ├── AssetExportDropdown.tsx      # Dropdown for backing up and restoring asset library items (JSON)
 │   ├── AssetImportModal.tsx         # Modal for importing asset library JSON with duplicate detection
 │   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed) with drag & drop JSON restore, 2-step deletion safety, asset pinning/favoriting, select mode, and compact 2-row toolbar
+│   ├── AudioPlayerModal.tsx         # Dedicated modal for previewing/playing audio assets attached via Files API or local files
 │   ├── ClearHistoryConfirmModal.tsx # Confirmation modal for clearing all history
 │   ├── ClearSessionConfirmModal.tsx # Confirmation modal for clearing active session
 │   ├── DeleteHistoryConfirmModal.tsx # Confirmation modal for deleting single history slot
