@@ -19,7 +19,7 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
     - **Header Action**: Includes a top-right **Engine** settings button to open the full Engine Controls modal on demand.
 - **Quick API Key Switcher (`components/QuickApiKeySelector.tsx`, `components/AppHeader.tsx`, `app/page.tsx`).**
   - Added a streamlined, compact quick API key switcher dropdown in the header navigation bar (`AppHeader.tsx`) beside the Quick Preset Selector for instant key switching.
-  - Displays the active key label and status badge (`OVERRIDE` or `ENV`) directly on the trigger button.
+  - Displays the active key label and status badge (`BYOK` or `ENV`) directly on the trigger button.
   - Features a simplified, un-cluttered dropdown menu:
     - Header with "API KEY VAULT" title, total key count badge `(N)` positioned directly adjacent to the title, and a compact top-right **Manage** button with `Settings` icon to open key management in Engine Controls.
     - Active configuration status banner showing the currently active key name and masked string.

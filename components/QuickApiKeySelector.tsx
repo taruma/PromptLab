@@ -184,7 +184,7 @@ export default function QuickApiKeySelector({
           <span className="truncate font-black">{getActiveKeyLabel()}</span>
           {customApiKey ? (
             <span className="text-[8px] bg-emerald-200/80 text-emerald-900 border border-emerald-400 font-mono font-bold px-1 py-0.2 shrink-0">
-              OVERRIDE
+              BYOK
             </span>
           ) : (
             <span className="text-[8px] bg-stone-100 text-stone-500 border border-stone-300 font-mono font-bold px-1 py-0.2 shrink-0">
