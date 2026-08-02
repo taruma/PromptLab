@@ -2149,6 +2149,10 @@ export default function PromptGeneratorPage() {
         onTogglePinPreset={togglePinPreset}
         customApiKey={customApiKey}
         setCustomApiKey={setCustomApiKey}
+        selectedModel={selectedModel}
+        setSelectedModel={setSelectedModel}
+        thinkingLevel={thinkingLevel}
+        setThinkingLevel={setThinkingLevel}
       />
 
       {/* Main Container Split */}

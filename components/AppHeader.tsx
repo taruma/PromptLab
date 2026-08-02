@@ -3,6 +3,7 @@ import Image from "next/image";
 import { FolderOpen, Sparkles, Settings, FolderKanban, RotateCcw } from "lucide-react";
 import QuickPresetSelector, { PresetItem } from "./QuickPresetSelector";
 import QuickApiKeySelector from "./QuickApiKeySelector";
+import QuickModelSelector from "./QuickModelSelector";
 import { UserPreset } from "../lib/preset-export";
 import KofiButton from "./KofiButton";
 
@@ -24,6 +25,10 @@ interface AppHeaderProps {
   onTogglePinPreset?: (id: string, e?: React.MouseEvent) => void;
   customApiKey?: string;
   setCustomApiKey?: (key: string) => void;
+  selectedModel?: string;
+  setSelectedModel?: (model: string) => void;
+  thinkingLevel?: string;
+  setThinkingLevel?: (level: string) => void;
 }
 
 export default function AppHeader({
@@ -43,6 +48,10 @@ export default function AppHeader({
   onTogglePinPreset,
   customApiKey = "",
   setCustomApiKey,
+  selectedModel,
+  setSelectedModel,
+  thinkingLevel,
+  setThinkingLevel,
 }: AppHeaderProps) {
   return (
     <header className="border-b border-[#D1D1CF] px-3 md:px-10 flex flex-col md:flex-row items-stretch md:items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-30 py-2.5 md:py-0 md:h-20 gap-2 md:gap-4" id="app-header">
@@ -95,12 +104,21 @@ export default function AppHeader({
             </div>
           )}
 
-          <div className="hidden md:block">
+          <div className="hidden md:flex items-center gap-1.5">
             <QuickApiKeySelector
               customApiKey={customApiKey}
               setCustomApiKey={setCustomApiKey}
               onOpenEngineConfig={onOpenEngineConfig}
             />
+            {selectedModel && setSelectedModel && thinkingLevel && setThinkingLevel && (
+              <QuickModelSelector
+                selectedModel={selectedModel}
+                setSelectedModel={setSelectedModel}
+                thinkingLevel={thinkingLevel}
+                setThinkingLevel={setThinkingLevel}
+                onOpenEngineConfig={onOpenEngineConfig}
+              />
+            )}
           </div>
         </div>
       </div>

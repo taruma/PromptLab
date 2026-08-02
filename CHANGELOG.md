@@ -10,6 +10,13 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Added
 
+- **Quick Model & Thinking Switcher (`components/QuickModelSelector.tsx`, `components/AppHeader.tsx`, `app/page.tsx`).**
+  - Added a compact icon-only trigger button in `AppHeader.tsx` beside the Quick API Key Switcher for rapid model and thinking level switching.
+  - Features a clean 3-row dropdown panel:
+    - **Row 1 (Status)**: Brief active model status indicator (e.g. `Flash Latest • MEDIUM`).
+    - **Row 2 (Model)**: Quick model selection pointing to latest model aliases (`Flash`, `Flash Lite`, `Pro`). Automatically unselects all 3 options and shows a "Specific Version Active" badge if a pinned specific model version is active.
+    - **Row 3 (Thinking)**: Thinking level selection (`HIGH`, `MEDIUM`, `LOW`, `MIN`). Automatically disables `MIN` for Pro models.
+    - **Header Action**: Includes a top-right **Engine** settings button to open the full Engine Controls modal on demand.
 - **Quick API Key Switcher (`components/QuickApiKeySelector.tsx`, `components/AppHeader.tsx`, `app/page.tsx`).**
   - Added a streamlined, compact quick API key switcher dropdown in the header navigation bar (`AppHeader.tsx`) beside the Quick Preset Selector for instant key switching.
   - Displays the active key label and status badge (`OVERRIDE` or `ENV`) directly on the trigger button.
