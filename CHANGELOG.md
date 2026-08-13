@@ -4,9 +4,17 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
-## [Unreleased]
+## [v2.5.0-dev]
 
 ### Added
+
+- **Audio & Document Reference Tags in Generation Pipeline & History Media Badges (`app/api/generate/route.ts`, `components/VisualAssetsSection.tsx`, `components/VideoAssetCard.tsx`, `components/HistoryCardSummary.tsx`, `components/HistorySection.tsx`, `components/HistoryViewerModal.tsx`).**
+  - The generation pipeline now parses each media asset's MIME type and emits separate casting tags — `@videoN`, `@audioN` (for `audio/*` files), and `@docN` (for `text/*`, PDF, and other non-video/image/audio formats) — so audio and document references injected into `{{ visual_references }}` are tagged correctly instead of being labeled as videos.
+  - Generalized Gemini Files API error messages from hardcoded `@videoN` wording to neutral "reference media" phrasing that uses each asset's own label.
+  - Expanded the workspace file picker `accept` attribute in `VisualAssetsSection.tsx` to `image/*,video/*,audio/*,application/pdf,text/*` and added per-type counter logic that assigns the correct `@audioN` / `@docN` / `@videoN` tag to each asset card.
+  - Added a `tag` prop to `VideoAssetCard.tsx` so the top-left identifier badge and player sub-labels display the correct per-type casting tag.
+  - History surfaces now render separate `AUD` (purple, music icon) and `DOC` (teal, file icon) badges — with restyled `VID` badges — in `HistoryCardSummary.tsx`, `HistorySection.tsx`, and `HistoryViewerModal.tsx`, with counts derived from MIME types.
+  - Updated helper copy in `PromptTemplateHelpTooltip.tsx` and `LabManualSection.tsx` to document the `@audio1` / `@doc1` tags, and adjusted the YouTube modal next-index in `app/page.tsx` to count only video-type references.
 
 - **Multi-Modal Gemini Files API Support (Audio, PDF & Documents) (`components/AddFilesApiModal.tsx`, `components/VideoAssetCard.tsx`, `components/AudioPlayerModal.tsx`, `components/VisualAssetsSection.tsx`).**
   - Expanded Files API upload picker and drag-and-drop dropzone in `AddFilesApiModal.tsx` to support audio files (MP3, WAV, OGG, M4A, FLAC) and document formats (PDF, TXT, CSV, JSON, Markdown, Code snippets) up to 2 GB.
@@ -14,10 +22,6 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
   - Updated `VideoAssetCard.tsx` to render distinct visual placeholders for audio assets (purple theme + music icon) and text/PDF documents (teal theme + document icon).
   - Reserved video Play overlays and `VideoPlayerModal` strictly for video files, introducing a "Listen Audio" action button for audio assets.
   - Updated section helper copy in `VisualAssetsSection.tsx` to guide users on attaching non-video/non-image multi-modal media up to 2 GB via Files API.
-
-## [v2.5.0] — August 1, 2026
-
-### Added
 
 - **Quick Model & Thinking Switcher (`components/QuickModelSelector.tsx`, `components/AppHeader.tsx`, `app/page.tsx`).**
   - Added a compact icon-only trigger button in `AppHeader.tsx` beside the Quick API Key Switcher for rapid model and thinking level switching.
@@ -64,11 +68,11 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
   - Integrated a background migration and deduplication task triggered automatically when opening the application in `app/page.tsx`.
   - Scans stored IndexedDB images on launch, backfills missing `contentHash` identifiers, and consolidates pre-existing duplicate base64 payloads into `dedupRefId` references without requiring user intervention.
 - **Storage & Quota Monitor Modal (`components/StorageUsageModal.tsx`, `lib/storage-utils.ts`).** Integrated a real-time browser storage diagnostic modal displaying LocalStorage usage percentage, standard 5 MB quota bar, high quota alerts (>=75%), key-by-key size breakdown table, and IndexedDB (`promptlab_db`) origin storage usage metrics (`navigator.storage.estimate()`).
-- **Interactive Storage Usage Indicator in Footer (`components/FooterStatusBar.tsx`).** Added a live storage usage badge in the application footer showing real-time LocalStorage usage (e.g., `STORAGE: 2.6 MB (52%)`) with auto-refresh every 8 seconds, pulsing red in high-capacity states (>=80%), and opening the Storage Usage modal on click.
+- **Interactive Storage Usage Indicator in Footer (`components/FooterStatusBar.tsx`).** Added a live storage usage badge in the application footer showing real-time LocalStorage usage (e.g., `Storage: 2.6 MB (52%)`) with auto-refresh every 8 seconds, pulsing red in high-capacity states (>=80%), and opening the Storage Usage modal on click.
 - **History Viewer Image Hover Preview with Content-Hash Badge (`components/HistoryViewerModal.tsx`).** Extracted a new `HistoryImageCardWithHover` component using `createPortal` to render large, edge-aware image previews when hovering over history detail image cards. The preview positions itself relative to the card element with smart boundary detection (preventing overflow on viewport edges) and displays a SHA-256 content-hash identifier badge in emerald-green at the top of the preview for asset traceability.
 - **Content-Hash Display in Visual Asset Card Hover Preview (`components/VisualAssetCard.tsx`).** Added a SHA-256 content-hash badge (`HASH: {contentHash}`) to image hover previews, displayed in emerald-green with a monospace font, enabling users to visually identify and verify asset content integrity without opening external tools.
 - **Cross-Project Image Reference Protection (`lib/indexeddb.ts`).** Added a new `isImageReferencedInAnyProject()` utility that scans all project workspaces (IndexedDB `projects` store) and active session state (localStorage) to check whether an image ID is still referenced by any project's asset library or history items before deletion. `deleteStoredImage(id)` now performs this protection check by default (unless `forceDelete` is passed), logging an informational message and preserving binary data when the asset is actively referenced elsewhere. When the check fails, it conservatively assumes the asset is still in use to prevent premature data loss.
-- **Version Number Display in Footer (`components/FooterStatusBar.tsx`).** The footer now dynamically displays the current application version from `package.json` (e.g., `PromptLab v2.4.2 by Taruma Sakti`), providing immediate version context without requiring the user to inspect the app binary.
+- **Version Number Display in Footer (`components/FooterStatusBar.tsx`).** The footer now dynamically displays the current application version from `package.json` (e.g., `PromptLab v2.4.2-dev by Taruma Sakti`), providing immediate version context without requiring the user to inspect the app binary.
 
 ### Changed
 
@@ -81,6 +85,8 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
   - Added `relative z-30` styling to `#asset-library-header` in `AssetLibrarySidebar.tsx`, fixing z-index clipping issues and ensuring dropdown menus overlay smoothly over the upload dropzone and asset list.
 - **Content-Hash Integration Across the Full Image Lifecycle (`app/page.tsx`, `lib/history-export.ts`).** Threaded `contentHash` computation into the workspace image uploader (`handleImageUpload`), library asset importer (`handleAddLibraryImageToWorkspace`), history save (on generation completion), history restore (when recalling saved generations), and history export/import (`lib/history-export.ts` — both `exportHistoryToJSON()` and `importHistoryFromJSON()`), ensuring new image additions immediately benefit from content-hash deduplication and that historical entries preserve hash-based asset traceability. Added a legacy history contentHash backfill step via `ensureHistoryHasContentHashes()` on application load, which scans existing history items for missing hashes, pulls missing base64 data from IndexedDB, and computes and stores hashes in-place. The `lib/content-hash.ts` module also includes an automatic FNV-1a 64-bit fallback hash function for browser environments where Web Crypto SHA-256 is unavailable, ensuring consistent deduplication across all platforms.
 - **Updated System Documentation (`AGENTS.md`).** Updated core project documentation to reflect IndexedDB v3 schema, `contentHash` indexing, and transparent payload deduplication mechanisms.
+- **Development Server Binds to All Network Interfaces (`package.json`).** The `dev` script now runs `next dev -p 3000 -H 0.0.0.0`, improving accessibility for containerized and remote development environments.
+- **Release Notes Preset Descriptions Aligned with Education Focus (`RELEASE_NOTES_v2.md`).** Updated the Film Lingo and Motion Lab preset descriptions to drop AI prompt-generation language, keeping the v2.4 release notes consistent with the v2.4.1 preset refocus.
 
 ### Fixed
 
