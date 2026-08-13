@@ -22,7 +22,7 @@ export default function PromptTemplateHelpTooltip() {
           </div>
           <div className="flex items-start gap-1.5">
             <code className="font-mono font-bold text-[#1A1A1A] bg-[#F4F4F2] px-1 border border-[#D1D1CF] shrink-0">{"{{ visual_references }}"}</code>
-            <span className="text-[#666]">Injects media casting tags (<code className="font-mono text-[8.5px]">@image1</code>, <code className="font-mono text-[8.5px]">@video1</code>). <code className="font-mono text-[8.5px]">{"{{ cast }}"}</code> also works.</span>
+            <span className="text-[#666]">Injects media casting tags (<code className="font-mono text-[8.5px]">@image1</code>, <code className="font-mono text-[8.5px]">@video1</code>, <code className="font-mono text-[8.5px]">@audio1</code>, <code className="font-mono text-[8.5px]">@doc1</code>). <code className="font-mono text-[8.5px]">{"{{ cast }}"}</code> also works.</span>
           </div>
           <div className="flex items-start gap-1.5 pt-1 border-t border-[#D1D1CF]/40">
             <code className="font-mono text-[#888884] bg-[#F4F4F2] px-1 shrink-0">{"{{ custom_var }}"}</code>

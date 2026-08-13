@@ -226,11 +226,31 @@ export default function HistorySection({
                               {item.images.length} IMG
                             </span>
                           )}
-                          {item.videos && item.videos.length > 0 && (
-                            <span className="bg-purple-900 text-purple-100 px-1 py-0.5 font-mono uppercase font-bold text-[7.5px] shrink-0 leading-none">
-                              {item.videos.length} VID
-                            </span>
-                          )}
+                          {(() => {
+                            const rawVids = item.videos || [];
+                            const vidCount = rawVids.filter(v => !v.mimeType?.startsWith("audio/") && !(v.mimeType?.startsWith("text/") || v.mimeType === "application/pdf")).length;
+                            const audCount = rawVids.filter(v => Boolean(v.mimeType?.startsWith("audio/"))).length;
+                            const docCount = rawVids.filter(v => Boolean(v.mimeType?.startsWith("text/") || v.mimeType === "application/pdf" || (v.mimeType && !v.mimeType.startsWith("video/") && !v.mimeType.startsWith("image/") && !v.mimeType.startsWith("audio/")))).length;
+                            return (
+                              <>
+                                {vidCount > 0 && (
+                                  <span className="bg-amber-900 text-amber-100 px-1 py-0.5 font-mono uppercase font-bold text-[7.5px] shrink-0 leading-none">
+                                    {vidCount} VID
+                                  </span>
+                                )}
+                                {audCount > 0 && (
+                                  <span className="bg-purple-900 text-purple-100 px-1 py-0.5 font-mono uppercase font-bold text-[7.5px] shrink-0 leading-none">
+                                    {audCount} AUD
+                                  </span>
+                                )}
+                                {docCount > 0 && (
+                                  <span className="bg-teal-900 text-teal-100 px-1 py-0.5 font-mono uppercase font-bold text-[7.5px] shrink-0 leading-none">
+                                    {docCount} DOC
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
 
                           {/* Headline / Title Snippet */}
                           <h4 

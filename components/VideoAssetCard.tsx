@@ -22,6 +22,7 @@ interface VideoAssetCardProps {
     mimeType?: string;
   };
   index: number;
+  tag?: string;
   onUpdateLabel: (id: string, newLabel: string) => void;
   onDeleteVideo: (id: string) => void;
 }
@@ -29,6 +30,7 @@ interface VideoAssetCardProps {
 export default function VideoAssetCard({
   video,
   index,
+  tag,
   onUpdateLabel,
   onDeleteVideo,
 }: VideoAssetCardProps) {
@@ -45,6 +47,8 @@ export default function VideoAssetCard({
   
   const isPlayableVideo = isVideo && (isYt || Boolean(localVideoSrc));
   const isPlayableAudio = isAudio;
+
+  const displayTag = tag || (isAudio ? `@audio${index + 1}` : isDoc ? `@doc${index + 1}` : `@video${index + 1}`);
 
   const rawYtThumbnail = video.youtubeUrl ? getYouTubeThumbnailUrl(video.youtubeUrl) : null;
   const ytThumbnail = (rawYtThumbnail && rawYtThumbnail.trim().length > 0) ? rawYtThumbnail : null;
@@ -168,7 +172,7 @@ export default function VideoAssetCard({
               </div>
             ) : null}
 
-            {/* Top-Left Index Identifier - Always retains @videoN mapping */}
+            {/* Top-Left Index Identifier */}
             <div className="absolute top-1 left-1 bg-[#1A1A1A] text-white text-[8px] font-mono font-bold px-1.5 py-0.5 select-none flex items-center gap-1 z-10">
               {isAudio ? (
                 <Music className="w-2.5 h-2.5 text-purple-400" />
@@ -177,7 +181,7 @@ export default function VideoAssetCard({
               ) : (
                 <Film className="w-2.5 h-2.5 text-amber-400" />
               )}
-              @video{index + 1}
+              {displayTag}
             </div>
 
             {/* Top-Right Badge for type */}
@@ -248,7 +252,7 @@ export default function VideoAssetCard({
         videoUrl={video.base64}
         youtubeUrl={video.youtubeUrl}
         title={video.label || `Video ${index + 1}`}
-        subLabel={`@video${index + 1}`}
+        subLabel={displayTag}
         onClose={() => setIsPlayerOpen(false)}
       />
 
@@ -259,7 +263,7 @@ export default function VideoAssetCard({
         fileUri={video.fileUri}
         mimeType={video.mimeType}
         title={video.label || `Audio ${index + 1}`}
-        subLabel={`@video${index + 1}`}
+        subLabel={displayTag}
         onClose={() => setIsAudioPlayerOpen(false)}
       />
     </>

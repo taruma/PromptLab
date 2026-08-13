@@ -13,6 +13,8 @@ import {
   Sparkles, 
   Image as ImageIcon,
   Film,
+  Music,
+  FileText,
   Settings,
   Copy,
   Star,
@@ -687,11 +689,31 @@ export default function HistoryViewerModal({
                                 {item.images.length} IMG
                               </span>
                             )}
-                            {item.videos && item.videos.length > 0 && (
-                              <span className="bg-purple-900 text-purple-100 px-1 py-0.5 font-bold uppercase text-[7.5px] leading-none shrink-0">
-                                {item.videos.length} VID
-                              </span>
-                            )}
+                            {(() => {
+                              const rawVids = item.videos || [];
+                              const vidCount = rawVids.filter(v => !v.mimeType?.startsWith("audio/") && !(v.mimeType?.startsWith("text/") || v.mimeType === "application/pdf")).length;
+                              const audCount = rawVids.filter(v => Boolean(v.mimeType?.startsWith("audio/"))).length;
+                              const docCount = rawVids.filter(v => Boolean(v.mimeType?.startsWith("text/") || v.mimeType === "application/pdf" || (v.mimeType && !v.mimeType.startsWith("video/") && !v.mimeType.startsWith("image/") && !v.mimeType.startsWith("audio/")))).length;
+                              return (
+                                <>
+                                  {vidCount > 0 && (
+                                    <span className="bg-amber-900 text-amber-100 px-1 py-0.5 font-bold uppercase text-[7.5px] leading-none shrink-0">
+                                      {vidCount} VID
+                                    </span>
+                                  )}
+                                  {audCount > 0 && (
+                                    <span className="bg-purple-900 text-purple-100 px-1 py-0.5 font-bold uppercase text-[7.5px] leading-none shrink-0">
+                                      {audCount} AUD
+                                    </span>
+                                  )}
+                                  {docCount > 0 && (
+                                    <span className="bg-teal-900 text-teal-100 px-1 py-0.5 font-bold uppercase text-[7.5px] leading-none shrink-0">
+                                      {docCount} DOC
+                                    </span>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
 
                           {renamingId !== item.id && (
@@ -950,45 +972,86 @@ export default function HistoryViewerModal({
                         );
                       })}
 
-                      {selectedItem.videos?.map((vid, idx) => {
-                        const isYt = vid.isYouTube || Boolean(vid.youtubeUrl);
-                        return (
-                          <div
-                            key={vid.id || idx}
-                            onClick={() => {
-                              if (isYt && vid.youtubeUrl) {
-                                setPreviewVideo({
-                                  youtubeUrl: vid.youtubeUrl,
-                                  title: vid.label || `Video ${idx + 1}`,
-                                  subLabel: `@VIDEO${idx + 1}`,
-                                });
-                              }
-                            }}
-                            className={`flex items-center gap-2.5 border ${
-                              isYt
-                                ? 'border-red-300 bg-red-50 hover:bg-red-100 hover:border-red-400 cursor-pointer'
-                                : 'border-purple-300 bg-purple-50'
-                            } p-1.5 pr-3 text-[10px] font-mono shrink-0 transition-colors`}
-                            title={isYt ? "Click to play YouTube video" : undefined}
-                          >
-                            <div className={`w-9 h-9 relative shrink-0 border ${isYt ? 'border-red-200 bg-red-100' : 'border-purple-200 bg-purple-100'} flex items-center justify-center overflow-hidden`}>
-                              {isYt ? (
-                                <YouTubeIcon className="w-4 h-4" />
-                              ) : (
-                                <Film className="w-4 h-4 text-purple-700" />
-                              )}
+                      {(() => {
+                        let vCount = 0;
+                        let aCount = 0;
+                        let dCount = 0;
+                        return selectedItem.videos?.map((vid, idx) => {
+                          const isYt = vid.isYouTube || Boolean(vid.youtubeUrl);
+                          const isAudio = Boolean(vid.mimeType?.startsWith("audio/"));
+                          const isDoc = Boolean(
+                            vid.mimeType?.startsWith("text/") ||
+                            vid.mimeType === "application/pdf" ||
+                            (vid.mimeType && !vid.mimeType.startsWith("video/") && !vid.mimeType.startsWith("image/") && !vid.mimeType.startsWith("audio/"))
+                          );
+                          let tag = "";
+                          if (isAudio) {
+                            aCount++;
+                            tag = `@AUDIO${aCount}`;
+                          } else if (isDoc) {
+                            dCount++;
+                            tag = `@DOC${dCount}`;
+                          } else {
+                            vCount++;
+                            tag = `@VIDEO${vCount}`;
+                          }
+
+                          return (
+                            <div
+                              key={vid.id || idx}
+                              onClick={() => {
+                                if (isYt && vid.youtubeUrl) {
+                                  setPreviewVideo({
+                                    youtubeUrl: vid.youtubeUrl,
+                                    title: vid.label || `Video ${vCount}`,
+                                    subLabel: tag,
+                                  });
+                                }
+                              }}
+                              className={`flex items-center gap-2.5 border ${
+                                isYt
+                                  ? 'border-red-300 bg-red-50 hover:bg-red-100 hover:border-red-400 cursor-pointer'
+                                  : isAudio
+                                  ? 'border-purple-300 bg-purple-50'
+                                  : isDoc
+                                  ? 'border-teal-300 bg-teal-50'
+                                  : 'border-amber-300 bg-amber-50'
+                              } p-1.5 pr-3 text-[10px] font-mono shrink-0 transition-colors`}
+                              title={isYt ? "Click to play YouTube video" : undefined}
+                            >
+                              <div className={`w-9 h-9 relative shrink-0 border ${
+                                isYt
+                                  ? 'border-red-200 bg-red-100'
+                                  : isAudio
+                                  ? 'border-purple-200 bg-purple-100'
+                                  : isDoc
+                                  ? 'border-teal-200 bg-teal-100'
+                                  : 'border-amber-200 bg-amber-100'
+                              } flex items-center justify-center overflow-hidden`}>
+                                {isYt ? (
+                                  <YouTubeIcon className="w-4 h-4" />
+                                ) : isAudio ? (
+                                  <Music className="w-4 h-4 text-purple-700" />
+                                ) : isDoc ? (
+                                  <FileText className="w-4 h-4 text-teal-700" />
+                                ) : (
+                                  <Film className="w-4 h-4 text-amber-700" />
+                                )}
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className={`text-[8px] ${
+                                  isYt ? 'text-red-700' : isAudio ? 'text-purple-700' : isDoc ? 'text-teal-700' : 'text-amber-800'
+                                } font-black flex items-center gap-1`}>
+                                  {tag} {isYt ? '[YT ▶ PLAY]' : ''}
+                                </span>
+                                <span className="text-[#1A1A1A] font-bold truncate max-w-[140px] uppercase">
+                                  {vid.label}
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex flex-col min-w-0">
-                              <span className={`text-[8px] ${isYt ? 'text-red-700' : 'text-purple-700'} font-black flex items-center gap-1`}>
-                                @VIDEO{idx + 1} {isYt ? '[YT ▶ PLAY]' : ''}
-                              </span>
-                              <span className="text-[#1A1A1A] font-bold truncate max-w-[140px] uppercase">
-                                {vid.label}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        });
+                      })()}
                     </div>
                   ) : (
                     <div className="text-[10px] uppercase font-mono italic text-[#888884] border border-dashed border-[#D1D1CF] p-2.5 text-center bg-[#FAF9F6]">

@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
 
     let filledTemplate = promptTemplate;
 
-    // Process reference naming e.g. "@image1 as Name, @video1 as Name"
+    // Process reference naming e.g. "@image1 as Name, @video1 as Name, @audio1 as Name, @doc1 as Name"
     const imageList: UploadedImage[] = images || [];
     const videoList: UploadedVideo[] = videos || [];
     
@@ -141,8 +141,26 @@ export async function POST(req: NextRequest) {
       });
     }
     if (videoList.length > 0) {
-      videoList.forEach((vid, index) => {
-        referenceTags.push(`@video${index + 1} as ${vid.label || `Video ${index + 1}`}`);
+      let vCount = 0;
+      let aCount = 0;
+      let dCount = 0;
+      videoList.forEach((vid) => {
+        const isAudio = Boolean(vid.mimeType?.startsWith("audio/"));
+        const isDoc = Boolean(
+          vid.mimeType?.startsWith("text/") ||
+          vid.mimeType === "application/pdf" ||
+          (vid.mimeType && !vid.mimeType.startsWith("video/") && !vid.mimeType.startsWith("image/") && !vid.mimeType.startsWith("audio/"))
+        );
+        if (isAudio) {
+          aCount++;
+          referenceTags.push(`@audio${aCount} as ${vid.label || `Audio ${aCount}`}`);
+        } else if (isDoc) {
+          dCount++;
+          referenceTags.push(`@doc${dCount} as ${vid.label || `Document ${dCount}`}`);
+        } else {
+          vCount++;
+          referenceTags.push(`@video${vCount} as ${vid.label || `Video ${vCount}`}`);
+        }
       });
     }
 
@@ -312,17 +330,18 @@ export async function POST(req: NextRequest) {
             });
           } else {
             const fileId = vid.fileUri.includes("/files/") ? vid.fileUri.split("/files/")[1] : vid.fileUri;
+            const assetTag = `@asset${i + 1}`;
             if (lastFileState === "PROCESSING") {
               throw new Error(
-                `Gemini Files API Notice: The uploaded reference video '@video${i + 1}' (${vid.label || "Video"}) referencing '${fileId}' is still being processed by Google Gemini (state: PROCESSING). Please wait a few seconds for media encoding to complete and try generating again.`
+                `Gemini Files API Notice: The uploaded reference media '${vid.label || assetTag}' referencing '${fileId}' is still being processed by Google Gemini (state: PROCESSING). Please wait a few seconds for media encoding to complete and try generating again.`
               );
             } else if (lastFileState === "FAILED") {
               throw new Error(
-                `Gemini Files API Error: Media processing failed on Google Gemini Files API for '@video${i + 1}' (${vid.label || "Video"}) referencing '${fileId}'. Please re-upload or select a different asset.`
+                `Gemini Files API Error: Media processing failed on Google Gemini Files API for '${vid.label || assetTag}' referencing '${fileId}'. Please re-upload or select a different asset.`
               );
             } else {
               throw new Error(
-                `Gemini Files API Error: The uploaded reference video '@video${i + 1}' (${vid.label || "Video"}) referencing '${fileId}' is no longer accessible on Gemini Files API. Files API assets automatically expire after 48 hours or require the same API key used during upload. Please remove or re-upload this asset in the 'Visual Assets' section.`
+                `Gemini Files API Error: The uploaded reference media '${vid.label || assetTag}' referencing '${fileId}' is no longer accessible on Gemini Files API. Files API assets automatically expire after 48 hours or require the same API key used during upload. Please remove or re-upload this asset in the 'Visual Assets' section.`
               );
             }
           }

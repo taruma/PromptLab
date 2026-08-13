@@ -60,7 +60,7 @@ export default function LabManualSection({
               <div className="flex flex-col gap-0.5">
                 <span className="font-sans font-bold uppercase tracking-wider text-[10px] text-[#1A1A1A]">Reference Media &amp; Assets</span>
                 <p className="text-[#888884] text-[11px] leading-relaxed">
-                  Attach images (<code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">@imageX</code>), videos or YouTube URLs (<code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">@videoX</code>), upload large files (up to 2 GB) via <strong className="text-[#1A1A1A]">Files API</strong>, or access saved <strong className="text-teal-700 bg-teal-50 px-1 py-0.5 rounded-none border border-teal-200">Assets</strong>.
+                  Attach images (<code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">@imageX</code>), videos (<code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">@videoX</code>), audio (<code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">@audioX</code>), or documents (<code className="font-mono bg-[#EAEAE8]/40 px-1 font-bold text-[10px]">@docX</code>) via <strong className="text-[#1A1A1A]">Files API</strong> or saved <strong className="text-teal-700 bg-teal-50 px-1 py-0.5 rounded-none border border-teal-200">Assets</strong>.
                 </p>
               </div>
             </div>

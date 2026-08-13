@@ -127,7 +127,7 @@ export default function VisualAssetsSection({
       {isVisualAssetsOpen && (
         <>
           <p className="text-[11px] text-[#888884] font-medium tracking-tight leading-normal">
-            Upload images, MP4 reference videos (&le;30s, &le;35MB), or attach Gemini Files API media (video, audio, PDF, text documents) up to 2GB. Local images are compressed for browser storage; use <strong className="text-[#1A1A1A] font-semibold">Files API Upload</strong> to retain full original quality or attach non-image formats. Assets are auto-mapped (e.g., <code className="font-mono text-[10px] bg-[#EAEAE8] px-1 py-0.5 text-[#1A1A1A]">@image1</code>, <code className="font-mono text-[10px] bg-[#EAEAE8] px-1 py-0.5 text-[#1A1A1A]">@video1</code>) and injected into your template.
+            Upload images, MP4 reference videos (&le;30s, &le;35MB), or attach Gemini Files API media (video, audio, PDF, text documents) up to 2GB. Local images are compressed for browser storage; use <strong className="text-[#1A1A1A] font-semibold">Files API Upload</strong> to retain full original quality or attach non-image formats. Assets are auto-mapped (e.g., <code className="font-mono text-[10px] bg-[#EAEAE8] px-1 py-0.5 text-[#1A1A1A]">@image1</code>, <code className="font-mono text-[10px] bg-[#EAEAE8] px-1 py-0.5 text-[#1A1A1A]">@video1</code>, <code className="font-mono text-[10px] bg-[#EAEAE8] px-1 py-0.5 text-[#1A1A1A]">@audio1</code>, <code className="font-mono text-[10px] bg-[#EAEAE8] px-1 py-0.5 text-[#1A1A1A]">@doc1</code>) and injected into your template.
           </p>
 
           {videoError && (
@@ -179,7 +179,7 @@ export default function VisualAssetsSection({
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept="image/*,video/mp4,video/*"
+                accept="image/*,video/*,audio/*,application/pdf,text/*"
                 onChange={handleFileChange}
                 className="hidden"
                 id="image-file-uploader"
@@ -200,16 +200,45 @@ export default function VisualAssetsSection({
               />
             ))}
 
-            {/* Active Video Cards */}
-            {uploadedVideos.map((vid, index) => (
-              <VideoAssetCard
-                key={vid.id}
-                video={vid}
-                index={index}
-                onUpdateLabel={handleUpdateVideoLabel}
-                onDeleteVideo={handleDeleteVideo}
-              />
-            ))}
+            {/* Active Video/Audio/Doc Cards */}
+            {(() => {
+              let vCount = 0;
+              let aCount = 0;
+              let dCount = 0;
+              return uploadedVideos.map((vid) => {
+                const isAudio = Boolean(vid.mimeType?.startsWith("audio/"));
+                const isDoc = Boolean(
+                  vid.mimeType?.startsWith("text/") ||
+                  vid.mimeType === "application/pdf" ||
+                  (vid.mimeType && !vid.mimeType.startsWith("video/") && !vid.mimeType.startsWith("image/") && !vid.mimeType.startsWith("audio/"))
+                );
+                let tag = "";
+                let indexForCard = 0;
+                if (isAudio) {
+                  aCount++;
+                  tag = `@audio${aCount}`;
+                  indexForCard = aCount - 1;
+                } else if (isDoc) {
+                  dCount++;
+                  tag = `@doc${dCount}`;
+                  indexForCard = dCount - 1;
+                } else {
+                  vCount++;
+                  tag = `@video${vCount}`;
+                  indexForCard = vCount - 1;
+                }
+                return (
+                  <VideoAssetCard
+                    key={vid.id}
+                    video={vid}
+                    tag={tag}
+                    index={indexForCard}
+                    onUpdateLabel={handleUpdateVideoLabel}
+                    onDeleteVideo={handleDeleteVideo}
+                  />
+                );
+              });
+            })()}
           </div>
         </>
       )}

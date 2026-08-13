@@ -2,7 +2,7 @@
 
 import React from "react";
 import { HistoryItem } from "./HistorySection";
-import { Calendar, Cpu, Bookmark, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
+import { Calendar, Cpu, Bookmark, Image as ImageIcon, Video as VideoIcon, Music, FileText } from "lucide-react";
 import { calculateEstimatedCost } from "@/lib/pricing";
 
 interface HistoryCardSummaryProps {
@@ -21,7 +21,11 @@ export default function HistoryCardSummary({ item, className = "" }: HistoryCard
     : cleanedText;
 
   const imageCount = item.images?.length || 0;
-  const videoCount = item.videos?.length || 0;
+  const rawVideos = item.videos || [];
+  const videoCount = rawVideos.filter(v => !v.mimeType?.startsWith("audio/") && !(v.mimeType?.startsWith("text/") || v.mimeType === "application/pdf")).length;
+  const audioCount = rawVideos.filter(v => Boolean(v.mimeType?.startsWith("audio/"))).length;
+  const docCount = rawVideos.filter(v => Boolean(v.mimeType?.startsWith("text/") || v.mimeType === "application/pdf" || (v.mimeType && !v.mimeType.startsWith("video/") && !v.mimeType.startsWith("image/") && !v.mimeType.startsWith("audio/")))).length;
+
   const modelName = item.model || "gemini-3.5-flash";
   const presetName = item.presetLabel;
 
@@ -44,9 +48,21 @@ export default function HistoryCardSummary({ item, className = "" }: HistoryCard
             </span>
           )}
           {videoCount > 0 && (
-            <span className="bg-purple-900 text-purple-100 px-1.5 py-0.5 font-mono uppercase font-bold text-[8px] tracking-wider leading-none flex items-center gap-1">
+            <span className="bg-[#1A1A1A] text-[#F59E0B] border border-[#F59E0B]/30 px-1.5 py-0.5 font-mono uppercase font-bold text-[8px] tracking-wider leading-none flex items-center gap-1">
               <VideoIcon className="w-2.5 h-2.5" />
               {videoCount} VID
+            </span>
+          )}
+          {audioCount > 0 && (
+            <span className="bg-purple-900 text-purple-100 px-1.5 py-0.5 font-mono uppercase font-bold text-[8px] tracking-wider leading-none flex items-center gap-1">
+              <Music className="w-2.5 h-2.5 text-purple-300" />
+              {audioCount} AUD
+            </span>
+          )}
+          {docCount > 0 && (
+            <span className="bg-teal-900 text-teal-100 px-1.5 py-0.5 font-mono uppercase font-bold text-[8px] tracking-wider leading-none flex items-center gap-1">
+              <FileText className="w-2.5 h-2.5 text-teal-300" />
+              {docCount} DOC
             </span>
           )}
           {modelName && (

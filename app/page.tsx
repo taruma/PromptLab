@@ -3059,7 +3059,7 @@ export default function PromptGeneratorPage() {
         isOpen={isYouTubeModalOpen}
         onClose={() => setIsYouTubeModalOpen(false)}
         onAddYouTube={handleAddYouTubeVideo}
-        nextIndex={uploadedVideos.length + 1}
+        nextIndex={uploadedVideos.filter(v => !v.mimeType?.startsWith("audio/") && !(v.mimeType?.startsWith("text/") || v.mimeType === "application/pdf")).length + 1}
       />
 
       <AddFilesApiModal
