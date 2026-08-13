@@ -33,14 +33,14 @@ const LATEST_MODELS: ModelOption[] = [
     id: "gemini-flash-latest",
     name: "Gemini Flash Latest",
     isNew: true,
-    subtitle: "✦ gemini-3.6-flash",
+    subtitle: "✦ gemini-3.7-flash",
     cutoff: "Mar 2026",
-    release: "Jul 21, 2026",
+    release: "Aug 13, 2026",
   },
   {
     id: "gemini-flash-lite-latest",
     name: "Gemini Flash-Lite Latest",
-    isNew: true,
+    isNew: false,
     subtitle: "✦ gemini-3.5-flash-lite",
     cutoff: "Mar 2026",
     release: "Jul 21, 2026",
@@ -57,9 +57,17 @@ const LATEST_MODELS: ModelOption[] = [
 
 const SPECIFIC_MODELS: ModelOption[] = [
   {
+    id: "gemini-3.7-flash",
+    name: "Gemini 3.7 Flash",
+    isNew: true,
+    subtitle: "gemini-3.7-flash",
+    cutoff: "Mar 2026",
+    release: "Aug 13, 2026",
+  },
+  {
     id: "gemini-3.6-flash",
     name: "Gemini 3.6 Flash",
-    isNew: true,
+    isNew: false,
     subtitle: "gemini-3.6-flash",
     cutoff: "Mar 2026",
     release: "Jul 21, 2026",

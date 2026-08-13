@@ -8,6 +8,13 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Added
 
+- **Gemini 3.7 Flash Support & Default Model Update (`lib/pricing.ts`, `components/EngineControlsModal.tsx`, `components/QuickModelSelector.tsx`, `app/api/generate/route.ts`, `app/page.tsx`).**
+  - Added full support for **Gemini 3.7 Flash** (`gemini-3.7-flash`), setting it as the new default model across the entire workspace and server-side generation handler fallback.
+  - Added `gemini-3.7-flash` pricing configuration in `lib/pricing.ts` ($1.50 / 1M input, $7.50 / 1M output, $0.15 / 1M context cache base rate, $1.00 / 1M / hour context cache storage).
+  - Updated `MODEL_ALIASES["gemini-flash-latest"]` to resolve to `gemini-3.7-flash`.
+  - Added Gemini 3.7 Flash with release metadata and `NEW` indicator badges to the Engine Controls modal (`EngineControlsModal.tsx`).
+  - Updated the Quick Model Selector (`QuickModelSelector.tsx`) dropdown badge for Flash to `3.7` and added concise label mapping for `gemini-3.7-flash`.
+
 - **Audio & Document Reference Tags in Generation Pipeline & History Media Badges (`app/api/generate/route.ts`, `components/VisualAssetsSection.tsx`, `components/VideoAssetCard.tsx`, `components/HistoryCardSummary.tsx`, `components/HistorySection.tsx`, `components/HistoryViewerModal.tsx`).**
   - The generation pipeline now parses each media asset's MIME type and emits separate casting tags — `@videoN`, `@audioN` (for `audio/*` files), and `@docN` (for `text/*`, PDF, and other non-video/image/audio formats) — so audio and document references injected into `{{ visual_references }}` are tagged correctly instead of being labeled as videos.
   - Generalized Gemini Files API error messages from hardcoded `@videoN` wording to neutral "reference media" phrasing that uses each asset's own label.

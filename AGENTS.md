@@ -6,7 +6,7 @@ Welcome to **PromptLab**. This document outlines the project architecture, desig
 
 ## 1. Core Purpose & Concept
 
-PromptLab is an elegant, single-page creative workspace designed to compile rich, structured prompt templates with customizable dynamic placeholders and multi-modal reference files (reference images mapped to `@imageX`, videos to `@videoX`, audio to `@audioX`, and documents to `@docX` casting annotations). The compiled instructions are processed server-side via the modern `@google/genai` SDK using the **Gemini 3.5 Flash** model.
+PromptLab is an elegant, single-page creative workspace designed to compile rich, structured prompt templates with customizable dynamic placeholders and multi-modal reference files (reference images mapped to `@imageX`, videos to `@videoX`, audio to `@audioX`, and documents to `@docX` casting annotations). The compiled instructions are processed server-side via the modern `@google/genai` SDK using the **Gemini 3.7 Flash** model.
 
 Key differentiators:
 - **Zero Database / Hybrid Persistence**: Uses static filesystem templates for fallback config defaults, client-side `localStorage` for active session configurations, and local presets for quick workspace instantiation. Project data, configurations, generation history, and image blobs are persisted in **IndexedDB** (`promptlab_db` v3) with `contentHash` indexing and transparent payload deduplication to avoid browser storage quota limits (`LocalStorage` legacy keys are automatically migrated and purged).
@@ -185,7 +185,7 @@ The workspace reads dynamic template specifications from the currently configure
 - Keep all generations routed securely through the proxy handler `/app/api/generate/route.ts`. The client passes its active custom prompts (`systemPrompt` and `promptTemplate`) as POST arguments.
 
 ### Rule C: Engine Controls & Hyperparameters
-- **Default Models & Parameters**: The system defaults to **Gemini 3.5 Flash**, **MEDIUM** reasoning effort, and a temperature of **1.0** (with empty max tokens).
+- **Default Models & Parameters**: The system defaults to **Gemini 3.7 Flash**, **MEDIUM** reasoning effort, and a temperature of **1.0** (with empty max tokens).
 - **Quick Model & Thinking Switcher**: Alongside the Quick API Key Switcher in `AppHeader.tsx`, a compact icon button (`QuickModelSelector.tsx`) provides instant access to model and thinking level controls:
   - **1st Row**: Brief active status indicator showing active model name and thinking level.
   - **2nd Row**: Model selection pointing strictly to latest alias targets (`gemini-flash-latest`, `gemini-flash-lite-latest`, `gemini-pro-latest`). If a specific model version is active instead of a latest alias, none of the 3 quick model options are selected and a "Specific Version Active" badge is displayed.

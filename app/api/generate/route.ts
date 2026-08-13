@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
       videos = [],
       systemPrompt, 
       promptTemplate,
-      model = "gemini-3.5-flash",
+      model = "gemini-3.7-flash",
       thinkingLevel = "MEDIUM",
       temperature = 1.0,
       maxTokens,

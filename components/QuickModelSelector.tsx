@@ -56,6 +56,8 @@ export default function QuickModelSelector({
         return "Flash Lite Latest";
       case "gemini-pro-latest":
         return "Pro Latest";
+      case "gemini-3.7-flash":
+        return "3.7 Flash";
       case "gemini-3.6-flash":
         return "3.6 Flash";
       case "gemini-3.5-flash-lite":
@@ -175,7 +177,7 @@ export default function QuickModelSelector({
 
               <div className="grid grid-cols-3 gap-1.5">
                 {[
-                  { id: "gemini-flash-latest", label: "Flash", badge: "3.6" },
+                  { id: "gemini-flash-latest", label: "Flash", badge: "3.7" },
                   { id: "gemini-flash-lite-latest", label: "Flash Lite", badge: "3.5" },
                   { id: "gemini-pro-latest", label: "Pro", badge: "3.1" },
                 ].map((item) => {

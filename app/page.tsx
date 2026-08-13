@@ -312,7 +312,7 @@ export default function PromptGeneratorPage() {
   const [comparePreset, setComparePreset] = useState<PresetConfig | null>(null);
   
   // Engine Controls states
-  const [selectedModel, setSelectedModel] = useState<string>("gemini-3.5-flash");
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-3.7-flash");
   const [thinkingLevel, setThinkingLevel] = useState<string>("MEDIUM");
   const [temperature, setTemperature] = useState<number>(1.0);
   const [maxTokens, setMaxTokens] = useState<string>("");
