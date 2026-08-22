@@ -8,6 +8,7 @@ interface FooterStatusBarProps {
   thinkingLevel: string;
   temperature: number;
   activeApiKeyLabel: string;
+  isStructuredOutput?: boolean;
   onOpenStorageModal?: () => void;
 }
 
@@ -16,6 +17,7 @@ export default function FooterStatusBar({
   thinkingLevel,
   temperature,
   activeApiKeyLabel,
+  isStructuredOutput,
   onOpenStorageModal,
 }: FooterStatusBarProps) {
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
@@ -53,6 +55,12 @@ export default function FooterStatusBar({
         <span>Reasoning: {thinkingLevel}</span>
         <span>Temp: {temperature.toFixed(1)}</span>
         <span>Key: {activeApiKeyLabel.toUpperCase()}</span>
+        {isStructuredOutput && (
+          <span className="flex items-center gap-1 text-emerald-400 font-bold bg-emerald-950/70 border border-emerald-500/50 px-1.5 py-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            JSON OUTPUT
+          </span>
+        )}
 
         {/* Interactive Storage Usage Indicator */}
         {onOpenStorageModal && (

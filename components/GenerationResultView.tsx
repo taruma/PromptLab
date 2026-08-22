@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Markdown from "react-markdown";
-import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
+import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight, Copy, Check, Braces, Lock, CheckCircle2 } from "lucide-react";
 
 interface ReasoningSection {
   id: string;
@@ -95,6 +95,32 @@ export interface TokenUsage {
   cachedTokens?: number;
 }
 
+function extractCleanJson(raw: string): { parsed: any | null; formatted: string; isValid: boolean } {
+  if (!raw || !raw.trim()) {
+    return { parsed: null, formatted: "", isValid: false };
+  }
+
+  let text = raw.trim();
+  if (text.startsWith("```")) {
+    text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+    return {
+      parsed,
+      formatted: JSON.stringify(parsed, null, 2),
+      isValid: true,
+    };
+  } catch {
+    return {
+      parsed: null,
+      formatted: text,
+      isValid: false,
+    };
+  }
+}
+
 interface GenerationResultViewProps {
   generationResult: string;
   thinkingResult: string;
@@ -108,6 +134,7 @@ interface GenerationResultViewProps {
   handleCopyOutput: () => void;
   tokenUsage?: TokenUsage | null;
   selectedModel?: string;
+  isStructuredOutput?: boolean;
 }
 
 export default function GenerationResultView({
@@ -123,10 +150,14 @@ export default function GenerationResultView({
   handleCopyOutput,
   tokenUsage,
   selectedModel = "gemini-3.6-flash",
+  isStructuredOutput = false,
 }: GenerationResultViewProps) {
-  const [viewMode, setViewMode] = useState<"formatted" | "raw">("formatted");
+  const [userViewMode, setUserViewMode] = useState<"formatted" | "raw" | "json">("formatted");
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isReasoningCollapsed, setIsReasoningCollapsed] = useState<boolean>(false);
+
+  // When structured output is active, viewMode is locked to "json"
+  const viewMode = isStructuredOutput ? "json" : userViewMode;
 
   const thinkingScrollRef = useRef<HTMLDivElement>(null);
   const prevResultLengthRef = useRef<number>(0);
@@ -135,6 +166,9 @@ export default function GenerationResultView({
   // Parse thinking sections for active slideshow mode
   const sections = parseThinkingSections(thinkingResult);
   const activeSection = sections.length > 0 ? sections[sections.length - 1] : null;
+
+  // Extract clean formatted JSON
+  const cleanJson = extractCleanJson(generationResult);
 
   // Auto-scroll thinking trace container to bottom as new thinking content arrives
   useEffect(() => {
@@ -173,9 +207,9 @@ export default function GenerationResultView({
   useEffect(() => {
     try {
       const savedMode = localStorage.getItem("prompt_generator_output_view_mode");
-      if (savedMode === "formatted" || savedMode === "raw") {
+      if (savedMode === "formatted" || savedMode === "raw" || savedMode === "json") {
         setTimeout(() => {
-          setViewMode(savedMode);
+          setUserViewMode(savedMode as "formatted" | "raw" | "json");
         }, 0);
       }
     } catch (e) {
@@ -198,8 +232,9 @@ export default function GenerationResultView({
   }, []);
 
   // Save view mode preference to localStorage when changed
-  const handleToggleViewMode = (mode: "formatted" | "raw") => {
-    setViewMode(mode);
+  const handleToggleViewMode = (mode: "formatted" | "raw" | "json") => {
+    if (isStructuredOutput) return;
+    setUserViewMode(mode);
     try {
       localStorage.setItem("prompt_generator_output_view_mode", mode);
     } catch (e) {
@@ -280,12 +315,15 @@ export default function GenerationResultView({
             <button
               type="button"
               onClick={() => handleToggleViewMode("formatted")}
-              className={`px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 ${
-                viewMode === "formatted"
-                  ? "bg-[#1A1A1A] text-white"
-                  : "text-[#888884] hover:text-[#1A1A1A]"
+              disabled={isStructuredOutput}
+              className={`px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1 ${
+                isStructuredOutput
+                  ? "opacity-35 cursor-not-allowed text-[#888884]"
+                  : viewMode === "formatted"
+                  ? "bg-[#1A1A1A] text-white cursor-pointer"
+                  : "text-[#888884] hover:text-[#1A1A1A] cursor-pointer"
               }`}
-              title="Render as formatted Markdown"
+              title={isStructuredOutput ? "Locked to JSON mode by Engine Settings" : "Render as formatted Markdown"}
             >
               <FileText className="w-2.5 h-2.5" />
               <span>MD</span>
@@ -293,15 +331,37 @@ export default function GenerationResultView({
             <button
               type="button"
               onClick={() => handleToggleViewMode("raw")}
-              className={`px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 ${
-                viewMode === "raw"
-                  ? "bg-[#1A1A1A] text-white"
-                  : "text-[#888884] hover:text-[#1A1A1A]"
+              disabled={isStructuredOutput}
+              className={`px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1 ${
+                isStructuredOutput
+                  ? "opacity-35 cursor-not-allowed text-[#888884]"
+                  : viewMode === "raw"
+                  ? "bg-[#1A1A1A] text-white cursor-pointer"
+                  : "text-[#888884] hover:text-[#1A1A1A] cursor-pointer"
               }`}
-              title="View as raw text in monospace font"
+              title={isStructuredOutput ? "Locked to JSON mode by Engine Settings" : "View as raw text in monospace font"}
             >
               <Code className="w-2.5 h-2.5" />
               <span>Raw</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggleViewMode("json")}
+              className={`px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1 ${
+                isStructuredOutput
+                  ? "bg-emerald-700 text-white border border-emerald-600 shadow-xs cursor-default"
+                  : viewMode === "json"
+                  ? "bg-[#1A1A1A] text-white cursor-pointer"
+                  : "text-[#888884] hover:text-[#1A1A1A] cursor-pointer"
+              }`}
+              title={isStructuredOutput ? "Structured JSON mode active (Locked)" : "View formatted JSON"}
+            >
+              {isStructuredOutput ? (
+                <Lock className="w-2 h-2 text-emerald-200 shrink-0" />
+              ) : (
+                <Braces className="w-2.5 h-2.5" />
+              )}
+              <span>JSON</span>
             </button>
           </div>
 
@@ -526,6 +586,30 @@ export default function GenerationResultView({
                           {generationResult}
                         </Markdown>
                       </div>
+                    ) : viewMode === "json" ? (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between pb-2 border-b border-[#D1D1CF]/40">
+                          <div className="flex items-center gap-1.5 font-mono text-[9px]">
+                            {cleanJson.isValid ? (
+                              <span className="text-emerald-700 bg-emerald-50 border border-emerald-300 px-1.5 py-0.5 font-bold uppercase flex items-center gap-1">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Valid JSON
+                              </span>
+                            ) : (
+                              <span className="text-amber-700 bg-amber-50 border border-amber-300 px-1.5 py-0.5 font-bold uppercase flex items-center gap-1">
+                                {isLoading ? "Streaming JSON..." : "Raw / Unparsed JSON"}
+                              </span>
+                            )}
+                            {isStructuredOutput && (
+                              <span className="text-emerald-800 bg-emerald-100/70 border border-emerald-300 px-1.5 py-0.5 font-bold uppercase flex items-center gap-1">
+                                <Lock className="w-2 h-2" /> Structured Mode
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <pre className="text-[11px] md:text-xs font-mono leading-relaxed text-[#1A1A1A] whitespace-pre-wrap font-normal select-text bg-[#F4F4F2]/50 p-3.5 border border-[#D1D1CF]/60 overflow-x-auto">
+                          <code>{cleanJson.formatted || generationResult}</code>
+                        </pre>
+                      </div>
                     ) : (
                       <pre className="text-[11px] md:text-xs font-mono leading-relaxed text-[#1A1A1A] whitespace-pre-wrap font-normal select-text">
                         {generationResult}
@@ -539,7 +623,7 @@ export default function GenerationResultView({
                 </div>
                 <div className="pt-3 border-t border-[#D1D1CF]/40 mt-3 flex items-center justify-between text-[8px] text-[#888884] font-mono uppercase tracking-wider">
                   <span>
-                    VIEW: {viewMode === "formatted" ? "FORMATTED MARKDOWN" : "RAW MONOSPACE"}
+                    VIEW: {viewMode === "formatted" ? "FORMATTED MARKDOWN" : viewMode === "raw" ? "RAW MONOSPACE" : isStructuredOutput ? "STRUCTURED JSON (LOCKED)" : "JSON VIEW"}
                   </span>
                   <span className="flex items-center gap-1.5">
                     {isLoading && !isThinking && (

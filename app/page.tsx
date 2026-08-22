@@ -316,6 +316,8 @@ export default function PromptGeneratorPage() {
   const [thinkingLevel, setThinkingLevel] = useState<string>("MEDIUM");
   const [temperature, setTemperature] = useState<number>(1.0);
   const [maxTokens, setMaxTokens] = useState<string>("");
+  const [isStructuredOutput, setIsStructuredOutput] = useState<boolean>(false);
+  const [responseSchema, setResponseSchema] = useState<string>("");
   
   // Engine Controls Modal states
   const [isEngineConfigOpen, setIsEngineConfigOpen] = useState<boolean>(false);
@@ -641,6 +643,15 @@ export default function PromptGeneratorPage() {
         }
         if (savedMaxTokens) {
           setMaxTokens(savedMaxTokens);
+        }
+
+        const savedStructured = localStorage.getItem("prompt_generator_structured_output");
+        if (savedStructured !== null) {
+          setIsStructuredOutput(savedStructured === "true");
+        }
+        const savedSchema = localStorage.getItem("prompt_generator_response_schema");
+        if (savedSchema !== null) {
+          setResponseSchema(savedSchema);
         }
 
         // Migrate or load custom API keys from vault
@@ -1873,6 +1884,8 @@ export default function PromptGeneratorPage() {
         temperature,
         maxTokens: maxTokens ? Number(maxTokens) : undefined,
         customApiKey: customApiKey ? customApiKey : undefined,
+        responseMimeType: isStructuredOutput ? "application/json" : undefined,
+        responseSchema: isStructuredOutput && responseSchema.trim() ? responseSchema.trim() : undefined,
       };
 
       const res = await fetch("/api/generate", {
@@ -2260,6 +2273,7 @@ export default function PromptGeneratorPage() {
             handleCopyOutput={handleCopyOutput}
             tokenUsage={tokenUsage}
             selectedModel={selectedModel}
+            isStructuredOutput={isStructuredOutput}
           />
 
         </div>
@@ -2272,6 +2286,7 @@ export default function PromptGeneratorPage() {
         thinkingLevel={thinkingLevel}
         temperature={temperature}
         activeApiKeyLabel={getActiveApiKeyLabel()}
+        isStructuredOutput={isStructuredOutput}
         onOpenStorageModal={() => setIsStorageModalOpen(true)}
       />
 
@@ -2896,6 +2911,10 @@ export default function PromptGeneratorPage() {
         setMaxTokens={setMaxTokens}
         customApiKey={customApiKey}
         setCustomApiKey={setCustomApiKey}
+        isStructuredOutput={isStructuredOutput}
+        setIsStructuredOutput={setIsStructuredOutput}
+        responseSchema={responseSchema}
+        setResponseSchema={setResponseSchema}
       />
 
       {/* Clear Session Confirmation Modal */}

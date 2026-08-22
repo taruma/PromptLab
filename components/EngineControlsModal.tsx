@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, Info, EyeOff, Eye, RefreshCw, Trash2, KeyRound, ChevronDown, ChevronUp, Calendar, Database } from "lucide-react";
+import { Sparkles, Info, EyeOff, Eye, RefreshCw, Trash2, KeyRound, ChevronDown, ChevronUp, Calendar, Database, Braces, CheckCircle2, AlertCircle } from "lucide-react";
 import { getModelPricingSummary } from "@/lib/pricing";
 
 interface EngineControlsModalProps {
@@ -17,6 +17,10 @@ interface EngineControlsModalProps {
   setMaxTokens: (tokens: string) => void;
   customApiKey: string;
   setCustomApiKey: (key: string) => void;
+  isStructuredOutput: boolean;
+  setIsStructuredOutput: (enabled: boolean) => void;
+  responseSchema: string;
+  setResponseSchema: (schema: string) => void;
 }
 
 interface ModelOption {
@@ -127,12 +131,18 @@ export default function EngineControlsModal({
   setMaxTokens,
   customApiKey,
   setCustomApiKey,
+  isStructuredOutput,
+  setIsStructuredOutput,
+  responseSchema,
+  setResponseSchema,
 }: EngineControlsModalProps) {
   const [tempModel, setTempModel] = useState<string>(selectedModel);
   const [tempThinkingLevel, setTempThinkingLevel] = useState<string>(thinkingLevel);
   const [tempTemperature, setTempTemperature] = useState<number>(temperature);
   const [tempMaxTokens, setTempMaxTokens] = useState<string>(maxTokens);
   const [tempCustomApiKey, setTempCustomApiKey] = useState<string>(customApiKey);
+  const [tempStructuredOutput, setTempStructuredOutput] = useState<boolean>(isStructuredOutput);
+  const [tempResponseSchema, setTempResponseSchema] = useState<string>(responseSchema);
 
   // API Key Vault states
   const [localKeys, setLocalKeys] = useState<{ id: string; label: string; key: string }[]>([]);
@@ -155,6 +165,8 @@ export default function EngineControlsModal({
       setTempTemperature(temperature);
       setTempMaxTokens(maxTokens);
       setTempCustomApiKey(customApiKey);
+      setTempStructuredOutput(isStructuredOutput);
+      setTempResponseSchema(responseSchema);
       setIsVaultCollapsed(true);
       setIsAdvancedCollapsed(true);
       const isSpecificActive = SPECIFIC_MODELS.some((m) => m.id === selectedModel);
@@ -187,6 +199,8 @@ export default function EngineControlsModal({
     setTemperature(tempTemperature);
     setMaxTokens(tempMaxTokens);
     setCustomApiKey(tempCustomApiKey);
+    setIsStructuredOutput(tempStructuredOutput);
+    setResponseSchema(tempResponseSchema);
 
     localStorage.setItem("prompt_generator_selected_model", tempModel);
     localStorage.setItem("prompt_generator_thinking_level", tempThinkingLevel);
@@ -194,6 +208,8 @@ export default function EngineControlsModal({
     localStorage.setItem("prompt_generator_max_tokens", tempMaxTokens);
     localStorage.setItem("prompt_generator_custom_api_keys", JSON.stringify(localKeys));
     localStorage.setItem("prompt_generator_active_api_key_id", localActiveKeyId);
+    localStorage.setItem("prompt_generator_structured_output", String(tempStructuredOutput));
+    localStorage.setItem("prompt_generator_response_schema", tempResponseSchema);
 
     onClose();
   };
@@ -205,6 +221,8 @@ export default function EngineControlsModal({
     setTempMaxTokens("");
     setTempCustomApiKey("");
     setLocalActiveKeyId("");
+    setTempStructuredOutput(false);
+    setTempResponseSchema("");
   };
 
   return (
@@ -733,6 +751,76 @@ export default function EngineControlsModal({
                         className="bg-white border border-[#D1D1CF] p-3 text-xs font-mono outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A] mt-1"
                       />
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Structured Output (JSON) Section */}
+              <div className="border border-[#D1D1CF] p-4 bg-white flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Braces className="w-3.5 h-3.5 text-[#1A1A1A]" />
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#1A1A1A]">
+                      Structured Output (JSON)
+                    </h4>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTempStructuredOutput(!tempStructuredOutput)}
+                    className={`px-2.5 py-1 text-[9px] font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer flex items-center gap-1.5 ${
+                      tempStructuredOutput
+                        ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700"
+                        : "bg-white text-[#888884] border-[#D1D1CF] hover:border-[#1A1A1A] hover:text-[#1A1A1A]"
+                    }`}
+                    title={tempStructuredOutput ? "Structured JSON output is currently enabled" : "Click to enable Structured JSON output"}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${tempStructuredOutput ? "bg-white animate-pulse" : "bg-stone-300"}`} />
+                    {tempStructuredOutput ? "ENABLED" : "DISABLED"}
+                  </button>
+                </div>
+
+                <p className="text-[10px] text-[#888884] leading-normal">
+                  Forces Gemini to guarantee valid, parseable JSON (<code className="font-mono bg-stone-100 px-1 font-bold text-[#1A1A1A]">application/json</code>). When active, generation results automatically lock into the JSON viewer.
+                </p>
+
+                {tempStructuredOutput && (
+                  <div className="flex flex-col gap-3 pt-2 border-t border-[#D1D1CF]">
+                    <div className="flex justify-between items-center">
+                      <label htmlFor="temp-response-schema" className="text-[9px] font-bold uppercase tracking-wider text-[#1A1A1A] font-mono flex items-center gap-1.5">
+                        <span>Optional JSON Schema</span>
+                        <span className="text-[#888884] font-normal lowercase">(leave empty for open JSON)</span>
+                      </label>
+                      {tempResponseSchema.trim() && (
+                        (() => {
+                          try {
+                            JSON.parse(tempResponseSchema.trim());
+                            return (
+                              <span className="text-[8px] font-mono font-bold text-emerald-600 uppercase flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 border border-emerald-200">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Valid Schema
+                              </span>
+                            );
+                          } catch (e: any) {
+                            return (
+                              <span className="text-[8px] font-mono font-bold text-red-600 uppercase flex items-center gap-1 bg-red-50 px-1.5 py-0.5 border border-red-200" title={e.message}>
+                                <AlertCircle className="w-2.5 h-2.5" /> Syntax Error
+                              </span>
+                            );
+                          }
+                        })()
+                      )}
+                    </div>
+
+                    <textarea
+                      id="temp-response-schema"
+                      value={tempResponseSchema}
+                      onChange={(e) => setTempResponseSchema(e.target.value)}
+                      placeholder={`{\n  "type": "object",\n  "properties": {\n    "title": { "type": "string" },\n    "summary": { "type": "string" },\n    "tags": { "type": "array", "items": { "type": "string" } }\n  },\n  "required": ["title", "summary"]\n}`}
+                      rows={6}
+                      className="w-full bg-[#F4F4F2] border border-[#D1D1CF] p-3 text-[10px] font-mono leading-relaxed outline-none focus:border-[#1A1A1A] focus:bg-white resize-y rounded-none text-[#1A1A1A] placeholder-stone-400 custom-scrollbar"
+                    />
+                    <span className="text-[8px] text-[#888884] font-mono leading-normal">
+                      Provide a standard JSON Schema definition object, or leave empty to allow the model to structure the JSON based on prompt instructions.
+                    </span>
                   </div>
                 )}
               </div>

@@ -76,7 +76,9 @@ export async function POST(req: NextRequest) {
       thinkingLevel = "MEDIUM",
       temperature = 1.0,
       maxTokens,
-      customApiKey
+      customApiKey,
+      responseMimeType,
+      responseSchema,
     } = await req.json() as {
       variables: Record<string, string>;
       images: UploadedImage[];
@@ -88,6 +90,8 @@ export async function POST(req: NextRequest) {
       temperature?: number;
       maxTokens?: number;
       customApiKey?: string;
+      responseMimeType?: string;
+      responseSchema?: string | object;
     };
 
     // Determine the active API key and dynamic client instantiation
@@ -395,6 +399,23 @@ export async function POST(req: NextRequest) {
 
     if (maxTokens) {
       config.maxOutputTokens = Number(maxTokens);
+    }
+
+    if (responseMimeType === "application/json") {
+      config.responseMimeType = "application/json";
+      if (responseSchema) {
+        if (typeof responseSchema === "string" && responseSchema.trim()) {
+          try {
+            config.responseSchema = JSON.parse(responseSchema.trim());
+          } catch (schemaErr: any) {
+            return NextResponse.json({
+              error: `Invalid JSON Schema provided: ${schemaErr?.message || "Syntax error"}. Please check your schema in Engine Controls.`,
+            }, { status: 400 });
+          }
+        } else if (typeof responseSchema === "object") {
+          config.responseSchema = responseSchema;
+        }
+      }
     }
 
     const encoder = new TextEncoder();
