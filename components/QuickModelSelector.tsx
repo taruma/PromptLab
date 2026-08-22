@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, Settings } from "lucide-react";
+import { Sparkles, Settings, Braces } from "lucide-react";
 
 interface QuickModelSelectorProps {
   selectedModel: string;
   setSelectedModel: (model: string) => void;
   thinkingLevel: string;
   setThinkingLevel: (level: string) => void;
+  isStructuredOutput?: boolean;
+  setIsStructuredOutput?: (enabled: boolean) => void;
   onOpenEngineConfig: () => void;
 }
 
@@ -16,6 +18,8 @@ export default function QuickModelSelector({
   setSelectedModel,
   thinkingLevel,
   setThinkingLevel,
+  isStructuredOutput = false,
+  setIsStructuredOutput,
   onOpenEngineConfig,
 }: QuickModelSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -99,6 +103,17 @@ export default function QuickModelSelector({
     }
   };
 
+  // Structured output toggle handler
+  const handleToggleStructuredOutput = () => {
+    if (setIsStructuredOutput) {
+      const nextVal = !isStructuredOutput;
+      setIsStructuredOutput(nextVal);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("prompt_generator_structured_output", String(nextVal));
+      }
+    }
+  };
+
   // Check if current selected model is one of the 3 latest options
   const isLatestSelected =
     selectedModel === "gemini-flash-latest" ||
@@ -113,11 +128,17 @@ export default function QuickModelSelector({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="h-8.5 w-8.5 bg-white hover:bg-[#F4F4F2] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[#1A1A1A] transition-all cursor-pointer flex items-center justify-center rounded-none font-mono shadow-2xs"
-        title={`Quick Model & Thinking Switcher (${getBriefModelLabel(selectedModel)} • ${thinkingLevel})`}
+        className="relative h-8.5 w-8.5 bg-white hover:bg-[#F4F4F2] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[#1A1A1A] transition-all cursor-pointer flex items-center justify-center rounded-none font-mono shadow-2xs"
+        title={`Quick Model & Engine Switcher (${getBriefModelLabel(selectedModel)} • ${thinkingLevel}${isStructuredOutput ? " • JSON" : ""})`}
         id="quick-model-btn"
       >
         <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+        {isStructuredOutput && (
+          <span
+            className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-500 rounded-full ring-1 ring-white"
+            title="Structured JSON output enabled"
+          />
+        )}
       </button>
 
       {/* Quick Switch Panel */}
@@ -131,7 +152,7 @@ export default function QuickModelSelector({
             <div className="flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
               <span className="text-[10px] font-black uppercase tracking-wider font-sans text-[#1A1A1A]">
-                Model & Thinking
+                Model & Engine
               </span>
             </div>
 
@@ -159,6 +180,15 @@ export default function QuickModelSelector({
                 <span>{getBriefModelLabel(selectedModel)}</span>
                 <span className="text-[#888884]">•</span>
                 <span className="text-indigo-700">{thinkingLevel}</span>
+                {isStructuredOutput && (
+                  <>
+                    <span className="text-[#888884]">•</span>
+                    <span className="text-emerald-700 font-bold flex items-center gap-0.5">
+                      <Braces className="w-2.5 h-2.5 inline" />
+                      JSON
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -240,6 +270,45 @@ export default function QuickModelSelector({
                   );
                 })}
               </div>
+            </div>
+
+            {/* ROW 4: Structured Output (JSON) Toggle */}
+            <div className="flex flex-col gap-1.5 pt-2 border-t border-[#D1D1CF]/60">
+              <div className="flex items-center justify-between">
+                <span className="text-[8.5px] font-bold uppercase tracking-wider text-[#888884] font-mono flex items-center gap-1">
+                  <Braces className="w-2.5 h-2.5 text-[#1A1A1A]" />
+                  <span>Structured Output (JSON)</span>
+                </span>
+                {isStructuredOutput && (
+                  <span className="text-[8px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 font-semibold">
+                    ACTIVE
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleToggleStructuredOutput}
+                className={`w-full py-1.5 px-2.5 border text-center transition-all cursor-pointer flex items-center justify-between rounded-none font-mono text-[9px] font-bold uppercase tracking-wider ${
+                  isStructuredOutput
+                    ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-2xs"
+                    : "bg-white hover:bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
+                }`}
+                title={isStructuredOutput ? "Click to disable structured JSON output" : "Click to enable structured JSON output"}
+                id="quick-structured-output-toggle"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                      isStructuredOutput ? "bg-white animate-pulse" : "bg-stone-300"
+                    }`}
+                  />
+                  <span>{isStructuredOutput ? "JSON Output: Enabled" : "JSON Output: Disabled"}</span>
+                </div>
+                <span className="text-[8px] opacity-80 underline hover:opacity-100">
+                  {isStructuredOutput ? "[DISABLE]" : "[ENABLE]"}
+                </span>
+              </button>
             </div>
           </div>
         </div>

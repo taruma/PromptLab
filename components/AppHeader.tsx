@@ -29,6 +29,8 @@ interface AppHeaderProps {
   setSelectedModel?: (model: string) => void;
   thinkingLevel?: string;
   setThinkingLevel?: (level: string) => void;
+  isStructuredOutput?: boolean;
+  setIsStructuredOutput?: (enabled: boolean) => void;
 }
 
 export default function AppHeader({
@@ -52,6 +54,8 @@ export default function AppHeader({
   setSelectedModel,
   thinkingLevel,
   setThinkingLevel,
+  isStructuredOutput,
+  setIsStructuredOutput,
 }: AppHeaderProps) {
   return (
     <header className="border-b border-[#D1D1CF] px-3 md:px-10 flex flex-col md:flex-row items-stretch md:items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-30 py-2.5 md:py-0 md:h-20 gap-2 md:gap-4" id="app-header">
@@ -116,6 +120,8 @@ export default function AppHeader({
                 setSelectedModel={setSelectedModel}
                 thinkingLevel={thinkingLevel}
                 setThinkingLevel={setThinkingLevel}
+                isStructuredOutput={isStructuredOutput}
+                setIsStructuredOutput={setIsStructuredOutput}
                 onOpenEngineConfig={onOpenEngineConfig}
               />
             )}

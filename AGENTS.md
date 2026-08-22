@@ -186,11 +186,13 @@ The workspace reads dynamic template specifications from the currently configure
 
 ### Rule C: Engine Controls & Hyperparameters
 - **Default Models & Parameters**: The system defaults to **Gemini 3.7 Flash**, **MEDIUM** reasoning effort, and a temperature of **1.0** (with empty max tokens).
-- **Quick Model & Thinking Switcher**: Alongside the Quick API Key Switcher in `AppHeader.tsx`, a compact icon button (`QuickModelSelector.tsx`) provides instant access to model and thinking level controls:
-  - **1st Row**: Brief active status indicator showing active model name and thinking level.
+- **Quick Model & Thinking Switcher**: Alongside the Quick API Key Switcher in `AppHeader.tsx`, a compact icon button (`QuickModelSelector.tsx`) provides instant access to model, thinking level, and structured output controls:
+  - **1st Row**: Brief active status indicator showing active model name, thinking level, and `JSON` status badge when structured output is enabled.
   - **2nd Row**: Model selection pointing strictly to latest alias targets (`gemini-flash-latest`, `gemini-flash-lite-latest`, `gemini-pro-latest`). If a specific model version is active instead of a latest alias, none of the 3 quick model options are selected and a "Specific Version Active" badge is displayed.
   - **3rd Row**: Thinking effort selection with 4 buttons (`HIGH`, `MEDIUM`, `LOW`, `MIN` for `MINIMAL`). Pro models automatically disable `MINIMAL` thinking level.
-  - **Header Settings Button**: A top-right "Engine" button opens the full `EngineControlsModal` for advanced model selection, temperature tuning, max tokens, and custom API key vault configuration.
+  - **4th Row**: **Structured Output (JSON) Toggle**: Rapid one-click toggle to enable or disable structured JSON responses with an active indicator badge.
+  - **Trigger Button Indicator**: Displays a green status indicator dot when structured JSON output is active.
+  - **Header Settings Button**: A top-right "Engine" button opens the full `EngineControlsModal` for advanced model selection, temperature tuning, max tokens, custom JSON schema configuration, and custom API key vault configuration.
 - **Reasoning Effort Selection**: The interface supports 4 levels of internal model thinking/reasoning effort: `MINIMAL`, `LOW`, `MEDIUM`, and `HIGH`. Note that `gemini-3.1-pro-preview` does not support `MINIMAL` thinking effort.
 - **Parameters Customization**: Users can configure model overrides (e.g., swapping to `gemini-3.1-flash-lite` or `gemini-3.1-pro-preview`), fine-tuning temperature (0.0 to 2.0), or imposing a maximum output token threshold.
 - **Pricing Rate Display**: Each model selection card in the `EngineControlsModal` displays per-model input and output pricing rates (`IN: $X.XX / 1M` / `OUT: $X.XX / 1M`) in its footer, sourced from `getModelPricingSummary()` in `lib/pricing.ts`. Tiered pricing models (e.g., `gemini-3.1-pro-preview`) display a range (e.g. `$2.00–$4.00 / 1M`).

@@ -2166,6 +2166,8 @@ export default function PromptGeneratorPage() {
         setSelectedModel={setSelectedModel}
         thinkingLevel={thinkingLevel}
         setThinkingLevel={setThinkingLevel}
+        isStructuredOutput={isStructuredOutput}
+        setIsStructuredOutput={setIsStructuredOutput}
       />
 
       {/* Main Container Split */}
