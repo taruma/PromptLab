@@ -121,6 +121,86 @@ function extractCleanJson(raw: string): { parsed: any | null; formatted: string;
   }
 }
 
+function highlightJsonLine(line: string, lineIndex: number): React.ReactNode[] {
+  // Matches:
+  // 1. Property key (string with colon): "key":
+  // 2. String literal: "..."
+  // 3. Booleans: true / false
+  // 4. Null: null
+  // 5. Numbers: integers, decimals, negatives, exponentials
+  // 6. Structural delimiters & punctuation: { } [ ] , :
+  const regex = /("(?:\\[\s\S]|[^"\\])*"(?:\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\],:])/g;
+
+  const result: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(line)) !== null) {
+    if (match.index > lastIndex) {
+      result.push(line.slice(lastIndex, match.index));
+    }
+
+    const token = match[0];
+    const key = `tok-${lineIndex}-${match.index}`;
+
+    if (token.endsWith(":")) {
+      const colonIdx = token.lastIndexOf(":");
+      const keyText = token.slice(0, colonIdx);
+      const colonText = token.slice(colonIdx);
+      result.push(
+        <span key={key} className="text-[#1A1A1A] font-semibold">
+          {keyText}
+        </span>
+      );
+      result.push(
+        <span key={`${key}-col`} className="text-[#888884]">
+          {colonText}
+        </span>
+      );
+    } else if (token.startsWith('"')) {
+      result.push(
+        <span key={key} className="text-teal-800 font-normal">
+          {token}
+        </span>
+      );
+    } else if (token === "true" || token === "false") {
+      result.push(
+        <span key={key} className="text-indigo-800 font-medium">
+          {token}
+        </span>
+      );
+    } else if (token === "null") {
+      result.push(
+        <span key={key} className="text-stone-500 italic">
+          {token}
+        </span>
+      );
+    } else if (/^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(token)) {
+      result.push(
+        <span key={key} className="text-amber-800 font-medium">
+          {token}
+        </span>
+      );
+    } else if (/[{}[\],:]/.test(token)) {
+      result.push(
+        <span key={key} className="text-[#78716C]">
+          {token}
+        </span>
+      );
+    } else {
+      result.push(token);
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < line.length) {
+    result.push(line.slice(lastIndex));
+  }
+
+  return result;
+}
+
 interface GenerationResultViewProps {
   generationResult: string;
   thinkingResult: string;
@@ -606,9 +686,23 @@ export default function GenerationResultView({
                             )}
                           </div>
                         </div>
-                        <pre className="text-[11px] md:text-xs font-mono leading-relaxed text-[#1A1A1A] whitespace-pre-wrap font-normal select-text bg-[#F4F4F2]/50 p-3.5 border border-[#D1D1CF]/60 overflow-x-auto">
-                          <code>{cleanJson.formatted || generationResult}</code>
-                        </pre>
+                        <div className="bg-[#FAFAF9] border border-[#D1D1CF] p-3 overflow-x-auto text-[11px] md:text-xs font-mono leading-relaxed select-text custom-scrollbar">
+                          <div className="table w-full border-collapse">
+                            {(cleanJson.formatted || generationResult).split("\n").map((line, idx) => {
+                              const highlighted = highlightJsonLine(line, idx);
+                              return (
+                                <div key={idx} className="table-row leading-5 hover:bg-[#F0F0EE]/60 transition-colors">
+                                  <span className="table-cell select-none text-right pr-3.5 pl-0.5 text-[10px] font-mono text-[#888884]/60 border-r border-[#D1D1CF]/40 min-w-[28px] align-top">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="table-cell pl-3.5 whitespace-pre font-mono align-top text-[#1A1A1A]">
+                                    {highlighted.length > 0 ? highlighted : "\u00A0"}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <pre className="text-[11px] md:text-xs font-mono leading-relaxed text-[#1A1A1A] whitespace-pre-wrap font-normal select-text">
