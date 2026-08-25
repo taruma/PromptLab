@@ -83,6 +83,7 @@ Key differentiators:
 │   ├── PresetImportConfirmModal.tsx # Preset import confirmation modal with duplicate/replace strategy toggle, summary breakdown grid, and expandable item inspector
 │   ├── PresetReplaceConfirmModal.tsx # Confirmation modal when replacing unsaved prompt edits via Quick Preset Selector
 │   ├── ProjectManagerModal.tsx      # Full-screen project management dashboard (CRUD, import/export)
+│   ├── PromptConfigModal.tsx        # Full-screen System Prompt & Template Editor modal with preset management, search, and live variable preview
 │   ├── PromptTemplateHelpTooltip.tsx # Contextual help tooltip for {{ variable }} syntax guidance
 │   ├── QuickApiKeySelector.tsx      # Rapid API key switcher dropdown in AppHeader
 │   ├── QuickModelSelector.tsx       # Rapid model, thinking level, and structured output toggle dropdown in AppHeader
