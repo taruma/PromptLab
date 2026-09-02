@@ -160,10 +160,11 @@ PromptLab is crafted in an **Analog Brutalist Retro Lab** aesthetic. Any new com
   - Active Generation Output: Traditional serif typeface (`font-serif`) for readable script and narrative output.
   - **Space Grotesk** is loaded as `--font-display` in the layout but is not currently applied in any component.
 
-- **Design Elements**:
-  - Sharp corners only: `rounded-none` or subtle default radii. Avoid heavily pill-shaped buttons or rounded UI cards.
-  - Symmetrical layouts with clear, stark borders (`border border-[#D1D1CF]`).
-  - Active states on hover should use transparent color overlays or bold border highlights rather than flashy gradient animations.
+  - Design Elements:
+    - Sharp corners only: `rounded-none` or subtle default radii. Avoid heavily pill-shaped buttons or rounded UI cards.
+    - Symmetrical layouts with clear, stark borders (`border border-[#D1D1CF]`).
+    - Active states on hover should use transparent color overlays or bold border highlights rather than flashy gradient animations.
+    - **UI Restraint & Minimal Controls**: Avoid adding unsolicited action buttons or toolbar clutter for features that already operate via standard keyboard shortcuts (e.g. `Ctrl+V` paste) or existing dropzones, unless explicitly requested by the user. Keep toolbars compact and intentional.
 
 ---
 
@@ -226,7 +227,8 @@ When adding a new Gemini model or updating the default baseline, synchronize all
    - Update fallback model parameter in `calculateEstimatedCost(item.model || "...", item.tokenUsage)`.
 8. **Versioning & Documentation**:
    - Bump version in `package.json` and `package-lock.json`.
-   - Add entry to `CHANGELOG.md` and create `docs/RELEASE_NOTES_vX.X.X.md`.
+   - Add entry to `CHANGELOG.md`. If the version is still in active development or pre-release (e.g. `-dev` tag), format the section header strictly as `## [vX.Y.Z-dev] — Unreleased` without a release date. Only attach calendar release dates to finalized, shipped releases.
+   - Create `docs/RELEASE_NOTES_vX.X.X.md` when finalizing a release.
    - Synchronize `AGENTS.md` and `README.md`.
 
 ### Rule D: Multi-modal Reference Handling (Images, Videos, Audio, Documents & Files API)
@@ -359,6 +361,12 @@ When adding a new Gemini model or updating the default baseline, synchronize all
 ### Rule P: Markdown Documentation Formatting & Link Hygiene
 - **No Absolute `file:///` URLs in Committed Files**: While AI coding assistants use `file:///` links in interactive chat conversations for IDE navigation, committed repository files (such as files in `/docs`, `CHANGELOG.md`, `README.md`, or source code comments) must **NEVER** contain local absolute `file:///` paths.
 - **Path Formatting Standard**: Always use clean code ticks (e.g., `lib/pricing.ts`, `app/page.tsx`) or relative Markdown links when referencing files in documentation.
+
+### Rule Q: Modular Hook Extraction for Workspace Logic
+**DO NOT inflate `app/page.tsx` with large DOM listeners, multi-step lifecycle effects, or isolated sub-system logic.**
+- `app/page.tsx` serves as the declarative root workspace coordinating state and rendering layouts.
+- Any new window/document event listeners (e.g. clipboard paste, keyboard shortcuts), complex URL parsers, or isolated feature integrations must be encapsulated in dedicated custom hooks under `/hooks` (following the pattern of `useUrlPresetImport` and `useClipboardImagePaste`).
+- `app/page.tsx` should only invoke the hook with declarative callbacks and boolean guards (e.g., `isEnabled: !isAnyModalActive`).
 
 ---
 
