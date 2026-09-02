@@ -57,6 +57,7 @@ import FooterStatusBar from "../components/FooterStatusBar";
 import StorageUsageModal from "../components/StorageUsageModal";
 import GenerationResultView from "../components/GenerationResultView";
 import { useUrlPresetImport } from "../hooks/use-url-preset-import";
+import { useClipboardImagePaste } from "../hooks/use-clipboard-image-paste";
 import { calculateEstimatedCost } from "../lib/pricing";
 import {
   exportPresetsToJSON,
@@ -1016,7 +1017,7 @@ export default function PromptGeneratorPage() {
   }, [isPromptConfigOpen, isEngineConfigOpen, isCompareOpen, isClearConfirmOpen, isHistoryClearConfirmOpen, isUrlImportConfirmOpen, isDiscardConfirmOpen, isLibraryOpen, pendingLoadItem, pendingDeleteId]);
 
   // Process selected image files
-  const handleImageFiles = async (files: FileList) => {
+  const handleImageFiles = useCallback(async (files: FileList | File[], labelPrefix?: string) => {
     const validImages = Array.from(files).filter(f => f.type.startsWith("image/"));
     if (validImages.length === 0) return;
 
@@ -1028,10 +1029,13 @@ export default function PromptGeneratorPage() {
         const base64 = await compressImageToJpeg(file, 0.9);
         const contentHash = await computeContentHash(base64);
         // Suggest a nice default label based on filename or numbering
-        const rawName = file.name.split(".")[0];
-        const cleanLabel = rawName
-          .replace(/[_-]/g, " ")
-          .replace(/\b\w/g, c => c.toUpperCase());
+        const rawName = file.name ? file.name.split(".")[0] : "";
+        const isGenericName = !rawName || rawName.toLowerCase() === "image" || rawName.toLowerCase() === "blob";
+        const cleanLabel = (labelPrefix && isGenericName)
+          ? `${labelPrefix} ${uploadedImages.length + i + 1}`
+          : rawName
+              ? rawName.replace(/[_-]/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+              : `Image ${uploadedImages.length + i + 1}`;
 
         const imgId = `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
         try {
@@ -1056,7 +1060,46 @@ export default function PromptGeneratorPage() {
       // Append and assign proper @image numbers in order
       return [...prev, ...newUploaded];
     });
-  };
+  }, [uploadedImages.length]);
+
+  // Clipboard paste listener to allow pasting images directly from clipboard (Ctrl+V / Cmd+V)
+  const isAnyModalActive = Boolean(
+    isPromptConfigOpen ||
+    isEngineConfigOpen ||
+    isCompareOpen ||
+    isClearConfirmOpen ||
+    isHistoryClearConfirmOpen ||
+    isUrlImportConfirmOpen ||
+    isDiscardConfirmOpen ||
+    isLibraryOpen ||
+    isHistoryViewerOpen ||
+    isYouTubeModalOpen ||
+    isFilesApiModalOpen ||
+    isStorageModalOpen ||
+    isProjectManagerOpen ||
+    isPresetReplaceConfirmOpen ||
+    pendingLoadItem ||
+    pendingDeleteId
+  );
+
+  const handleBeforePaste = useCallback(() => {
+    setIsVisualAssetsOpen(true);
+    try {
+      localStorage.setItem("prompt_generator_visual_assets_open", "true");
+    } catch (err) {
+      // ignore
+    }
+  }, []);
+
+  const handlePasteImages = useCallback((files: File[]) => {
+    handleImageFiles(files, "Pasted Image");
+  }, [handleImageFiles]);
+
+  useClipboardImagePaste({
+    isEnabled: !isAnyModalActive,
+    onBeforePaste: handleBeforePaste,
+    onPasteImages: handlePasteImages,
+  });
 
   // Drag and drop event handlers
   const handleDrag = (e: React.DragEvent) => {
