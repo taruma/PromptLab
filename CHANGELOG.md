@@ -2,6 +2,20 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
+## [v2.6.0-dev] — Unreleased
+
+### Added
+
+- **Clipboard Image Paste Support (`Ctrl+V` / `Cmd+V`).**
+  - Added native support for pasting screenshots and copied images directly from the OS clipboard into the active workspace using standard keyboard shortcuts (<kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd>).
+  - Pasted images are automatically processed through PromptLab's HTML Canvas compression pipeline (`compressImageToJpeg` at 90% quality), hashed via SHA-256 (`computeContentHash`) for transparent IndexedDB deduplication, saved into `promptlab_db`, and mapped to dynamic `@imageN` template casting tags.
+  - Added smart auto-labeling for pasted images: detects generic names assigned by browsers and operating systems (such as `image.png`, `image`, or empty `blob`) and assigns sequential labels (`Pasted Image 1`, `Pasted Image 2`, etc.) while preserving custom filenames when dragging or uploading files.
+  - Added auto-expansion behavior: automatically opens and persists the Visual Assets accordion section when an image is pasted, providing immediate visual feedback in the workspace grid.
+  - **Modular Architecture (`hooks/use-clipboard-image-paste.ts`)**: Encapsulated the entire clipboard event lifecycle, MIME type inspection (`image/*`), and safe keyboard handling into a reusable custom React hook, keeping `app/page.tsx` clean and declarative.
+  - **Context-Aware Safety Gates**:
+    - **No Text Interference**: Clipboard events containing only text or HTML are bypassed, ensuring native text paste inside `<input>` and `<textarea>` fields (Main Objective, dynamic parameter forms, prompt editors, search bars) functions completely uninterrupted.
+    - **Modal Protection**: Automatically bypasses workspace image paste whenever any major modal or overlay (Prompt Config, Engine Controls, History Viewer, Files API, Preset Compare, Storage Usage, Project Manager) is active.
+
 ---
 
 ## [v2.5.1] — September 3, 2026
