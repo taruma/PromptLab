@@ -10,7 +10,7 @@
     "clean": "next clean"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
+    "@google/genai": "^2.20.0",
     "@hookform/resolvers": "^5.2.1",
     "@vercel/analytics": "^2.0.1",
     "autoprefixer": "^10.4.21",
