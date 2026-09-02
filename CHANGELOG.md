@@ -8,6 +8,13 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Added
 
+- **Agentic Video Understanding & YouTube mimeType Support (`app/api/generate/route.ts`, `components/VideoAssetCard.tsx`, `components/VisualAssetsSection.tsx`, `lib/video-utils.ts`, `lib/history-export.ts`, `components/HistorySection.tsx`, `components/HistoryViewerModal.tsx`, `app/page.tsx`).**
+  - Integrated Google's **Agentic Video Understanding** (`MediaProcessing.AGENTIC`) for Gemini 3.7 Flash (`gemini-3.7-flash`, 3.6 Flash, 3.5 Flash-Lite, and aliases), enabling autonomous timeline exploration (`Think → Act → Observe`) with dynamic frame extraction and lower analysis costs.
+  - Added a segmented **`MODE: [STATIC] [AGENTIC]`** toggle on `VideoAssetCard` with Analog Brutalist styling and default `STATIC` mode for fast, uniform short-clip processing.
+  - Implemented **Option A Non-Destructive Fallback**: When an unsupported model (e.g. Gemini 2.5 Pro) is active while `AGENTIC` is selected, the preference is preserved in workspace state, a dashed amber `Paused` tag is rendered, and `app/api/generate/route.ts` automatically executes as `STATIC` fallback until switching back to Gemini 3.7 Flash.
+  - Added explicit `mimeType` transmission (`vid.mimeType || "video/mp4"`) for YouTube URLs passed as `fileData` in `app/api/generate/route.ts`.
+  - Added `processingMode` support across session persistence, history items, and history import/export.
+
 - **Gemini 3.7 Flash Support & Default Model Update (`lib/pricing.ts`, `components/EngineControlsModal.tsx`, `components/QuickModelSelector.tsx`, `app/api/generate/route.ts`, `app/page.tsx`).**
   - Added full support for **Gemini 3.7 Flash** (`gemini-3.7-flash`), setting it as the new default model across the entire workspace and server-side generation handler fallback.
   - Added `gemini-3.7-flash` pricing configuration in `lib/pricing.ts` ($1.50 / 1M input, $7.50 / 1M output, $0.15 / 1M context cache base rate, $1.00 / 1M / hour context cache storage).

@@ -5,7 +5,8 @@ import { Trash2, Play, Film, Music, FileText, Volume2 } from "lucide-react";
 import VideoPlayerModal from "./VideoPlayerModal";
 import AudioPlayerModal from "./AudioPlayerModal";
 import YouTubeIcon from "./YouTubeIcon";
-import { getYouTubeThumbnailUrl, extractYouTubeVideoId } from "../lib/video-utils";
+import { getYouTubeThumbnailUrl, extractYouTubeVideoId, isAgenticVideoSupported, type VideoProcessingMode } from "../lib/video-utils";
+import { cn } from "../lib/utils";
 
 interface VideoAssetCardProps {
   video: {
@@ -20,19 +21,24 @@ interface VideoAssetCardProps {
     sizeBytes?: number;
     label: string;
     mimeType?: string;
+    processingMode?: VideoProcessingMode;
   };
   index: number;
   tag?: string;
+  activeModel?: string;
   onUpdateLabel: (id: string, newLabel: string) => void;
   onDeleteVideo: (id: string) => void;
+  onToggleMode?: (id: string, mode: VideoProcessingMode) => void;
 }
 
 export default function VideoAssetCard({
   video,
   index,
   tag,
+  activeModel,
   onUpdateLabel,
   onDeleteVideo,
+  onToggleMode,
 }: VideoAssetCardProps) {
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [isAudioPlayerOpen, setIsAudioPlayerOpen] = useState(false);
@@ -53,6 +59,10 @@ export default function VideoAssetCard({
   const rawYtThumbnail = video.youtubeUrl ? getYouTubeThumbnailUrl(video.youtubeUrl) : null;
   const ytThumbnail = (rawYtThumbnail && rawYtThumbnail.trim().length > 0) ? rawYtThumbnail : null;
   const ytVideoId = video.youtubeUrl ? extractYouTubeVideoId(video.youtubeUrl) : null;
+
+  const isAgenticSupported = isAgenticVideoSupported(activeModel);
+  const isAgenticSelected = video.processingMode === "AGENTIC";
+  const isAgenticBypassed = isAgenticSelected && !isAgenticSupported;
 
   return (
     <>
@@ -225,6 +235,67 @@ export default function VideoAssetCard({
           <div className="text-center font-mono text-[7px] text-[#888884] select-all tracking-tighter leading-tight break-all truncate" title={video.youtubeUrl || video.id}>
             {isYt ? `YT: ${ytVideoId || video.youtubeUrl}` : `ID: ${video.id}`}
           </div>
+
+          {/* Video Processing Mode Toggle (Static vs Agentic) */}
+          {isVideo && (
+            <div className="flex items-center justify-between border-t border-b border-[#EAEAE8] py-1 my-0.5">
+              <span className="text-[8px] font-mono uppercase tracking-wider text-[#888884] font-semibold">
+                MODE:
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => onToggleMode?.(video.id, "STATIC")}
+                  className={cn(
+                    "px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase transition-colors cursor-pointer border",
+                    !isAgenticSelected || isAgenticBypassed
+                      ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                      : "bg-white text-[#888884] border-[#D1D1CF] hover:border-[#1A1A1A] hover:text-[#1A1A1A]"
+                  )}
+                  title={
+                    isAgenticBypassed
+                      ? "Active fallback execution mode (current model does not support Agentic mode)"
+                      : "Standard fixed-rate frame sampling (default, recommended for short clips)"
+                  }
+                >
+                  Static
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isAgenticSupported) {
+                      onToggleMode?.(video.id, "AGENTIC");
+                    }
+                  }}
+                  disabled={!isAgenticSupported}
+                  className={cn(
+                    "px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase transition-colors border flex items-center gap-1",
+                    isAgenticSelected && isAgenticSupported
+                      ? "bg-[#F59E0B] text-black border-[#F59E0B] shadow-2xs font-extrabold"
+                      : isAgenticBypassed
+                      ? "bg-amber-50 text-amber-700 border-amber-300 border-dashed cursor-not-allowed opacity-90"
+                      : isAgenticSupported
+                      ? "bg-white text-[#888884] border-[#D1D1CF] hover:border-[#F59E0B] hover:text-stone-900 cursor-pointer"
+                      : "bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed opacity-60"
+                  )}
+                  title={
+                    isAgenticBypassed
+                      ? "Agentic mode is preserved, but temporarily bypassed (requires Gemini 3.7 Flash). Executing as Static."
+                      : isAgenticSupported
+                      ? "Model dynamically navigates video frames"
+                      : "Agentic mode requires Gemini 3.7 Flash model"
+                  }
+                >
+                  <span>Agentic</span>
+                  {isAgenticBypassed && (
+                    <span className="text-[7px] bg-amber-200/80 text-amber-900 px-1 rounded-[1px] font-mono font-normal">
+                      Paused
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Input Map To Label */}
           <div className="flex flex-col gap-0.5">

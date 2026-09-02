@@ -41,6 +41,8 @@ interface VisualAssetsSectionProps {
   uploadedVideos: UploadedVideo[];
   handleUpdateVideoLabel: (id: string, label: string) => void;
   handleDeleteVideo: (id: string) => void;
+  activeModel?: string;
+  onToggleVideoProcessingMode?: (id: string, mode: "STATIC" | "AGENTIC") => void;
 }
 
 export default function VisualAssetsSection({
@@ -64,6 +66,8 @@ export default function VisualAssetsSection({
   uploadedVideos,
   handleUpdateVideoLabel,
   handleDeleteVideo,
+  activeModel,
+  onToggleVideoProcessingMode,
 }: VisualAssetsSectionProps) {
   return (
     <section className="flex flex-col gap-3" id="images-reference-section">
@@ -233,8 +237,10 @@ export default function VisualAssetsSection({
                     video={vid}
                     tag={tag}
                     index={indexForCard}
+                    activeModel={activeModel}
                     onUpdateLabel={handleUpdateVideoLabel}
                     onDeleteVideo={handleDeleteVideo}
+                    onToggleMode={onToggleVideoProcessingMode}
                   />
                 );
               });

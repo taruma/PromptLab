@@ -105,7 +105,7 @@ export interface HistoryItem {
   timestamp: string;
   variables: Record<string, string>;
   images: { id?: string; label: string; base64: string; mimeType: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; contentHash?: string }[];
-  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; base64?: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string }[];
+  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; base64?: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; processingMode?: "STATIC" | "AGENTIC" }[];
   output: string;
   thinkingResult?: string;
   filledPrompt: string;
@@ -1226,6 +1226,13 @@ export default function PromptGeneratorPage() {
     }
   };
 
+  // Toggle video processing mode (STATIC vs AGENTIC)
+  const handleToggleVideoProcessingMode = (id: string, mode: "STATIC" | "AGENTIC") => {
+    setUploadedVideos(prev =>
+      prev.map(vid => vid.id === id ? { ...vid, processingMode: mode } : vid)
+    );
+  };
+
   // Update label of specific uploaded image
   const handleUpdateLabel = (id: string, value: string) => {
     setUploadedImages(prev => 
@@ -1338,6 +1345,7 @@ export default function PromptGeneratorPage() {
           isFilesApi: vid.isFilesApi,
           fileUri: vid.fileUri,
           expirationTime: vid.expirationTime,
+          processingMode: vid.processingMode,
         }))
       );
     } else {
@@ -1874,6 +1882,7 @@ export default function PromptGeneratorPage() {
           mimeType: vid.mimeType,
           isFilesApi: vid.isFilesApi,
           fileUri: vid.fileUri,
+          processingMode: vid.processingMode,
         })),
         systemPrompt,
         promptTemplate,
@@ -2030,6 +2039,7 @@ export default function PromptGeneratorPage() {
           isFilesApi: vid.isFilesApi,
           fileUri: vid.fileUri,
           expirationTime: vid.expirationTime,
+          processingMode: vid.processingMode,
         }));
 
         const activeTemplateVars = new Set(extractVariables(promptTemplate));
@@ -2208,6 +2218,8 @@ export default function PromptGeneratorPage() {
             uploadedVideos={uploadedVideos}
             handleUpdateVideoLabel={handleUpdateVideoLabel}
             handleDeleteVideo={handleDeleteVideo}
+            activeModel={selectedModel}
+            onToggleVideoProcessingMode={handleToggleVideoProcessingMode}
           />
 
           {/* Section: Template Variables / Parameters */}
