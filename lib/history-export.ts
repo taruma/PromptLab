@@ -42,6 +42,7 @@ export interface HistoryItem {
     candidatesTokens?: number;
     totalTokens?: number;
     cachedTokens?: number;
+    thoughtTokens?: number;
   };
   estimatedCost?: string;
 }

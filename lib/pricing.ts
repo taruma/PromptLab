@@ -137,6 +137,33 @@ export interface TokenUsageStats {
   candidatesTokens?: number;
   totalTokens?: number;
   cachedTokens?: number;
+  thoughtTokens?: number;
+}
+
+export interface CostTokenBreakdown {
+  uncachedPromptTokens: number;
+  cachedTokens: number;
+  candidateTokens: number;
+  thoughtTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  inputPricePer1M: number;
+  cachedBasePricePer1M: number;
+  outputPricePer1M: number;
+  uncachedInputCostUSD: number;
+  cachedInputCostUSD: number;
+  candidateCostUSD: number;
+  thoughtCostUSD: number;
+  totalOutputCostUSD: number;
+  totalCostUSD: number;
+  formattedUncachedInputCost: string;
+  formattedCachedInputCost: string;
+  formattedCandidateCost: string;
+  formattedThoughtCost: string;
+  formattedTotalOutputCost: string;
+  formattedTotalCost: string;
+  cacheSavingsUSD: number;
+  formattedCacheSavings: string;
 }
 
 export interface EstimatedCostResult {
@@ -149,6 +176,19 @@ export interface EstimatedCostResult {
   totalCostUSD: number;
   formattedTotalCost: string;
   isAudio?: boolean;
+  breakdown?: CostTokenBreakdown;
+}
+
+/**
+ * Format USD amounts to 6 decimals, with sub-micro and zero safeguards
+ */
+export function formatCostUSD(cost: number): string {
+  if (cost < 0.000001 && cost > 0) {
+    return "< $0.000001";
+  } else if (cost <= 0) {
+    return "$0.000000";
+  }
+  return `$${cost.toFixed(6)}`;
 }
 
 /**
@@ -165,7 +205,7 @@ export function getCanonicalModelId(modelId: string): string {
  * Formula:
  * - Uncached Input Cost = (Prompt Tokens - Cached Tokens) / 1,000,000 * Input Rate
  * - Cached Input Base Cost = Cached Tokens / 1,000,000 * Cached Rate
- * - Output Cost = Output Tokens (Candidates Tokens, which includes thinking) / 1,000,000 * Output Rate
+ * - Output Cost = Output Tokens (Candidates Tokens + Thought Tokens) / 1,000,000 * Output Rate
  * - Total Cost = Uncached Input Cost + Cached Input Base Cost + Output Cost
  */
 export function calculateEstimatedCost(
@@ -181,14 +221,24 @@ export function calculateEstimatedCost(
   }
 
   const promptTokens = usage.promptTokens ?? 0;
-  // Total Output Tokens includes both candidate text tokens and internal thinking/reasoning tokens
   const reportedCandidateTokens = usage.candidatesTokens ?? 0;
+  
+  // Explicit or derived thought tokens
+  const derivedThoughtTokens = usage.thoughtTokens !== undefined
+    ? usage.thoughtTokens
+    : (usage.totalTokens && usage.promptTokens !== undefined
+      ? Math.max(0, usage.totalTokens - usage.promptTokens - reportedCandidateTokens)
+      : 0);
+
+  // Total Output Tokens includes both candidate text tokens and internal thinking/reasoning tokens
   const computedTotalOutputTokens = usage.totalTokens && usage.promptTokens !== undefined
     ? Math.max(reportedCandidateTokens, usage.totalTokens - usage.promptTokens)
-    : reportedCandidateTokens;
+    : (reportedCandidateTokens + derivedThoughtTokens);
+    
   const outputTokens = computedTotalOutputTokens;
   const cachedTokens = usage.cachedTokens ?? 0;
   const uncachedPromptTokens = Math.max(0, promptTokens - cachedTokens);
+  const totalTokens = usage.totalTokens ?? (promptTokens + outputTokens);
 
   let inputPricePer1M = 0;
   let outputPricePer1M = 0;
@@ -196,7 +246,7 @@ export function calculateEstimatedCost(
 
   if (config.tiers && config.tiers.length > 0) {
     // Select tier based on total input prompt tokens length
-    const totalInput = promptTokens > 0 ? promptTokens : (usage.totalTokens ?? 0);
+    const totalInput = promptTokens > 0 ? promptTokens : totalTokens;
     const applicableTier = config.tiers.find((tier) => totalInput <= tier.maxTokens) || config.tiers[config.tiers.length - 1];
     inputPricePer1M = applicableTier.inputPricePer1M;
     outputPricePer1M = applicableTier.outputPricePer1M;
@@ -212,30 +262,57 @@ export function calculateEstimatedCost(
       : config.rate.contextCacheBasePricePer1M;
   }
 
-  const inputCostUSD = (uncachedPromptTokens / 1_000_000) * inputPricePer1M;
+  const uncachedInputCostUSD = (uncachedPromptTokens / 1_000_000) * inputPricePer1M;
   const cachedInputCostUSD = (cachedTokens / 1_000_000) * cachedBasePricePer1M;
+  const candidateCostUSD = (reportedCandidateTokens / 1_000_000) * outputPricePer1M;
+  const thoughtCostUSD = (derivedThoughtTokens / 1_000_000) * outputPricePer1M;
   const outputCostUSD = (outputTokens / 1_000_000) * outputPricePer1M;
 
-  const totalCostUSD = inputCostUSD + cachedInputCostUSD + outputCostUSD;
+  const totalCostUSD = uncachedInputCostUSD + cachedInputCostUSD + outputCostUSD;
 
-  // Format nicely (e.g., $0.005175 or $0.00012)
-  let formattedTotalCost = `$${totalCostUSD.toFixed(6)}`;
-  if (totalCostUSD < 0.000001 && totalCostUSD > 0) {
-    formattedTotalCost = "< $0.000001";
-  } else if (totalCostUSD === 0) {
-    formattedTotalCost = "$0.000000";
-  }
+  // Cache savings: cost at standard input rate minus actual cached cost
+  const standardCacheCost = (cachedTokens / 1_000_000) * inputPricePer1M;
+  const cacheSavingsUSD = Math.max(0, standardCacheCost - cachedInputCostUSD);
+
+  const formattedTotalCost = formatCostUSD(totalCostUSD);
+
+  const breakdown: CostTokenBreakdown = {
+    uncachedPromptTokens,
+    cachedTokens,
+    candidateTokens: reportedCandidateTokens,
+    thoughtTokens: derivedThoughtTokens,
+    totalOutputTokens: outputTokens,
+    totalTokens,
+    inputPricePer1M,
+    cachedBasePricePer1M,
+    outputPricePer1M,
+    uncachedInputCostUSD,
+    cachedInputCostUSD,
+    candidateCostUSD,
+    thoughtCostUSD,
+    totalOutputCostUSD: outputCostUSD,
+    totalCostUSD,
+    formattedUncachedInputCost: formatCostUSD(uncachedInputCostUSD),
+    formattedCachedInputCost: formatCostUSD(cachedInputCostUSD),
+    formattedCandidateCost: formatCostUSD(candidateCostUSD),
+    formattedThoughtCost: formatCostUSD(thoughtCostUSD),
+    formattedTotalOutputCost: formatCostUSD(outputCostUSD),
+    formattedTotalCost,
+    cacheSavingsUSD,
+    formattedCacheSavings: formatCostUSD(cacheSavingsUSD),
+  };
 
   return {
     modelId,
     canonicalModelId: canonicalId,
     modelName: config.name,
-    inputCostUSD,
+    inputCostUSD: uncachedInputCostUSD,
     outputCostUSD,
     cachedInputCostUSD,
     totalCostUSD,
     formattedTotalCost,
     isAudio: options?.isAudio,
+    breakdown,
   };
 }
 

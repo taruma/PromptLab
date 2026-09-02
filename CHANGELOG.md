@@ -8,6 +8,19 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Added
 
+- **Itemized Cost Breakdown Popover & Streaming Cost Finalization (`lib/pricing.ts`, `app/api/generate/route.ts`, `components/GenerationResultView.tsx`, `components/HistoryCardSummary.tsx`, `components/HistoryViewerModal.tsx`, `app/page.tsx`).**
+  - Resolved intermediate streaming calculation discrepancies by keeping the emerald cost badge hidden while generation is in progress (`isLoading === true`) and rendering the finalized, verified cost badge immediately upon completion.
+  - Added an interactive Retro Lab brutalist hover/tap popover on the cost badge displaying the complete line-by-line itemized calculation:
+    - **Prompt Input (Uncached)**: Token count $\times$ input rate per 1M $\rightarrow$ subtotal.
+    - **Context Cache**: Cached token count $\times$ discounted base rate per 1M $\rightarrow$ subtotal, along with a highlighted `Saved $X.XXXXXX` badge.
+    - **Output Response**: Candidate text tokens $\times$ output rate per 1M $\rightarrow$ subtotal.
+    - **Reasoning Thoughts**: Thought tokens $\times$ output rate per 1M $\rightarrow$ subtotal.
+    - **Total Estimated**: Aggregate token count and final cost in USD.
+  - Server-side generation handler (`app/api/generate/route.ts`) now directly captures `thoughtsTokenCount` from Gemini API `usageMetadata` and streams it to the client.
+  - Updated the output panel footer token counter to explicitly display thought tokens (`TOKENS: {total} ({prompt} IN [{cached} CACHED] / {candidates} OUT + {thoughts} THOUGHTS)`), ensuring token counts visibly balance with `totalTokens`.
+  - Added full backward-compatibility fallback in `lib/pricing.ts` that derives thought tokens via $\max(0, \text{total} - \text{prompt} - \text{candidates})$ for legacy history records.
+  - Enhanced tooltips on `HistoryCardSummary` and `HistoryViewerModal` cost badges to display the detailed token breakdown and updated the fallback model reference to `gemini-3.7-flash`.
+
 - **Agentic Video Understanding & YouTube mimeType Support (`app/api/generate/route.ts`, `components/VideoAssetCard.tsx`, `components/VisualAssetsSection.tsx`, `lib/video-utils.ts`, `lib/history-export.ts`, `components/HistorySection.tsx`, `components/HistoryViewerModal.tsx`, `app/page.tsx`).**
   - Integrated Google's **Agentic Video Understanding** (`MediaProcessing.AGENTIC`) for Gemini 3.7 Flash (`gemini-3.7-flash`, 3.6 Flash, 3.5 Flash-Lite, and aliases), enabling autonomous timeline exploration (`Think → Act → Observe`) with dynamic frame extraction and lower analysis costs.
   - Added a segmented **`MODE: [STATIC] [AGENTIC]`** toggle on `VideoAssetCard` with Analog Brutalist styling and default `STATIC` mode for fast, uniform short-clip processing.

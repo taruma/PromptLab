@@ -444,7 +444,7 @@ export async function POST(req: NextRequest) {
             encoder.encode(`data: ${JSON.stringify({ filledPrompt: filledTemplate })}\n\n`)
           );
 
-          let latestUsage: { promptTokens?: number; candidatesTokens?: number; totalTokens?: number; cachedTokens?: number } | null = null;
+          let latestUsage: { promptTokens?: number; candidatesTokens?: number; totalTokens?: number; cachedTokens?: number; thoughtTokens?: number } | null = null;
 
           for await (const chunk of responseStream) {
             if (chunk.usageMetadata) {
@@ -453,6 +453,7 @@ export async function POST(req: NextRequest) {
                 candidatesTokens: chunk.usageMetadata.candidatesTokenCount,
                 totalTokens: chunk.usageMetadata.totalTokenCount,
                 cachedTokens: chunk.usageMetadata.cachedContentTokenCount,
+                thoughtTokens: chunk.usageMetadata.thoughtsTokenCount,
               };
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({ usage: latestUsage })}\n\n`)

@@ -123,6 +123,7 @@ export interface HistoryItem {
     candidatesTokens?: number;
     totalTokens?: number;
     cachedTokens?: number;
+    thoughtTokens?: number;
   };
   estimatedCost?: string;
 }
@@ -149,7 +150,7 @@ export default function PromptGeneratorPage() {
   const [generationResult, setGenerationResult] = useState<string>("");
   const [filledPrompt, setFilledPrompt] = useState<string>("");
   const [thinkingResult, setThinkingResult] = useState<string>("");
-  const [tokenUsage, setTokenUsage] = useState<{ promptTokens?: number; candidatesTokens?: number; totalTokens?: number; cachedTokens?: number } | null>(null);
+  const [tokenUsage, setTokenUsage] = useState<{ promptTokens?: number; candidatesTokens?: number; totalTokens?: number; cachedTokens?: number; thoughtTokens?: number } | null>(null);
   const [isThinking, setIsThinking] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -1863,7 +1864,7 @@ export default function PromptGeneratorPage() {
     let accumulatedText = "";
     let accumulatedThought = "";
     let activeFilledPrompt = "";
-    let capturedUsage: { promptTokens?: number; candidatesTokens?: number; totalTokens?: number; cachedTokens?: number } | null = null;
+    let capturedUsage: { promptTokens?: number; candidatesTokens?: number; totalTokens?: number; cachedTokens?: number; thoughtTokens?: number } | null = null;
 
     try {
       const payload = {
