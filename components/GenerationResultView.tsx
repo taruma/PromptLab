@@ -93,6 +93,7 @@ export interface TokenUsage {
   candidatesTokens?: number;
   totalTokens?: number;
   cachedTokens?: number;
+  thoughtTokens?: number;
 }
 
 function extractCleanJson(raw: string): { parsed: any | null; formatted: string; isValid: boolean } {
@@ -236,6 +237,24 @@ export default function GenerationResultView({
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isReasoningCollapsed, setIsReasoningCollapsed] = useState<boolean>(false);
 
+  const [isCostPopoverOpen, setIsCostPopoverOpen] = useState<boolean>(false);
+  const costPopoverRef = useRef<HTMLDivElement>(null);
+
+  // Close cost breakdown popover on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (costPopoverRef.current && !costPopoverRef.current.contains(e.target as Node)) {
+        setIsCostPopoverOpen(false);
+      }
+    };
+    if (isCostPopoverOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isCostPopoverOpen]);
+
   // When structured output is active, viewMode is locked to "json"
   const viewMode = isStructuredOutput ? "json" : userViewMode;
 
@@ -370,18 +389,135 @@ export default function GenerationResultView({
               >
                 {generationResult.length.toLocaleString()} CHARS
               </span>
-              {(() => {
-                const cost = tokenUsage ? calculateEstimatedCost(selectedModel, tokenUsage) : null;
-                return cost ? (
-                  <span
-                    className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 shadow-2xs"
-                    id="output-cost-estimate"
-                    title={`Estimated API Cost (${cost.modelName}): ${cost.formattedTotalCost}`}
+              {!isLoading && tokenUsage ? (() => {
+                const cost = calculateEstimatedCost(selectedModel, tokenUsage);
+                if (!cost) return null;
+                const b = cost.breakdown;
+                return (
+                  <div
+                    ref={costPopoverRef}
+                    className="relative inline-block"
+                    onMouseEnter={() => setIsCostPopoverOpen(true)}
+                    onMouseLeave={() => setIsCostPopoverOpen(false)}
                   >
-                    {cost.formattedTotalCost}
-                  </span>
-                ) : null;
-              })()}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsCostPopoverOpen(prev => !prev);
+                      }}
+                      className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 shadow-2xs cursor-pointer transition-colors"
+                      id="output-cost-estimate"
+                      title="Click or hover to inspect complete cost breakdown"
+                    >
+                      <span>{cost.formattedTotalCost}</span>
+                      <span className="text-[7px] text-emerald-700 opacity-70">ⓘ</span>
+                    </button>
+
+                    {isCostPopoverOpen && b && (
+                      <div
+                        className="absolute right-0 top-full mt-1.5 z-50 bg-white border border-[#D1D1CF] shadow-xl p-3 font-mono text-[9px] min-w-[300px] max-w-[340px] text-[#1A1A1A] animate-in fade-in zoom-in-95 duration-100 select-text"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-[#D1D1CF] pb-1.5 mb-2">
+                          <span className="font-bold uppercase tracking-wider text-[#1A1A1A] text-[9px]">
+                            Cost Breakdown
+                          </span>
+                          <span className="text-[8px] bg-[#EAEAE8] border border-[#D1D1CF] px-1 py-0.2 text-[#555] uppercase font-bold">
+                            {cost.modelName}
+                          </span>
+                        </div>
+
+                        {/* Line items table */}
+                        <div className="space-y-1.5">
+                          {/* Uncached Input */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-[#1A1A1A]">Prompt Input</span>
+                              <span className="text-[8px] text-[#888884]">
+                                {b.uncachedPromptTokens.toLocaleString()} tok @ ${b.inputPricePer1M.toFixed(2)}/1M
+                              </span>
+                            </div>
+                            <span className="font-bold text-[#1A1A1A] tabular-nums">
+                              {b.formattedUncachedInputCost}
+                            </span>
+                          </div>
+
+                          {/* Context Cache (if cached tokens > 0) */}
+                          {b.cachedTokens > 0 && (
+                            <div className="flex items-start justify-between gap-2 bg-emerald-50/70 border border-emerald-200/80 p-1 -mx-1">
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-1">
+                                  <span className="font-bold text-emerald-950">Context Cache</span>
+                                  <span className="text-[7px] bg-emerald-200/90 text-emerald-900 px-1 py-0.2 uppercase font-bold tracking-tight">
+                                    Saved {b.formattedCacheSavings}
+                                  </span>
+                                </div>
+                                <span className="text-[8px] text-emerald-800">
+                                  {b.cachedTokens.toLocaleString()} tok @ ${b.cachedBasePricePer1M.toFixed(3)}/1M
+                                </span>
+                              </div>
+                              <span className="font-bold text-emerald-900 tabular-nums">
+                                {b.formattedCachedInputCost}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Candidate Output */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-[#1A1A1A]">Output Response</span>
+                              <span className="text-[8px] text-[#888884]">
+                                {b.candidateTokens.toLocaleString()} tok @ ${b.outputPricePer1M.toFixed(2)}/1M
+                              </span>
+                            </div>
+                            <span className="font-bold text-[#1A1A1A] tabular-nums">
+                              {b.formattedCandidateCost}
+                            </span>
+                          </div>
+
+                          {/* Thinking / Thoughts (if thoughtTokens > 0) */}
+                          {b.thoughtTokens > 0 && (
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-[#1A1A1A]">Reasoning Thoughts</span>
+                                <span className="text-[8px] text-[#888884]">
+                                  {b.thoughtTokens.toLocaleString()} tok @ ${b.outputPricePer1M.toFixed(2)}/1M
+                                </span>
+                              </div>
+                              <span className="font-bold text-[#1A1A1A] tabular-nums">
+                                {b.formattedThoughtCost}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Grand Total */}
+                        <div className="border-t border-[#D1D1CF] mt-2.5 pt-2 flex items-center justify-between">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-[10px] uppercase tracking-wider text-[#1A1A1A]">
+                              Total Estimated
+                            </span>
+                            <span className="text-[8px] text-[#888884]">
+                              {b.totalTokens.toLocaleString()} total tokens
+                            </span>
+                          </div>
+                          <span className="font-black text-[11px] text-emerald-900 bg-emerald-50 border border-emerald-300 px-1.5 py-0.5 tabular-nums">
+                            {b.formattedTotalCost}
+                          </span>
+                        </div>
+
+                        {/* Footer footnote */}
+                        <div className="mt-2 text-[7px] text-[#888884] border-t border-[#EAEAE8] pt-1.5 flex items-center justify-between">
+                          <span>Standard Gemini API Rates</span>
+                          <span>Includes Thoughts & Cache</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })() : null}
             </div>
           ) : null}
         </div>
@@ -727,11 +863,20 @@ export default function GenerationResultView({
                       </span>
                     )}
                     <span>
-                      {tokenUsage && (tokenUsage.totalTokens !== undefined || tokenUsage.promptTokens !== undefined) ? (
-                        <span>
-                          TOKENS: {tokenUsage.totalTokens?.toLocaleString() ?? "-"} ({tokenUsage.promptTokens?.toLocaleString() ?? "-"} IN{tokenUsage.cachedTokens ? ` [${tokenUsage.cachedTokens.toLocaleString()} CACHED]` : ""} / {tokenUsage.candidatesTokens?.toLocaleString() ?? "-"} OUT)
-                        </span>
-                      ) : (
+                      {tokenUsage && (tokenUsage.totalTokens !== undefined || tokenUsage.promptTokens !== undefined) ? (() => {
+                        const prompt = tokenUsage.promptTokens ?? 0;
+                        const candidates = tokenUsage.candidatesTokens ?? 0;
+                        const total = tokenUsage.totalTokens ?? (prompt + candidates);
+                        const thoughts = tokenUsage.thoughtTokens !== undefined
+                          ? tokenUsage.thoughtTokens
+                          : Math.max(0, total - prompt - candidates);
+
+                        return (
+                          <span>
+                            TOKENS: {tokenUsage.totalTokens?.toLocaleString() ?? "-"} ({tokenUsage.promptTokens?.toLocaleString() ?? "-"} IN{tokenUsage.cachedTokens ? ` [${tokenUsage.cachedTokens.toLocaleString()} CACHED]` : ""} / {tokenUsage.candidatesTokens?.toLocaleString() ?? "-"} OUT{thoughts > 0 ? ` + ${thoughts.toLocaleString()} THOUGHTS` : ""})
+                          </span>
+                        );
+                      })() : (
                         "PromptLab Output"
                       )}
                     </span>

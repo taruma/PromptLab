@@ -8,7 +8,7 @@ export interface HistoryItem {
   timestamp: string;
   variables: Record<string, string>;
   images: { id?: string; label: string; base64: string; mimeType: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; contentHash?: string }[];
-  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; isFilesApi?: boolean; fileUri?: string; expirationTime?: string }[];
+  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; processingMode?: "STATIC" | "AGENTIC" }[];
   output: string;
   filledPrompt: string;
   promptTemplate?: string;
@@ -25,6 +25,7 @@ export interface HistoryItem {
     candidatesTokens?: number;
     totalTokens?: number;
     cachedTokens?: number;
+    thoughtTokens?: number;
   };
   estimatedCost?: string;
 }

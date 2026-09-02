@@ -35,7 +35,7 @@ interface HistoryItem {
   timestamp: string;
   variables: Record<string, string>;
   images: { id?: string; label: string; base64: string; mimeType: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; contentHash?: string }[];
-  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; isFilesApi?: boolean; fileUri?: string; expirationTime?: string }[];
+  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; processingMode?: "STATIC" | "AGENTIC" }[];
   output: string;
   filledPrompt: string;
   promptTemplate?: string;
@@ -52,6 +52,7 @@ interface HistoryItem {
     candidatesTokens?: number;
     totalTokens?: number;
     cachedTokens?: number;
+    thoughtTokens?: number;
   };
   estimatedCost?: string;
 }
@@ -913,24 +914,38 @@ export default function HistoryViewerModal({
                       {selectedItem.maxTokens || "UNLIMITED"}
                     </span>
                   </div>
-                  {selectedItem.tokenUsage && (
-                    <div className="flex items-center gap-1.5 bg-[#F4F4F2] border border-[#D1D1CF] px-2 py-0.5" title={`${selectedItem.tokenUsage.promptTokens ?? "-"} in ${selectedItem.tokenUsage.cachedTokens ? `(${selectedItem.tokenUsage.cachedTokens.toLocaleString()} cached) ` : ""}/ ${selectedItem.tokenUsage.candidatesTokens ?? "-"} out`}>
-                      <span className="text-[8px] text-[#888884] uppercase font-bold">Tokens</span>
-                      <span className="text-[#1A1A1A] font-extrabold uppercase text-[9px]">
-                        {selectedItem.tokenUsage.totalTokens?.toLocaleString() ?? "-"}
-                      </span>
-                    </div>
-                  )}
+                  {selectedItem.tokenUsage && (() => {
+                    const prompt = selectedItem.tokenUsage.promptTokens ?? 0;
+                    const candidates = selectedItem.tokenUsage.candidatesTokens ?? 0;
+                    const total = selectedItem.tokenUsage.totalTokens ?? (prompt + candidates);
+                    const thoughts = selectedItem.tokenUsage.thoughtTokens !== undefined
+                      ? selectedItem.tokenUsage.thoughtTokens
+                      : Math.max(0, total - prompt - candidates);
+                    return (
+                      <div className="flex items-center gap-1.5 bg-[#F4F4F2] border border-[#D1D1CF] px-2 py-0.5" title={`${prompt.toLocaleString()} in${selectedItem.tokenUsage.cachedTokens ? ` (${selectedItem.tokenUsage.cachedTokens.toLocaleString()} cached)` : ""} / ${candidates.toLocaleString()} out${thoughts > 0 ? ` + ${thoughts.toLocaleString()} thoughts` : ""}`}>
+                        <span className="text-[8px] text-[#888884] uppercase font-bold">Tokens</span>
+                        <span className="text-[#1A1A1A] font-extrabold uppercase text-[9px]">
+                          {selectedItem.tokenUsage.totalTokens?.toLocaleString() ?? "-"}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   {(selectedItem.estimatedCost || selectedItem.tokenUsage) && (() => {
-                    const displayCost = selectedItem.estimatedCost || (selectedItem.tokenUsage ? calculateEstimatedCost(selectedItem.model || "gemini-3.6-flash", selectedItem.tokenUsage)?.formattedTotalCost : null);
-                    return displayCost ? (
-                      <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-900 px-2 py-0.5" title={`Cost: ${displayCost}`}>
+                    const costData = selectedItem.tokenUsage ? calculateEstimatedCost(selectedItem.model || "gemini-3.7-flash", selectedItem.tokenUsage) : null;
+                    const displayCost = selectedItem.estimatedCost || costData?.formattedTotalCost;
+                    if (!displayCost) return null;
+                    const b = costData?.breakdown;
+                    const tooltip = b
+                      ? `Cost: ${displayCost} (${b.uncachedPromptTokens.toLocaleString()} in${b.cachedTokens ? ` [${b.cachedTokens.toLocaleString()} cached]` : ""} / ${b.candidateTokens.toLocaleString()} out${b.thoughtTokens ? ` + ${b.thoughtTokens.toLocaleString()} thoughts` : ""})`
+                      : `Cost: ${displayCost}`;
+                    return (
+                      <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-900 px-2 py-0.5" title={tooltip}>
                         <span className="text-[8px] text-emerald-700 uppercase font-bold">Cost</span>
                         <span className="font-extrabold text-[9px]">
                           {displayCost}
                         </span>
                       </div>
-                    ) : null;
+                    );
                   })()}
                   {(selectedItem.presetLabel || selectedItem.systemPrompt || selectedItem.promptTemplate) && (
                     <div className="flex items-center gap-1.5 bg-[#F4F4F2] border border-[#D1D1CF] px-2 py-0.5">

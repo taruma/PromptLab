@@ -1,4 +1,5 @@
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, MediaProcessing } from "@google/genai";
+import { isAgenticVideoSupported } from "@/lib/video-utils";
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
@@ -21,6 +22,7 @@ interface UploadedVideo {
   mimeType?: string;
   isFilesApi?: boolean;
   fileUri?: string;
+  processingMode?: "STATIC" | "AGENTIC";
 }
 
 function formatGeminiErrorMessage(rawError: any): string {
@@ -306,11 +308,13 @@ export async function POST(req: NextRequest) {
 
           if (fileObj && (fileObj.state === "ACTIVE" || !fileObj.state)) {
             fileDataValid = true;
+            const useAgentic = vid.processingMode === "AGENTIC" && isAgenticVideoSupported(model);
             parts.push({
               fileData: {
                 fileUri: vid.fileUri,
                 mimeType: fileObj.mimeType || vid.mimeType || "video/mp4",
-              }
+              },
+              ...(useAgentic ? { mediaProcessing: MediaProcessing.AGENTIC } : {}),
             });
           } else {
             console.warn(`Files API video file '${fileName}' ended in state '${fileObj?.state}'`);
@@ -326,11 +330,13 @@ export async function POST(req: NextRequest) {
             if (commaIndex !== -1) {
               cleanData = cleanData.substring(commaIndex + 1);
             }
+            const useAgentic = vid.processingMode === "AGENTIC" && isAgenticVideoSupported(model);
             parts.push({
               inlineData: {
                 mimeType: vid.mimeType || "video/mp4",
                 data: cleanData,
-              }
+              },
+              ...(useAgentic ? { mediaProcessing: MediaProcessing.AGENTIC } : {}),
             });
           } else {
             const fileId = vid.fileUri.includes("/files/") ? vid.fileUri.split("/files/")[1] : vid.fileUri;
@@ -351,10 +357,13 @@ export async function POST(req: NextRequest) {
           }
         }
       } else if (vid.youtubeUrl) {
+        const useAgentic = vid.processingMode === "AGENTIC" && isAgenticVideoSupported(model);
         parts.push({
           fileData: {
             fileUri: vid.youtubeUrl,
-          }
+            mimeType: vid.mimeType || "video/mp4",
+          },
+          ...(useAgentic ? { mediaProcessing: MediaProcessing.AGENTIC } : {}),
         });
       } else if (vid.base64 && !vid.base64.startsWith("blob:")) {
         let cleanData = vid.base64;
@@ -363,11 +372,13 @@ export async function POST(req: NextRequest) {
           cleanData = cleanData.substring(commaIndex + 1);
         }
 
+        const useAgentic = vid.processingMode === "AGENTIC" && isAgenticVideoSupported(model);
         parts.push({
           inlineData: {
             mimeType: vid.mimeType || "video/mp4",
             data: cleanData,
-          }
+          },
+          ...(useAgentic ? { mediaProcessing: MediaProcessing.AGENTIC } : {}),
         });
       }
     }
@@ -433,7 +444,7 @@ export async function POST(req: NextRequest) {
             encoder.encode(`data: ${JSON.stringify({ filledPrompt: filledTemplate })}\n\n`)
           );
 
-          let latestUsage: { promptTokens?: number; candidatesTokens?: number; totalTokens?: number; cachedTokens?: number } | null = null;
+          let latestUsage: { promptTokens?: number; candidatesTokens?: number; totalTokens?: number; cachedTokens?: number; thoughtTokens?: number } | null = null;
 
           for await (const chunk of responseStream) {
             if (chunk.usageMetadata) {
@@ -442,6 +453,7 @@ export async function POST(req: NextRequest) {
                 candidatesTokens: chunk.usageMetadata.candidatesTokenCount,
                 totalTokens: chunk.usageMetadata.totalTokenCount,
                 cachedTokens: chunk.usageMetadata.cachedContentTokenCount,
+                thoughtTokens: chunk.usageMetadata.thoughtsTokenCount,
               };
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({ usage: latestUsage })}\n\n`)

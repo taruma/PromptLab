@@ -17,6 +17,7 @@ export interface HistoryVideoRef {
   youtubeUrl?: string;
   isYouTube?: boolean;
   base64?: string;
+  processingMode?: "STATIC" | "AGENTIC";
 }
 
 export interface HistoryItem {
@@ -41,6 +42,7 @@ export interface HistoryItem {
     candidatesTokens?: number;
     totalTokens?: number;
     cachedTokens?: number;
+    thoughtTokens?: number;
   };
   estimatedCost?: string;
 }
@@ -238,6 +240,7 @@ export async function importHistoryFromJSON(
             duration: rawVid.duration,
             youtubeUrl: rawVid.youtubeUrl,
             isYouTube: rawVid.isYouTube || Boolean(rawVid.youtubeUrl),
+            processingMode: rawVid.processingMode === "AGENTIC" ? "AGENTIC" : (rawVid.processingMode === "STATIC" ? "STATIC" : undefined),
           });
         }
       }

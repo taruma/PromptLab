@@ -1,3 +1,5 @@
+export type VideoProcessingMode = "STATIC" | "AGENTIC";
+
 export interface UploadedVideo {
   id: string;
   label: string;
@@ -13,6 +15,23 @@ export interface UploadedVideo {
   fileUri?: string;
   sizeBytes?: number;
   expirationTime?: string;
+  processingMode?: VideoProcessingMode;
+}
+
+/**
+ * Checks if a Gemini model supports Agentic Video Understanding.
+ * Gemini 3.7 Flash, 3.6 Flash, and 3.5 Flash-Lite support AGENTIC mode.
+ */
+export function isAgenticVideoSupported(model?: string): boolean {
+  if (!model) return false;
+  const m = model.toLowerCase();
+  return (
+    m.includes("gemini-3.7-flash") ||
+    m.includes("gemini-3.6-flash") ||
+    m.includes("gemini-3.5-flash-lite") ||
+    m === "gemini-flash-latest" ||
+    m === "gemini-flash-lite-latest"
+  );
 }
 
 export interface VideoValidationResult {

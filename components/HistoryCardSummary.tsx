@@ -71,18 +71,32 @@ export default function HistoryCardSummary({ item, className = "" }: HistoryCard
               {modelName}
             </span>
           )}
-          {item.tokenUsage?.totalTokens !== undefined && (
-            <span className="bg-[#EAEAE8] text-[#1A1A1A] border border-[#D1D1CF] px-1.5 py-0.5 font-mono uppercase font-bold text-[8px] tracking-wider leading-none flex items-center gap-1" title={`${item.tokenUsage.promptTokens ?? "-"} in ${item.tokenUsage.cachedTokens ? `(${item.tokenUsage.cachedTokens.toLocaleString()} cached) ` : ""}/ ${item.tokenUsage.candidatesTokens ?? "-"} out`}>
-              {item.tokenUsage.totalTokens.toLocaleString()} TKS
-            </span>
-          )}
+          {item.tokenUsage?.totalTokens !== undefined && (() => {
+            const prompt = item.tokenUsage.promptTokens ?? 0;
+            const candidates = item.tokenUsage.candidatesTokens ?? 0;
+            const total = item.tokenUsage.totalTokens ?? (prompt + candidates);
+            const thoughts = item.tokenUsage.thoughtTokens !== undefined
+              ? item.tokenUsage.thoughtTokens
+              : Math.max(0, total - prompt - candidates);
+            return (
+              <span className="bg-[#EAEAE8] text-[#1A1A1A] border border-[#D1D1CF] px-1.5 py-0.5 font-mono uppercase font-bold text-[8px] tracking-wider leading-none flex items-center gap-1" title={`${prompt.toLocaleString()} in${item.tokenUsage.cachedTokens ? ` (${item.tokenUsage.cachedTokens.toLocaleString()} cached)` : ""} / ${candidates.toLocaleString()} out${thoughts > 0 ? ` + ${thoughts.toLocaleString()} thoughts` : ""}`}>
+                {item.tokenUsage.totalTokens.toLocaleString()} TKS
+              </span>
+            );
+          })()}
           {(item.estimatedCost || item.tokenUsage) && (() => {
-            const displayCost = item.estimatedCost || (item.tokenUsage ? calculateEstimatedCost(item.model || "gemini-3.6-flash", item.tokenUsage)?.formattedTotalCost : null);
-            return displayCost ? (
-              <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-1.5 py-0.5 font-mono font-bold text-[8px] tracking-wider leading-none flex items-center gap-1" title={`Cost: ${displayCost}`}>
+            const costData = item.tokenUsage ? calculateEstimatedCost(item.model || "gemini-3.7-flash", item.tokenUsage) : null;
+            const displayCost = item.estimatedCost || costData?.formattedTotalCost;
+            if (!displayCost) return null;
+            const b = costData?.breakdown;
+            const tooltip = b
+              ? `Cost: ${displayCost} (${b.uncachedPromptTokens.toLocaleString()} in${b.cachedTokens ? ` [${b.cachedTokens.toLocaleString()} cached]` : ""} / ${b.candidateTokens.toLocaleString()} out${b.thoughtTokens ? ` + ${b.thoughtTokens.toLocaleString()} thoughts` : ""})`
+              : `Cost: ${displayCost}`;
+            return (
+              <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-1.5 py-0.5 font-mono font-bold text-[8px] tracking-wider leading-none flex items-center gap-1" title={tooltip}>
                 {displayCost}
               </span>
-            ) : null;
+            );
           })()}
           {presetName && (
             <span className="bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.5 font-mono uppercase font-bold text-[8px] tracking-wider leading-none flex items-center gap-1 max-w-[130px] truncate" title={presetName}>

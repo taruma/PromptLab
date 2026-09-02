@@ -4,41 +4,62 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
-## [v2.5.0-dev]
+## [v2.5.0] — September 2, 2026
 
 ### Added
 
-- **Gemini 3.7 Flash Support & Default Model Update (`lib/pricing.ts`, `components/EngineControlsModal.tsx`, `components/QuickModelSelector.tsx`, `app/api/generate/route.ts`, `app/page.tsx`).**
+- **Itemized Cost Breakdown Popover & Streaming Cost Finalization.**
+  - Resolved intermediate streaming calculation discrepancies by keeping the emerald cost badge hidden while generation is in progress (`isLoading === true`) and rendering the finalized, verified cost badge immediately upon completion.
+  - Added an interactive Retro Lab brutalist hover/tap popover on the cost badge in `components/GenerationResultView.tsx` displaying the complete line-by-line itemized calculation:
+    - **Prompt Input (Uncached)**: Token count $\times$ input rate per 1M $\rightarrow$ subtotal.
+    - **Context Cache**: Cached token count $\times$ discounted base rate per 1M $\rightarrow$ subtotal, along with a highlighted `Saved $X.XXXXXX` badge.
+    - **Output Response**: Candidate text tokens $\times$ output rate per 1M $\rightarrow$ subtotal.
+    - **Reasoning Thoughts**: Thought tokens $\times$ output rate per 1M $\rightarrow$ subtotal.
+    - **Total Estimated**: Aggregate token count and final cost in USD.
+  - Server-side generation handler (`app/api/generate/route.ts`) now directly captures `thoughtsTokenCount` from Gemini API `usageMetadata` and streams it to the client.
+  - Updated the output panel footer token counter to explicitly display thought tokens (`TOKENS: {total} ({prompt} IN [{cached} CACHED] / {candidates} OUT + {thoughts} THOUGHTS)`), ensuring token counts visibly balance with `totalTokens`.
+  - Added full backward-compatibility fallback in `lib/pricing.ts` that derives thought tokens via $\max(0, \text{total} - \text{prompt} - \text{candidates})$ for legacy history records. Synchronized `thoughtTokens` across `HistoryItem` interfaces and `lib/history-export.ts`.
+  - Enhanced tooltips on `HistoryCardSummary` and `HistoryViewerModal` cost badges to display the detailed token breakdown and updated the fallback model reference to `gemini-3.7-flash`.
+
+- **Agentic Video Understanding & YouTube mimeType Support.**
+  - Integrated Google's **Agentic Video Understanding** (`MediaProcessing.AGENTIC`) for Gemini 3.7 Flash (`gemini-3.7-flash`, 3.6 Flash, 3.5 Flash-Lite, and aliases), enabling autonomous timeline exploration (`Think → Act → Observe`) with dynamic frame extraction and lower analysis costs.
+  - Added a segmented **`MODE: [STATIC] [AGENTIC]`** toggle on `VideoAssetCard` with Analog Brutalist styling and default `STATIC` mode for fast, uniform short-clip processing.
+  - Implemented **Option A Non-Destructive Fallback**: When an unsupported model (e.g. Gemini 3.1 Pro Preview / Gemini Pro Latest) is active while `AGENTIC` is selected, the preference is preserved in workspace state, a dashed amber `Paused` tag is rendered, and `app/api/generate/route.ts` automatically executes as `STATIC` fallback until switching back to Gemini 3.7 Flash.
+  - Added explicit `mimeType` transmission (`vid.mimeType || "video/mp4"`) for YouTube URLs passed as `fileData` in `app/api/generate/route.ts`.
+  - Added `processingMode` support across session persistence, history items, and history import/export (`lib/history-export.ts`).
+
+- **Gemini 3.7 Flash Support & Default Model Update.**
   - Added full support for **Gemini 3.7 Flash** (`gemini-3.7-flash`), setting it as the new default model across the entire workspace and server-side generation handler fallback.
   - Added `gemini-3.7-flash` pricing configuration in `lib/pricing.ts` ($1.50 / 1M input, $7.50 / 1M output, $0.15 / 1M context cache base rate, $1.00 / 1M / hour context cache storage).
   - Updated `MODEL_ALIASES["gemini-flash-latest"]` to resolve to `gemini-3.7-flash`.
-  - Added Gemini 3.7 Flash with release metadata and `NEW` indicator badges to the Engine Controls modal (`EngineControlsModal.tsx`).
-  - Updated the Quick Model Selector (`QuickModelSelector.tsx`) dropdown badge for Flash to `3.7` and added concise label mapping for `gemini-3.7-flash`.
+  - Added Gemini 3.7 Flash with release metadata and `NEW` indicator badges to the Engine Controls modal (`components/EngineControlsModal.tsx`).
+  - Updated the Quick Model Selector (`components/QuickModelSelector.tsx`) dropdown badge for Flash to `3.7` and added concise label mapping for `gemini-3.7-flash`.
 
-- **Audio & Document Reference Tags in Generation Pipeline & History Media Badges (`app/api/generate/route.ts`, `components/VisualAssetsSection.tsx`, `components/VideoAssetCard.tsx`, `components/HistoryCardSummary.tsx`, `components/HistorySection.tsx`, `components/HistoryViewerModal.tsx`).**
-  - The generation pipeline now parses each media asset's MIME type and emits separate casting tags — `@videoN`, `@audioN` (for `audio/*` files), and `@docN` (for `text/*`, PDF, and other non-video/image/audio formats) — so audio and document references injected into `{{ visual_references }}` are tagged correctly instead of being labeled as videos.
+- **Audio & Document Reference Tags in Generation Pipeline & History Media Badges.**
+  - The generation pipeline (`app/api/generate/route.ts`) now parses each media asset's MIME type and emits separate casting tags — `@videoN`, `@audioN` (for `audio/*` files), and `@docN` (for `text/*`, PDF, and other non-video/image/audio formats) — so audio and document references injected into `{{ visual_references }}` are tagged correctly instead of being labeled as videos.
   - Generalized Gemini Files API error messages from hardcoded `@videoN` wording to neutral "reference media" phrasing that uses each asset's own label.
   - Expanded the workspace file picker `accept` attribute in `VisualAssetsSection.tsx` to `image/*,video/*,audio/*,application/pdf,text/*` and added per-type counter logic that assigns the correct `@audioN` / `@docN` / `@videoN` tag to each asset card.
   - Added a `tag` prop to `VideoAssetCard.tsx` so the top-left identifier badge and player sub-labels display the correct per-type casting tag.
   - History surfaces now render separate `AUD` (purple, music icon) and `DOC` (teal, file icon) badges — with restyled `VID` badges — in `HistoryCardSummary.tsx`, `HistorySection.tsx`, and `HistoryViewerModal.tsx`, with counts derived from MIME types.
   - Updated helper copy in `PromptTemplateHelpTooltip.tsx` and `LabManualSection.tsx` to document the `@audio1` / `@doc1` tags, and adjusted the YouTube modal next-index in `app/page.tsx` to count only video-type references.
 
-- **Multi-Modal Gemini Files API Support (Audio, PDF & Documents) (`components/AddFilesApiModal.tsx`, `components/VideoAssetCard.tsx`, `components/AudioPlayerModal.tsx`, `components/VisualAssetsSection.tsx`).**
-  - Expanded Files API upload picker and drag-and-drop dropzone in `AddFilesApiModal.tsx` to support audio files (MP3, WAV, OGG, M4A, FLAC) and document formats (PDF, TXT, CSV, JSON, Markdown, Code snippets) up to 2 GB.
+- **Multi-Modal Gemini Files API Support (Audio, PDF & Documents).**
+  - Expanded Files API upload picker and drag-and-drop dropzone in `components/AddFilesApiModal.tsx` to support audio files (MP3, WAV, OGG, M4A, FLAC) and document formats (PDF, TXT, CSV, JSON, Markdown, Code snippets) up to 2 GB.
   - Created **`AudioPlayerModal.tsx`** for dedicated audio previewing and playback with custom HTML5 audio controls, volume indicators, and MIME type metadata display.
   - Updated `VideoAssetCard.tsx` to render distinct visual placeholders for audio assets (purple theme + music icon) and text/PDF documents (teal theme + document icon).
   - Reserved video Play overlays and `VideoPlayerModal` strictly for video files, introducing a "Listen Audio" action button for audio assets.
   - Updated section helper copy in `VisualAssetsSection.tsx` to guide users on attaching non-video/non-image multi-modal media up to 2 GB via Files API.
 
-- **Quick Model & Thinking Switcher (`components/QuickModelSelector.tsx`, `components/AppHeader.tsx`, `app/page.tsx`).**
-  - Added a compact icon-only trigger button in `AppHeader.tsx` beside the Quick API Key Switcher for rapid model and thinking level switching.
+- **Quick Model & Thinking Switcher (`QuickModelSelector`).**
+  - Added a compact icon-only trigger button in `components/AppHeader.tsx` beside the Quick API Key Switcher for rapid model and thinking level switching.
   - Features a clean 3-row dropdown panel:
     - **Row 1 (Status)**: Brief active model status indicator (e.g. `Flash Latest • MEDIUM`).
     - **Row 2 (Model)**: Quick model selection pointing to latest model aliases (`Flash`, `Flash Lite`, `Pro`). Automatically unselects all 3 options and shows a "Specific Version Active" badge if a pinned specific model version is active.
     - **Row 3 (Thinking)**: Thinking level selection (`HIGH`, `MEDIUM`, `LOW`, `MIN`). Automatically disables `MIN` for Pro models.
     - **Header Action**: Includes a top-right **Engine** settings button to open the full Engine Controls modal on demand.
-- **Quick API Key Switcher (`components/QuickApiKeySelector.tsx`, `components/AppHeader.tsx`, `app/page.tsx`).**
-  - Added a streamlined, compact quick API key switcher dropdown in the header navigation bar (`AppHeader.tsx`) beside the Quick Preset Selector for instant key switching.
+
+- **Quick API Key Switcher (`QuickApiKeySelector`).**
+  - Added a streamlined, compact quick API key switcher dropdown in the header navigation bar (`components/AppHeader.tsx`) beside the Quick Preset Selector for instant key switching.
   - Displays the active key label and status badge (`BYOK` or `ENV`) directly on the trigger button.
   - Features a simplified, un-cluttered dropdown menu:
     - Header with "API KEY VAULT" title, total key count badge `(N)` positioned directly adjacent to the title, and a compact top-right **Manage** button with `Settings` icon to open key management in Engine Controls.
@@ -46,74 +67,97 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
     - Filter search bar for quickly searching saved vault keys when multiple keys exist.
     - Dedicated list items for selecting the Default System Key (`process.env.GEMINI_API_KEY`) or any custom vault key override with active checkmarks.
     - Live synchronization with `localStorage` (`prompt_generator_custom_api_keys` and `prompt_generator_active_api_key_id`) across workspace reloads and browser tabs.
-- **Asset Pinning & Favoriting in Asset Library (`components/AssetLibrarySidebar.tsx`).**
+
+- **Asset Pinning & Favoriting in Asset Library.**
   - Added `isPinned` and `isFavorite` properties to library assets (`StoredImage`), enabling users to pin important reference images to the top of the asset list or mark them as favorites.
+  - Supported across `components/AssetLibrarySidebar.tsx`, project models (`lib/projects.ts`), and library backup schemas (`lib/asset-library-export.ts`).
   - Added interactive Pin (📌) and Favorite (★) toggle controls to both grid thumbnails and list row items with high-contrast dark button backgrounds and golden amber highlights when active.
   - Added filter tabs (`All`, `Pinned`, `Favs`) with dynamic item count badges to filter library assets seamlessly.
-- **Select Mode & Bulk Operations Toolbar (`components/AssetLibrarySidebar.tsx`).**
-  - Introduced a dedicated `Select` button in the toolbar that toggles bulk selection checkboxes on demand.
+
+- **Select Mode & Bulk Operations Toolbar in Asset Library.**
+  - Introduced a dedicated `Select` button in `components/AssetLibrarySidebar.tsx` that toggles bulk selection checkboxes on demand.
   - Keeps the browsing view clean by hiding checkboxes by default, showing them only when `Select` mode is active or assets are checked.
   - Added a `Select All` / `Deselect All` toggle button when in select mode for fast batch export and deletion workflows.
-- **IndexedDB Generation History Storage & Legacy LocalStorage Cleanup (`lib/history-storage.ts`, `lib/projects.ts`, `app/page.tsx`).**
+
+- **IndexedDB Generation History Storage & Legacy LocalStorage Cleanup.**
   - Created `lib/history-storage.ts` to manage loading and saving generation history via a non-breaking wrapper (`loadHistoryFromStorage()` and `saveHistoryToLocalStorage()`).
   - Moved primary history persistence into IndexedDB (`promptlab_db` → `projects` store), storing history directly within the active workspace project record to avoid browser `LocalStorage` quota limits (`QuotaExceededError`).
   - Implemented automatic migration: on app launch, `loadHistoryFromStorage()` retrieves legacy items from `localStorage` (`prompt_generator_history` / `prompt_generator_history_v1`), migrates them into the active IndexedDB project, and purges the heavy payload from `localStorage`.
   - Instantly freed up ~4.1 MB of `localStorage` origin quota (reducing origin usage from 91%+ down to safe levels) while maintaining full backward compatibility for all history operations, search, filters, and JSON export/import workflows.
-- **Drag-and-Drop JSON Library Restore in Asset Library (`components/AssetLibrarySidebar.tsx`).**
-  - Expanded the upload dropzone in `AssetLibrarySidebar.tsx` to support dropping `.json` asset library backup export files alongside reference images.
+
+- **Drag-and-Drop JSON Library Restore in Asset Library.**
+  - Expanded the upload dropzone in `components/AssetLibrarySidebar.tsx` to support dropping `.json` asset library backup export files alongside reference images.
   - Dropping or selecting a `.json` file automatically triggers `AssetImportModal` for preview, duplicate detection, and import strategy resolution.
   - Updated file input `accept` attribute to `image/*,.json,application/json` and updated dropzone label text ("Upload reference or JSON library").
-- **Two-Step Asset Deletion Safety in Asset Library (`components/AssetLibrarySidebar.tsx`).**
-  - Replaced single-click instant asset deletion with an inline 2-step confirmation mechanism across both grid hover view and list row views.
+
+- **Two-Step Asset Deletion Safety in Asset Library.**
+  - Replaced single-click instant asset deletion in `components/AssetLibrarySidebar.tsx` with an inline 2-step confirmation mechanism across both grid hover view and list row views.
   - Clicking the delete button transforms it into a highlighted red confirmation state ("Confirm" / Check icon) with a 4-second auto-cancel timer, preventing accidental asset removal without disruptive modal dialogs.
-- **IndexedDB v3 Schema & Content-Hash Image Payload Deduplication (`lib/indexeddb.ts`, `lib/content-hash.ts`).**
-  - Upgraded IndexedDB schema version from v2 to v3, adding a `contentHash` index on the `images` object store.
-  - Implemented automatic SHA-256 content-hash deduplication in `saveStoredImage(id, base64, contentHash)`. When saving an image whose binary payload matches an existing record in IndexedDB, the store saves a light reference pointer (`dedupRefId`) to the master image record instead of storing duplicate base64 strings, drastically reducing storage usage when reusing images across projects, asset libraries, or history items.
+
+- **IndexedDB v3 Schema & Content-Hash Image Payload Deduplication.**
+  - Upgraded IndexedDB schema version from v2 to v3 in `lib/indexeddb.ts`, adding a `contentHash` index on the `images` object store.
+  - Implemented automatic SHA-256 content-hash deduplication in `saveStoredImage(id, base64, contentHash)` via `lib/content-hash.ts`. When saving an image whose binary payload matches an existing record in IndexedDB, the store saves a light reference pointer (`dedupRefId`) to the master image record instead of storing duplicate base64 strings, drastically reducing storage usage when reusing images across projects, asset libraries, or history items.
   - Enhanced `getStoredImage(id)` to transparently resolve `dedupRefId` pointer chains, retrieving original image data seamlessly for all components without altering existing application logic.
   - Built reference-aware deletion in `deleteStoredImage(id)`: if a master image record holding base64 data is deleted, the system automatically promotes the first dependent record to master and re-points remaining dependents before deleting, guaranteeing zero broken image links.
-- **Automatic Startup Image Deduplication & Migration Engine (`deduplicateStoredImages()` in `lib/indexeddb.ts`).**
-  - Integrated a background migration and deduplication task triggered automatically when opening the application in `app/page.tsx`.
+
+- **Automatic Startup Image Deduplication & Migration Engine.**
+  - Integrated a background migration and deduplication task (`deduplicateStoredImages()` in `lib/indexeddb.ts`) triggered automatically when opening the application in `app/page.tsx`.
   - Scans stored IndexedDB images on launch, backfills missing `contentHash` identifiers, and consolidates pre-existing duplicate base64 payloads into `dedupRefId` references without requiring user intervention.
-- **Storage & Quota Monitor Modal (`components/StorageUsageModal.tsx`, `lib/storage-utils.ts`).** Integrated a real-time browser storage diagnostic modal displaying LocalStorage usage percentage, standard 5 MB quota bar, high quota alerts (>=75%), key-by-key size breakdown table, and IndexedDB (`promptlab_db`) origin storage usage metrics (`navigator.storage.estimate()`).
-- **Interactive Storage Usage Indicator in Footer (`components/FooterStatusBar.tsx`).** Added a live storage usage badge in the application footer showing real-time LocalStorage usage (e.g., `Storage: 2.6 MB (52%)`) with auto-refresh every 8 seconds, pulsing red in high-capacity states (>=80%), and opening the Storage Usage modal on click.
-- **History Viewer Image Hover Preview with Content-Hash Badge (`components/HistoryViewerModal.tsx`).** Extracted a new `HistoryImageCardWithHover` component using `createPortal` to render large, edge-aware image previews when hovering over history detail image cards. The preview positions itself relative to the card element with smart boundary detection (preventing overflow on viewport edges) and displays a SHA-256 content-hash identifier badge in emerald-green at the top of the preview for asset traceability.
-- **Content-Hash Display in Visual Asset Card Hover Preview (`components/VisualAssetCard.tsx`).** Added a SHA-256 content-hash badge (`HASH: {contentHash}`) to image hover previews, displayed in emerald-green with a monospace font, enabling users to visually identify and verify asset content integrity without opening external tools.
-- **Cross-Project Image Reference Protection (`lib/indexeddb.ts`).** Added a new `isImageReferencedInAnyProject()` utility that scans all project workspaces (IndexedDB `projects` store) and active session state (localStorage) to check whether an image ID is still referenced by any project's asset library or history items before deletion. `deleteStoredImage(id)` now performs this protection check by default (unless `forceDelete` is passed), logging an informational message and preserving binary data when the asset is actively referenced elsewhere. When the check fails, it conservatively assumes the asset is still in use to prevent premature data loss.
-- **Version Number Display in Footer (`components/FooterStatusBar.tsx`).** The footer now dynamically displays the current application version from `package.json` (e.g., `PromptLab v2.4.2-dev by Taruma Sakti`), providing immediate version context without requiring the user to inspect the app binary.
-- **Structured JSON Output & Syntax-Highlighted JSON Viewer (`app/api/generate/route.ts`, `components/EngineControlsModal.tsx`, `components/QuickModelSelector.tsx`, `components/GenerationResultView.tsx`, `components/FooterStatusBar.tsx`, `app/page.tsx`).**
+
+- **Storage & Quota Monitor Modal (`StorageUsageModal`).** Integrated a real-time browser storage diagnostic modal (`components/StorageUsageModal.tsx`, `lib/storage-utils.ts`) displaying LocalStorage usage percentage, standard 5 MB quota bar, high quota alerts (>=75%), key-by-key size breakdown table, and IndexedDB (`promptlab_db`) origin storage usage metrics (`navigator.storage.estimate()`).
+
+- **Interactive Storage Usage Indicator in Footer.** Added a live storage usage badge in the application footer (`components/FooterStatusBar.tsx`) showing real-time LocalStorage usage (e.g., `Storage: 2.6 MB (52%)`) with auto-refresh every 8 seconds, pulsing red in high-capacity states (>=80%), and opening the Storage Usage modal on click.
+
+- **History Viewer Image Hover Preview with Content-Hash Badge.** Extracted a new `HistoryImageCardWithHover` component in `components/HistoryViewerModal.tsx` using `createPortal` to render large, edge-aware image previews when hovering over history detail image cards. The preview positions itself relative to the card element with smart boundary detection (preventing overflow on viewport edges) and displays a SHA-256 content-hash identifier badge in emerald-green at the top of the preview for asset traceability.
+
+- **Content-Hash Display in Visual Asset Card Hover Preview.** Added a SHA-256 content-hash badge (`HASH: {contentHash}`) to image hover previews in `components/VisualAssetCard.tsx`, displayed in emerald-green with a monospace font, enabling users to visually identify and verify asset content integrity without opening external tools.
+
+- **Cross-Project Image Reference Protection.** Added a new `isImageReferencedInAnyProject()` utility in `lib/indexeddb.ts` that scans all project workspaces (IndexedDB `projects` store) and active session state (localStorage) to check whether an image ID is still referenced by any project's asset library or history items before deletion. `deleteStoredImage(id)` now performs this protection check by default (unless `forceDelete` is passed), logging an informational message and preserving binary data when the asset is actively referenced elsewhere. When the check fails, it conservatively assumes the asset is still in use to prevent premature data loss.
+
+- **Cross-Project Shared Asset Tracking & Badges in Asset Library.** Integrated `getSharedProjectsForImages()` in `lib/indexeddb.ts` to scan all project workspaces in IndexedDB and identify assets referenced across multiple workspaces. In `components/AssetLibrarySidebar.tsx`, shared assets render an interactive badge indicator displaying the count of sharing projects and a tooltip listing the other project names, providing immediate visual transparency before modifying or removing shared assets.
+
+- **Dynamic Version Number Display in Footer.** The footer status bar (`components/FooterStatusBar.tsx`) now dynamically displays the current application version from `package.json` (e.g., `PromptLab v2.5.0 by Taruma Sakti`), providing immediate version context without requiring the user to inspect the app binary.
+
+- **Structured JSON Output & Syntax-Highlighted JSON Viewer.**
   - Added a server-side structured output pipeline: the `/api/generate` handler now accepts `responseMimeType: "application/json"` and an optional `responseSchema` (string or pre-parsed object). Invalid JSON schemas are rejected with a 400 error (`"Invalid JSON Schema provided"`). When valid, the schema and MIME type are attached to the Gemini API generation config (`config.responseMimeType` / `config.responseSchema`), forcing the model to return guaranteed, parseable JSON.
-  - Added a **Structured Output toggle** in the `EngineControlsModal` with a green/white enable/disable button, a pulsing status indicator dot, and a collapsible optional **JSON Schema editor**. The schema textarea includes live syntax validation (emerald `Valid Schema` badge vs. red `Syntax Error` badge with error tooltip), a pre-filled placeholder schema example, and helper guidance text.
+  - Added a **Structured Output toggle** in `components/EngineControlsModal.tsx` with a green/white enable/disable button, a pulsing status indicator dot, and a collapsible optional **JSON Schema editor**. The schema textarea includes live syntax validation (emerald `Valid Schema` badge vs. red `Syntax Error` badge with error tooltip), a pre-filled placeholder schema example, and helper guidance text.
   - Added a 4th row "Structured Output (JSON)" toggle in the `QuickModelSelector` dropdown with a `Braces` icon, `ACTIVE` status badge, and `[ENABLE]` / `[DISABLE]` action link for rapid one-click control without opening the full Engine Controls modal. The trigger button displays a green indicator dot when structured output is enabled.
-  - Created a new **JSON View** mode in `GenerationResultView` — a third output render option alongside Formatted Markdown and Raw Monospace. The JSON view includes:
+  - Created a new **JSON View** mode in `components/GenerationResultView.tsx` — a third output render option alongside Formatted Markdown and Raw Monospace. The JSON view includes:
     - `extractCleanJson()` parser that strips Markdown code fences (` ```json `) and attempts `JSON.parse()`, falling back to raw text display with an amber `Raw / Unparsed JSON` badge.
     - `highlightJsonLine()` syntax highlighter with per-token color coding: property keys (dark charcoal, bold), string literals (teal), booleans (indigo), `null` (stone italic), numbers (amber), and structural delimiters `{ } [ ] , :` (warm gray).
     - Line numbers, hover-highlighted rows, a `Valid JSON` (emerald) / `Streaming JSON...` (amber) status header, and a `Structured Mode` lock badge.
-  - The GenerationResultView auto-locks to JSON view when `isStructuredOutput` is active, and the view mode footer label displays `"STRUCTURED JSON (LOCKED)"` in that state.
-  - The `FooterStatusBar` now displays a pulsing emerald `JSON OUTPUT` badge with a bordered amber container whenever structured output is enabled.
+  - The `GenerationResultView` auto-locks to JSON view when `isStructuredOutput` is active, and the view mode footer label displays `"STRUCTURED JSON (LOCKED)"` in that state.
+  - The `FooterStatusBar` now displays a pulsing emerald `JSON OUTPUT` badge with an emerald-bordered dark container (`bg-emerald-950/70 border border-emerald-500/50 text-emerald-400`) whenever structured output is enabled.
   - The `app/page.tsx` workspace threads `isStructuredOutput` and `responseSchema` state through to the generation POST payload, `GenerationResultView`, `AppHeader` → `QuickModelSelector`, `EngineControlsModal`, and `FooterStatusBar`.
 
 ### Changed
 
-- **Structured JSON Output toggle, schema editor & JSON viewer.** See full feature description above in Added section.
-- **Project Deletion Garbage Collection of Unreferenced Images (`lib/projects.ts`).** Deleting a project now iterates its `assetLibrary` and calls `deleteStoredImage()` for each asset, cleaning up orphaned IndexedDB image blobs that are no longer referenced by any remaining project.
-- **Project "Copy from Current" Now Includes Asset Library (`components/ProjectManagerModal.tsx`).** The checkbox label when creating a new project from current workspace was updated to explicitly list "…custom presets & **asset library** from current project," reflecting the full clone scope.
-- **History Video (VID) Badge Restyled to Amber/Dark Theme (`components/HistoryCardSummary.tsx`).** The inline VID count badge was changed from a purple-900/purple-100 scheme to a charcoal `[#1A1A1A]` / amber `[#F59E0B]` theme with an amber border and `VideoIcon`, visually distinguishing video references from audio (purple) and document (teal) badges.
-- **API Key Badge Renamed from "OVERRIDE" to "BYOK" (`components/QuickApiKeySelector.tsx`).** The override indicator badge in the Quick API Key Switcher was relabeled to `BYOK` (Bring Your Own Key), using more precise and recognizable terminology.
-- **Streamlined 2-Row Asset Library Toolbar Layout (`components/AssetLibrarySidebar.tsx`).**
+- **Project Deletion Garbage Collection of Unreferenced Images.** In `lib/projects.ts`, deleting a project now iterates its `assetLibrary` and calls `deleteStoredImage()` for each asset, cleaning up orphaned IndexedDB image blobs that are no longer referenced by any remaining project.
+- **Project "Copy from Current" Now Includes Asset Library.** In `components/ProjectManagerModal.tsx`, the checkbox label when creating a new project from current workspace was updated to explicitly list "…custom presets & **asset library** from current project," reflecting the full clone scope.
+- **History Video (VID) Badge Restyled to Amber/Dark Theme.** In `components/HistoryCardSummary.tsx`, the inline VID count badge was changed from a purple-900/purple-100 scheme to a charcoal `[#1A1A1A]` / amber `[#F59E0B]` theme with an amber border and `VideoIcon`, visually distinguishing video references from audio (purple) and document (teal) badges.
+- **API Key Badge Renamed from "OVERRIDE" to "BYOK".** The override indicator badge in the Quick API Key Switcher (`components/QuickApiKeySelector.tsx`) was relabeled to `BYOK` (Bring Your Own Key), using more precise and recognizable terminology.
+- **Streamlined 2-Row Asset Library Toolbar Layout.** In `components/AssetLibrarySidebar.tsx`:
   - Consolidated search input, view mode toggles (`Grid` / `List`), `Select` mode toggle button, filter tabs (`All`, `Pinned`, `Favs`), and compact sorting dropdown (`Newest`, `Oldest`, `A-Z`, `Z-A`) into a compact, seamlessly aligned 2-row layout.
   - Removed disruptive horizontal border lines between control rows for a unified, un-cluttered visual design in the retro brutalist style.
   - Optimized responsive label display for filter tabs (`Layers`, `Pin`, `Star` icons) and shortened sorting labels to prevent horizontal scrolling and layout overflow.
-- **Asset Library Backup & Restore Dropdown Labeling & Z-Index Layering (`components/AssetExportDropdown.tsx`, `components/AssetLibrarySidebar.tsx`).**
+- **Asset Library Backup & Restore Dropdown Labeling & Z-Index Layering.** In `components/AssetExportDropdown.tsx` and `components/AssetLibrarySidebar.tsx`:
   - Renamed the asset library header dropdown button from "Port Assets" to **"Backup / Restore"** (with header subtext `"ASSET BACKUP & RESTORE (JSON)"`) for clearer, user-friendly intent.
   - Added `relative z-30` styling to `#asset-library-header` in `AssetLibrarySidebar.tsx`, fixing z-index clipping issues and ensuring dropdown menus overlay smoothly over the upload dropzone and asset list.
-- **Content-Hash Integration Across the Full Image Lifecycle (`app/page.tsx`, `lib/history-export.ts`).** Threaded `contentHash` computation into the workspace image uploader (`handleImageUpload`), library asset importer (`handleAddLibraryImageToWorkspace`), history save (on generation completion), history restore (when recalling saved generations), and history export/import (`lib/history-export.ts` — both `exportHistoryToJSON()` and `importHistoryFromJSON()`), ensuring new image additions immediately benefit from content-hash deduplication and that historical entries preserve hash-based asset traceability. Added a legacy history contentHash backfill step via `ensureHistoryHasContentHashes()` on application load, which scans existing history items for missing hashes, pulls missing base64 data from IndexedDB, and computes and stores hashes in-place. The `lib/content-hash.ts` module also includes an automatic FNV-1a 64-bit fallback hash function for browser environments where Web Crypto SHA-256 is unavailable, ensuring consistent deduplication across all platforms.
-- **Updated System Documentation (`AGENTS.md`).** Updated core project documentation to reflect IndexedDB v3 schema, `contentHash` indexing, and transparent payload deduplication mechanisms.
-- **Development Server Binds to All Network Interfaces (`package.json`).** The `dev` script now runs `next dev -p 3000 -H 0.0.0.0`, improving accessibility for containerized and remote development environments.
-- **Release Notes Preset Descriptions Aligned with Education Focus (`RELEASE_NOTES_v2.md`).** Updated the Film Lingo and Motion Lab preset descriptions to drop AI prompt-generation language, keeping the v2.4 release notes consistent with the v2.4.1 preset refocus.
+- **Content-Hash Integration Across the Full Image Lifecycle.** Threaded `contentHash` computation into the workspace image uploader (`handleImageUpload`), library asset importer (`handleAddLibraryImageToWorkspace`), history save (on generation completion), history restore (when recalling saved generations), and history export/import (`lib/history-export.ts` — both `exportHistoryToJSON()` and `importHistoryFromJSON()`), ensuring new image additions immediately benefit from content-hash deduplication and that historical entries preserve hash-based asset traceability. Added a legacy history contentHash backfill step via `ensureHistoryHasContentHashes()` on application load, which scans existing history items for missing hashes, pulls missing base64 data from IndexedDB, and computes and stores hashes in-place. The `lib/content-hash.ts` module also includes an automatic FNV-1a 64-bit fallback hash function for browser environments where Web Crypto SHA-256 is unavailable, ensuring consistent deduplication across all platforms.
+- **API Route Execution Timeout Increased to 300s.** In `app/api/generate/route.ts`, increased `maxDuration` from 60 seconds to 300 seconds (5 minutes) on the serverless `/api/generate` route to accommodate longer-running generations, agentic video timeline exploration, large multimodal document parsing, and high-thinking reasoning tasks without timing out.
+- **Upgraded `@google/genai` to `^2.20.0`.** Upgraded the official Google Gen AI SDK in `package.json` and `package-lock.json` from `^2.4.0` to `^2.20.0` to export the official `MediaProcessing.AGENTIC` enum for agentic video understanding and resolve production build errors on Vercel.
+- **Build Artifacts Git Ignore Update.** Added `*.tsbuildinfo` to `.gitignore` to prevent TypeScript incremental build metadata caches from polluting git repositories.
+- **Updated System Documentation.** Updated `AGENTS.md` to reflect IndexedDB v3 schema, `contentHash` indexing, and transparent payload deduplication mechanisms.
+- **Development Server Binds to All Network Interfaces.** The `dev` script in `package.json` now runs `next dev -p 3000 -H 0.0.0.0`, improving accessibility for containerized and remote development environments.
+- **Release Notes Preset Descriptions Aligned with Education Focus.** In `RELEASE_NOTES_v2.md`, updated the Film Lingo and Motion Lab preset descriptions to drop AI prompt-generation language, keeping the v2.4 release notes consistent with the v2.4.1 preset refocus.
+
+### Architecture & Refactoring
+
+- **Extracted `PromptConfigModal` Component.** Extracted the entire System Prompt & Prompt Template configuration editor, preset management dashboard, search filters, and diff comparator (~860 lines) from `app/page.tsx` into a dedicated, reusable component (`components/PromptConfigModal.tsx`), reducing `app/page.tsx` line count by ~650 lines and establishing cleaner modular boundaries.
 
 ### Fixed
 
-- **LocalStorage QuotaExceededError Prevention & Legacy Key Cleanup (`lib/projects.ts`).** Fixed `QuotaExceededError` crashes by removing redundant legacy `prompt_generator_history_v1` LocalStorage writes in `syncActiveProjectToLocalStorage()`, immediately freeing up ~2.6 MB of duplicate storage space. Wrapped remaining `localStorage.setItem` history syncing calls in `try/catch` blocks so full project state remains safely preserved in IndexedDB even if LocalStorage hits browser quota limits.
+- **LocalStorage QuotaExceededError Prevention & Legacy Key Cleanup.** In `lib/projects.ts`, fixed `QuotaExceededError` crashes by removing redundant legacy `prompt_generator_history_v1` LocalStorage writes in `syncActiveProjectToLocalStorage()`, immediately freeing up ~2.6 MB of duplicate storage space. Wrapped remaining `localStorage.setItem` history syncing calls in `try/catch` blocks so full project state remains safely preserved in IndexedDB even if LocalStorage hits browser quota limits.
 
 ---
 
