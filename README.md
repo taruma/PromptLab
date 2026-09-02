@@ -33,7 +33,7 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 - **Gemini Files API** — Upload media files up to 2 GB via Google's Gemini Files API with real-time progress tracking. Browse and reuse previously uploaded files from a built-in file browser — no re-uploading needed.
 
 ### 🤖 AI Engine
-- **Multiple Gemini Models** — Switch between Gemini 3.5 Flash, 3.5 Flash-Lite, 3.1 Pro Preview, and more.
+- **Multiple Gemini Models** — Switch between Gemini 3.8 Flash, 3.7 Flash, 3.6 Flash, 3.5 Flash-Lite, 3.1 Pro Preview, and more.
 - **Temperature & Reasoning Control** — Fine-tune creativity (0.0–2.0) and choose from four reasoning effort levels (MINIMAL through HIGH).
 - **Engine Reasoning Trace** — Watch the model's internal thinking process stream in real-time alongside your output, with a pulsing indicator during active processing.
 - **Token Usage & Cost Tracking** — See exactly how many tokens each generation used (input, output, and cached), with a real-time estimated cost in USD.

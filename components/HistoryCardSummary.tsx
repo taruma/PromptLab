@@ -85,7 +85,7 @@ export default function HistoryCardSummary({ item, className = "" }: HistoryCard
             );
           })()}
           {(item.estimatedCost || item.tokenUsage) && (() => {
-            const costData = item.tokenUsage ? calculateEstimatedCost(item.model || "gemini-3.7-flash", item.tokenUsage) : null;
+            const costData = item.tokenUsage ? calculateEstimatedCost(item.model || "gemini-3.8-flash", item.tokenUsage) : null;
             const displayCost = item.estimatedCost || costData?.formattedTotalCost;
             if (!displayCost) return null;
             const b = costData?.breakdown;
