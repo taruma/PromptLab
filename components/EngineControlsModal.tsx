@@ -37,9 +37,9 @@ const LATEST_MODELS: ModelOption[] = [
     id: "gemini-flash-latest",
     name: "Gemini Flash Latest",
     isNew: true,
-    subtitle: "✦ gemini-3.7-flash",
+    subtitle: "✦ gemini-3.8-flash",
     cutoff: "Mar 2026",
-    release: "Aug 13, 2026",
+    release: "Sep 2, 2026",
   },
   {
     id: "gemini-flash-lite-latest",
@@ -61,9 +61,17 @@ const LATEST_MODELS: ModelOption[] = [
 
 const SPECIFIC_MODELS: ModelOption[] = [
   {
+    id: "gemini-3.8-flash",
+    name: "Gemini 3.8 Flash",
+    isNew: true,
+    subtitle: "gemini-3.8-flash",
+    cutoff: "Mar 2026",
+    release: "Sep 2, 2026",
+  },
+  {
     id: "gemini-3.7-flash",
     name: "Gemini 3.7 Flash",
-    isNew: true,
+    isNew: false,
     subtitle: "gemini-3.7-flash",
     cutoff: "Mar 2026",
     release: "Aug 13, 2026",
@@ -215,7 +223,7 @@ export default function EngineControlsModal({
   };
 
   const handleResetEngineDefaults = () => {
-    setTempModel("gemini-flash-latest");
+    setTempModel("gemini-3.8-flash");
     setTempThinkingLevel("MEDIUM");
     setTempTemperature(1.0);
     setTempMaxTokens("");

@@ -4,6 +4,30 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ---
 
+## [v2.5.1] — September 3, 2026
+
+### Added
+
+- **Gemini 3.8 Flash Support & Default Model Baseline.**
+  - Added full support for **Gemini 3.8 Flash** (`gemini-3.8-flash`), setting it as the new default model across the active workspace state (`app/page.tsx`), server-side generation handler fallback (`app/api/generate/route.ts`), Engine Controls modal reset defaults action (`components/EngineControlsModal.tsx`), and history cost estimation fallbacks (`HistoryCardSummary.tsx` & `HistoryViewerModal.tsx`).
+  - Added `gemini-3.8-flash` to the Specific Models list (`SPECIFIC_MODELS`) with release date `Sep 2, 2026`, knowledge cutoff `Mar 2026`, and `NEW` indicator badge in `components/EngineControlsModal.tsx`.
+  - Updated `MODEL_ALIASES["gemini-flash-latest"]` in `lib/pricing.ts` to resolve directly to `gemini-3.8-flash`, and updated the `LATEST_MODELS` Flash entry in `EngineControlsModal` with subtitle `✦ gemini-3.8-flash` and release date `Sep 2, 2026`.
+  - Updated the Quick Model Selector (`components/QuickModelSelector.tsx`) dropdown badge for Flash to `3.8` and added concise label mapping for `gemini-3.8-flash` (`3.8 Flash`).
+  - Integrated **Agentic Video Understanding** support for `gemini-3.8-flash` in `lib/video-utils.ts` (`isAgenticVideoSupported`), enabling autonomous video timeline exploration (`Think → Act → Observe`) with dynamic frame extraction on Gemini 3.8 Flash.
+  - Updated video reference tooltips in `components/VideoAssetCard.tsx` to reflect support for Gemini 3.8 / 3.7 Flash models.
+
+### Changed
+
+- **Introductory Promotional Pricing for Gemini 3.8 Flash, 3.7 Flash, and 3.6 Flash.**
+  - Updated the model pricing configuration table (`MODEL_PRICING_TABLE` in `lib/pricing.ts`) with Google's official introductory promotional rates effective through December 31, 2026 across **Gemini 3.8 Flash**, **Gemini 3.7 Flash**, and **Gemini 3.6 Flash**:
+    - **Input Tokens**: **$0.75** per 1M tokens ($0.00000075 / token; standard rate $1.50).
+    - **Output Tokens** (including reasoning thoughts): **$3.75** per 1M tokens ($0.00000375 / token; standard rate $7.50).
+    - **Context Cache Base**: **$0.075** per 1M tokens ($0.000000075 / token; standard rate $0.15).
+    - **Context Cache Storage**: **$0.50** per 1M tokens / hour (standard rate $1.00).
+  - Ensured real-time cost estimation in `GenerationResultView.tsx`, itemized breakdown popover, history items, and UI model selector rate badges (`IN: $0.75 / 1M` / `OUT: $3.75 / 1M`) automatically compute using the promotional rates.
+
+---
+
 ## [v2.5.0] — September 2, 2026
 
 ### Added

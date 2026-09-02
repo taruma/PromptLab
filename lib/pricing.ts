@@ -44,7 +44,7 @@ export interface ModelPricingConfig {
  * Model Alias mapping table (maps alias ID to canonical model ID)
  */
 export const MODEL_ALIASES: Record<string, string> = {
-  "gemini-flash-latest": "gemini-3.7-flash",
+  "gemini-flash-latest": "gemini-3.8-flash",
   "gemini-flash-lite-latest": "gemini-3.5-flash-lite",
   "gemini-pro-latest": "gemini-3.1-pro-preview",
 };
@@ -54,22 +54,34 @@ export const MODEL_ALIASES: Record<string, string> = {
  * Rates in USD per 1,000,000 tokens
  */
 export const MODEL_PRICING_TABLE: Record<string, ModelPricingConfig> = {
+  "gemini-3.8-flash": {
+    name: "Gemini 3.8 Flash",
+    rate: {
+      // Introductory promotional pricing through Dec 31, 2026 (standard rates $1.50 in / $7.50 out starting Jan 1, 2027)
+      inputPricePer1M: 0.75,
+      outputPricePer1M: 3.75,
+      contextCacheBasePricePer1M: 0.075,
+      contextCacheStoragePricePerHourPer1M: 0.50,
+    },
+  },
   "gemini-3.7-flash": {
     name: "Gemini 3.7 Flash",
     rate: {
-      inputPricePer1M: 1.50,
-      outputPricePer1M: 7.50,
-      contextCacheBasePricePer1M: 0.15,
-      contextCacheStoragePricePerHourPer1M: 1.00,
+      // Introductory promotional pricing through Dec 31, 2026 (standard rates $1.50 in / $7.50 out starting Jan 1, 2027)
+      inputPricePer1M: 0.75,
+      outputPricePer1M: 3.75,
+      contextCacheBasePricePer1M: 0.075,
+      contextCacheStoragePricePerHourPer1M: 0.50,
     },
   },
   "gemini-3.6-flash": {
     name: "Gemini 3.6 Flash",
     rate: {
-      inputPricePer1M: 1.50,
-      outputPricePer1M: 7.50,
-      contextCacheBasePricePer1M: 0.15,
-      contextCacheStoragePricePerHourPer1M: 1.00,
+      // Introductory promotional pricing through Dec 31, 2026 (standard rates $1.50 in / $7.50 out starting Jan 1, 2027)
+      inputPricePer1M: 0.75,
+      outputPricePer1M: 3.75,
+      contextCacheBasePricePer1M: 0.075,
+      contextCacheStoragePricePerHourPer1M: 0.50,
     },
   },
   "gemini-3.5-flash": {

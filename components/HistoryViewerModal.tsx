@@ -931,7 +931,7 @@ export default function HistoryViewerModal({
                     );
                   })()}
                   {(selectedItem.estimatedCost || selectedItem.tokenUsage) && (() => {
-                    const costData = selectedItem.tokenUsage ? calculateEstimatedCost(selectedItem.model || "gemini-3.7-flash", selectedItem.tokenUsage) : null;
+                    const costData = selectedItem.tokenUsage ? calculateEstimatedCost(selectedItem.model || "gemini-3.8-flash", selectedItem.tokenUsage) : null;
                     const displayCost = selectedItem.estimatedCost || costData?.formattedTotalCost;
                     if (!displayCost) return null;
                     const b = costData?.breakdown;

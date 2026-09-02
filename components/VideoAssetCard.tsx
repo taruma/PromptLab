@@ -280,10 +280,10 @@ export default function VideoAssetCard({
                   )}
                   title={
                     isAgenticBypassed
-                      ? "Agentic mode is preserved, but temporarily bypassed (requires Gemini 3.7 Flash). Executing as Static."
+                      ? "Agentic mode is preserved, but temporarily bypassed (requires Gemini 3.8 / 3.7 Flash). Executing as Static."
                       : isAgenticSupported
                       ? "Model dynamically navigates video frames"
-                      : "Agentic mode requires Gemini 3.7 Flash model"
+                      : "Agentic mode requires Gemini 3.8 / 3.7 Flash model"
                   }
                 >
                   <span>Agentic</span>
