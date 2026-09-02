@@ -366,8 +366,16 @@ When adding a new Gemini model or updating the default baseline, synchronize all
 ### Rule Q: Modular Hook Extraction for Workspace Logic
 **DO NOT inflate `app/page.tsx` with large DOM listeners, multi-step lifecycle effects, or isolated sub-system logic.**
 - `app/page.tsx` serves as the declarative root workspace coordinating state and rendering layouts.
-- Any new window/document event listeners (e.g. clipboard paste, keyboard shortcuts), complex URL parsers, or isolated feature integrations must be encapsulated in dedicated custom hooks under `/hooks` (following the pattern of `useUrlPresetImport` and `useClipboardImagePaste`).
-- `app/page.tsx` should only invoke the hook with declarative callbacks and boolean guards (e.g., `isEnabled: !isAnyModalActive`).
+- Any new window/document event listeners (e.g. clipboard paste, keyboard shortcuts), complex URL parsers, or isolated feature integrations must be encapsulated in dedicated custom hooks under `/hooks` (following the pattern of `useUrlPresetImport`, `useClipboardImagePaste`, and `useGenerateShortcut`).
+- `app/page.tsx` should only invoke the hook with declarative callbacks and boolean guards (e.g., `isEnabled: !isLoading && !isAnyModalActive`).
+
+### Rule R: Global Keyboard Shortcuts & Input Safety
+When introducing global or scoped keyboard shortcuts to PromptLab, adhere to these invariants:
+- **Cross-Platform Compatibility**: Always support both `e.ctrlKey` (Windows/Linux) and `e.metaKey` (macOS Command key).
+- **Input Side-Effect Suppression**: Call `e.preventDefault()` on intercepted key events to prevent unintended side effects (such as inserting unwanted newline characters in active `<textarea>` elements or triggering accidental form submissions).
+- **Listener Ref Stability**: Use `useRef` inside custom shortcut hooks to store the active callback reference (`callbackRef.current = callback`), avoiding listener detachment and re-attachment thrashing on every form keystroke.
+- **Compound Execution & Overlay Gates**: Gate execution using compound state checks (`!isLoading && !isAnyModalActive`) so shortcuts never trigger duplicate background actions or fire while modals/dialogs are open.
+- **Brutalist Visual Affordances**: Pair shortcuts with compact `<kbd>` badges (`font-mono text-[9px] border border-[#D1D1CF] rounded-none`) and descriptive `title` tooltips on trigger buttons to ensure clear discoverability without cluttering mobile viewports (`hidden sm:inline-block`).
 
 ---
 
