@@ -199,6 +199,34 @@ The workspace reads dynamic template specifications from the currently configure
 - **Pricing Rate Display**: Each model selection card in the `EngineControlsModal` displays per-model input and output pricing rates (`IN: $X.XX / 1M` / `OUT: $X.XX / 1M`) in its footer, sourced from `getModelPricingSummary()` in `lib/pricing.ts`. Tiered pricing models (e.g., `gemini-3.1-pro-preview`) display a range (e.g. `$2.00–$4.00 / 1M`). Google's introductory promotional rates (effective through December 31, 2026 at $0.75 / 1M input and $3.75 / 1M output) are configured for Gemini 3.8 Flash, Gemini 3.7 Flash, and Gemini 3.6 Flash.
 - **Defaults Reset**: An interactive **Reset Defaults** action is available within the modal footer to restore the system's baseline configuration instantly (resetting to Gemini 3.8 Flash).
 - **Metadata Visibility**: The active Engine, Reasoning Level, and Temperature parameters are constantly reported in the workspace footer next to the system status indicator.
+- **Static Pricing Architecture**: Neither Google AI Studio nor the `@google/genai` SDK exposes a runtime pricing API. Pricing is maintained as an offline, zero-latency lookup table in `lib/pricing.ts` (`MODEL_PRICING_TABLE`). When Google publishes promotional introductory pricing (e.g., rates through a specific deadline), rates in `lib/pricing.ts` are set to the active promotional rates with inline comments documenting standard transition dates.
+
+#### Model Addition & Version Upgrade Checklist
+When adding a new Gemini model or updating the default baseline, synchronize all of the following touchpoints:
+
+1. **Central Pricing & Aliases (`lib/pricing.ts`)**:
+   - Add model config to `MODEL_PRICING_TABLE` with current input/output rates, context cache base, and storage rates.
+   - Update `MODEL_ALIASES` (e.g., `gemini-flash-latest`) if the new model becomes the canonical alias target.
+2. **Workspace Default (`app/page.tsx`)**:
+   - Update `selectedModel` initial state hook default value.
+3. **Server Generation Fallback (`app/api/generate/route.ts`)**:
+   - Update `model = "gemini-..."` default parameter in POST handler.
+4. **Engine Controls Modal (`components/EngineControlsModal.tsx`)**:
+   - Add entry to `SPECIFIC_MODELS` with `id`, `name`, `subtitle`, `cutoff`, `release`, and `isNew: true`.
+   - Update `LATEST_MODELS` subtitle and release metadata if updating an alias.
+   - Update `handleResetEngineDefaults` to restore to the new baseline.
+5. **Quick Model Selector (`components/QuickModelSelector.tsx`)**:
+   - Add brief model label mapping in `getBriefModelLabel()` (e.g., `"3.8 Flash"`).
+   - Update quick-switch button version badge in Row 2 if updating a latest alias.
+6. **Agentic Video Support (`lib/video-utils.ts` & `components/VideoAssetCard.tsx`)**:
+   - Add model ID substring to `isAgenticVideoSupported()` if the model supports agentic timeline exploration.
+   - Update video card tooltips in `VideoAssetCard.tsx` accordingly.
+7. **History Cost Fallbacks (`components/HistoryCardSummary.tsx` & `components/HistoryViewerModal.tsx`)**:
+   - Update fallback model parameter in `calculateEstimatedCost(item.model || "...", item.tokenUsage)`.
+8. **Versioning & Documentation**:
+   - Bump version in `package.json` and `package-lock.json`.
+   - Add entry to `CHANGELOG.md` and create `docs/RELEASE_NOTES_vX.X.X.md`.
+   - Synchronize `AGENTS.md` and `README.md`.
 
 ### Rule D: Multi-modal Reference Handling (Images, Videos, Audio, Documents & Files API)
 
@@ -326,6 +354,10 @@ The workspace reads dynamic template specifications from the currently configure
 - **Cross-Tab Synchronization**: A `BroadcastChannel` (`promptlab_project_sync_channel`) broadcasts project switch, update, create, and delete events between browser tabs. The `broadcastProjectChange()` and `subscribeProjectChanges()` utilities in `lib/projects.ts` handle the messaging layer, and a listener in `app/page.tsx` reloads the active project state when notified.
 - **Project Import/Export**: `exportProjectJSON()` packages the full project configuration plus all asset image blobs (retrieved from IndexedDB `images` store) into a downloadable JSON blob. `importProjectJSON()` validates the payload, restores images to IndexedDB, handles name collisions with incrementing suffixes, and saves the imported project. Exported filenames follow a unified lowercase convention: `promptlab_{projectSlug}_project_backup_{date}_{time}_{uniqueId}.json`.
 - **Current Project Tracking**: The active project ID is persisted in `localStorage` (`promptlab_current_project_id`) and restored on next session load. If the stored ID is invalid or missing, the most recently updated project is selected as the default.
+
+### Rule P: Markdown Documentation Formatting & Link Hygiene
+- **No Absolute `file:///` URLs in Committed Files**: While AI coding assistants use `file:///` links in interactive chat conversations for IDE navigation, committed repository files (such as files in `/docs`, `CHANGELOG.md`, `README.md`, or source code comments) must **NEVER** contain local absolute `file:///` paths.
+- **Path Formatting Standard**: Always use clean code ticks (e.g., `lib/pricing.ts`, `app/page.tsx`) or relative Markdown links when referencing files in documentation.
 
 ---
 
