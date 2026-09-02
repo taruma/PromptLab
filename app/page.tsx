@@ -58,6 +58,7 @@ import StorageUsageModal from "../components/StorageUsageModal";
 import GenerationResultView from "../components/GenerationResultView";
 import { useUrlPresetImport } from "../hooks/use-url-preset-import";
 import { useClipboardImagePaste } from "../hooks/use-clipboard-image-paste";
+import { useGenerateShortcut } from "../hooks/use-generate-shortcut";
 import { calculateEstimatedCost } from "../lib/pricing";
 import {
   exportPresetsToJSON,
@@ -2194,6 +2195,12 @@ export default function PromptGeneratorPage() {
     return "Custom Key";
   };
 
+  // Keyboard shortcut listener to trigger generation (Ctrl+Enter / Cmd+Enter)
+  useGenerateShortcut({
+    onGenerate: handleGeneratePrompt,
+    isEnabled: !isLoading && !isAnyModalActive,
+  });
+
   return (
     <div className="min-h-screen bg-[#F4F4F2] flex flex-col font-sans text-[#1A1A1A]" id="main-content">
       {/* Header */}
@@ -2284,6 +2291,7 @@ export default function PromptGeneratorPage() {
                   : "bg-[#1A1A1A] text-white hover:bg-[#333] border border-[#1A1A1A]"
               }`}
               id="generate-prompt-btn"
+              title="Generate Sequence (Ctrl + Enter)"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -2291,7 +2299,12 @@ export default function PromptGeneratorPage() {
                   Synthesizing Sequence...
                 </span>
               ) : (
-                "Generate Sequence"
+                <span className="flex items-center justify-center gap-2">
+                  <span>Generate Sequence</span>
+                  <kbd className="hidden sm:inline-block font-mono text-[9px] tracking-normal px-1.5 py-0.5 bg-white/10 text-white/70 border border-white/20 rounded-none font-normal">
+                    Ctrl+↵
+                  </kbd>
+                </span>
               )}
             </button>
           </div>

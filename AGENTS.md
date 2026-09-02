@@ -109,6 +109,7 @@ Key differentiators:
 │   └── content-hash.ts             # SHA-256 content hashing for image deduplication with FNV-1a fallback, and legacy history contentHash backfill utility
 ├── /hooks
 │   ├── use-clipboard-image-paste.ts # Global clipboard image paste listener hook (Ctrl+V / Cmd+V) with MIME extraction and modal safety gates
+│   ├── use-generate-shortcut.ts     # Global generation keyboard shortcut hook (Ctrl+Enter / Cmd+Enter) with modal & loading safety gates
 │   ├── use-mobile.ts                # Screen size hook helper (< 768px breakpoint)
 │   └── use-url-preset-import.ts     # URL preset import logic hook: query param detection, fetch, validation, dedup, workspace application, and openJsonPresetImport for local file workflow
 ├── /assets                          # Reserved for future static asset storage (currently empty)

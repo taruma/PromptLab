@@ -16,6 +16,13 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
     - **No Text Interference**: Clipboard events containing only text or HTML are bypassed, ensuring native text paste inside `<input>` and `<textarea>` fields (Main Objective, dynamic parameter forms, prompt editors, search bars) functions completely uninterrupted.
     - **Modal Protection**: Automatically bypasses workspace image paste whenever any major modal or overlay (Prompt Config, Engine Controls, History Viewer, Files API, Preset Compare, Storage Usage, Project Manager) is active.
 
+- **Generation Keyboard Shortcut (`Ctrl+Enter` / `Cmd+Enter`).**
+  - Added native keyboard shortcut support to trigger sequence synthesis (`handleGeneratePrompt`) using standard <kbd>Ctrl+Enter</kbd> (Windows/Linux) or <kbd>Cmd+Enter</kbd> (macOS).
+  - Integrated `e.preventDefault()` handling to prevent accidental newline insertions when triggering generation from multiline `<textarea>` elements (such as **Main Objective / Idea**).
+  - **Modular Architecture (`hooks/use-generate-shortcut.ts`)**: Extracted keyboard event listening and callback ref synchronization into a dedicated custom hook to avoid re-binding window listeners on every keystroke.
+  - **Safety Gates**: Shortcut is disabled when a generation sequence is currently processing (`isLoading`) or when any modal overlay or dialog (`isAnyModalActive`) is open.
+  - **Visual Indicator**: Added a subtle Analog Brutalist `<kbd>` badge (`Ctrl+↵`) and descriptive tooltip to the "Generate Sequence" button, plus documentation in Step 4 of the Lab Manual.
+
 ---
 
 ## [v2.5.1] — September 3, 2026
