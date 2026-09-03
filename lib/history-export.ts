@@ -1,5 +1,8 @@
 import { getStoredImage, saveStoredImage } from "./indexeddb";
 import { computeContentHash } from "./content-hash";
+import { HistoryItem } from "../types/history";
+
+export type { HistoryItem };
 
 export interface HistoryImageRef {
   id?: string;
@@ -18,33 +21,6 @@ export interface HistoryVideoRef {
   isYouTube?: boolean;
   base64?: string;
   processingMode?: "STATIC" | "AGENTIC";
-}
-
-export interface HistoryItem {
-  id: string;
-  timestamp: string;
-  variables: Record<string, string>;
-  images: HistoryImageRef[];
-  videos?: HistoryVideoRef[];
-  output: string;
-  filledPrompt: string;
-  promptTemplate?: string;
-  systemPrompt?: string;
-  presetLabel?: string;
-  name?: string;
-  model?: string;
-  thinkingLevel?: string;
-  temperature?: number;
-  maxTokens?: string;
-  isFavorite?: boolean;
-  tokenUsage?: {
-    promptTokens?: number;
-    candidatesTokens?: number;
-    totalTokens?: number;
-    cachedTokens?: number;
-    thoughtTokens?: number;
-  };
-  estimatedCost?: string;
 }
 
 export interface HistoryExportPayload {

@@ -2,8 +2,9 @@
 
 import React from "react";
 import { FolderOpen } from "lucide-react";
-import { HistoryItem } from "./HistorySection";
+import { HistoryItem } from "../types/history";
 import HistoryCardSummary from "./HistoryCardSummary";
+import { useModalEscape } from "../hooks/use-modal-stack";
 
 interface LoadWorkspaceConfirmModalProps {
   item: HistoryItem | null;
@@ -16,6 +17,8 @@ export default function LoadWorkspaceConfirmModal({
   onClose,
   onConfirm,
 }: LoadWorkspaceConfirmModalProps) {
+  useModalEscape(item !== null, onClose);
+
   if (!item) return null;
 
   return (

@@ -23,6 +23,26 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
   - **Safety Gates**: Shortcut is disabled when a generation sequence is currently processing (`isLoading`) or when any modal overlay or dialog (`isAnyModalActive`) is open.
   - **Visual Indicator**: Added a subtle Analog Brutalist `<kbd>` badge (`Ctrl+↵`) and descriptive tooltip to the "Generate Sequence" button, plus documentation in Step 4 of the Lab Manual.
 
+- **Universal LIFO Modal Escape Stack (`hooks/use-modal-stack.ts`).**
+  - Introduced a reusable `useModalEscape` hook powered by a global module-level Last-In, First-Out (LIFO) stack array to coordinate modal and overlay dismissals reliably.
+  - Pressing <kbd>Escape</kbd> automatically pops and invokes strictly the topmost active overlay or dialog, preventing accidental double-closes or parent dismissals.
+  - Connected `HistoryViewerModal`, `VideoPlayerModal`, `DeleteHistoryConfirmModal`, `LoadWorkspaceConfirmModal`, and `ClearHistoryConfirmModal` to the universal stack.
+
+- **Canonical History Type System (`types/history.ts`).**
+  - Established a dedicated `types/history.ts` module as the single source of truth for `HistoryItem`, `HistoryImage`, `HistoryVideo`, `HistoryTokenUsage`, `HistorySearchScope`, and `HistoryExportResult`.
+  - Replaced duplicate interface definitions across `app/page.tsx`, `components/HistoryViewerModal.tsx`, `components/HistorySection.tsx`, `components/HistoryCardSummary.tsx`, and `lib/history-export.ts`.
+
+- **Modular History Viewer Decomposition (`components/history/`).**
+  - Decomposed the monolithic 1,430-line `HistoryViewerModal.tsx` down to a clean ~380-line orchestrator by extracting single-responsibility subcomponents into `components/history/`:
+    - `HistoryListSidebar.tsx`: Search bar with clear button, search scope selector dropdown, All/Favorites tabs, scrollable slot card list, and inline slot renaming.
+    - `HistoryDetailPanel.tsx`: Header, engine specs bar, media gallery, dynamic parameters table, main objective / idea box, collapsible compiled prompt, and generation output preview.
+    - `HistoryCostPopover.tsx`: Itemized token cost breakdown popover with edge-aware alignment and strict model rate isolation.
+    - `HistoryImageCardWithHover.tsx`: Portaled hover preview with viewport boundary detection and SHA-256 content hash badge.
+
+- **Standardized 5-Tier Z-Index Stacking Architecture.**
+  - Formalized consistent z-index tiers across all modal and popover surfaces: Tier 1 Canvas (`z-10`), Tier 2 Primary Modals (`z-50`), Tier 3 Sub-Modals & Confirmations (`z-[60]`), Tier 4 Floating Popovers & Menus (`z-[70]`), and Tier 5 Portaled Hover Previews (`z-[80]`).
+  - Elevated `VideoPlayerModal` when launched from History to Tier 3 (`z-[60]`) to stack properly above `HistoryViewerModal` (`z-50`).
+
 ### Changed
 
 - **Click-to-Toggle Itemized Cost Breakdown Popover.**
@@ -40,6 +60,12 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
     - In `HistoryViewerModal`: canceling inline slot renaming, closing the token cost breakdown popover, and closing the "Export JSON" dropdown menu now capture <kbd>Escape</kbd> without dismissing the parent viewer. Added outside-click detection and container ref for the export dropdown.
     - In `ProjectManagerModal`: canceling internal project deletion prompts, workspace switch prompts, new project creation, or inline project renaming now captures <kbd>Escape</kbd> without closing the manager modal.
   - Updated the body scroll-lock hook (`isAnyModalOpen`) to include all major modals (`isHistoryViewerOpen`, `isProjectManagerOpen`, `isStorageModalOpen`, `isPresetReplaceConfirmOpen`, `isYouTubeModalOpen`, `isFilesApiModalOpen`), ensuring background scrolling is locked whenever any modal is active.
+
+- **Sub-Overlay <kbd>Escape</kbd> Prioritization in History Viewer.**
+  - Fixed an issue where pressing <kbd>Escape</kbd> while the "Export JSON" dropdown menu or the "Cost Breakdown" popover was open closed the entire `HistoryViewerModal`.
+  - Configured `useModalEscape` window listener to use the standard bubbling phase, while dropdown and popover listeners capture on `document` with `e.preventDefault()`, `e.stopPropagation()`, and `e.stopImmediatePropagation()`, guaranteeing sub-overlays dismiss without triggering parent modal closure.
+  - Added native event propagation halts on inline renaming inputs and search filter inputs in `HistoryListSidebar`, allowing one-key search query clearing via <kbd>Escape</kbd> without closing the modal.
+  - Fixed latent double-close bug where closing `VideoPlayerModal` via <kbd>Escape</kbd> inadvertently closed `HistoryViewerModal`.
 
 ---
 

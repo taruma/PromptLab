@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { HistoryItem } from "./HistorySection";
+import { HistoryItem } from "../types/history";
 import { Calendar, Cpu, Bookmark, Image as ImageIcon, Video as VideoIcon, Music, FileText } from "lucide-react";
 import { calculateEstimatedCost } from "@/lib/pricing";
 

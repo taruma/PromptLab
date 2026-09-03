@@ -2,8 +2,9 @@
 
 import React from "react";
 import { Trash2 } from "lucide-react";
-import { HistoryItem } from "./HistorySection";
+import { HistoryItem } from "../types/history";
 import HistoryCardSummary from "./HistoryCardSummary";
+import { useModalEscape } from "../hooks/use-modal-stack";
 
 interface DeleteHistoryConfirmModalProps {
   pendingDeleteId: string | null;
@@ -18,6 +19,8 @@ export default function DeleteHistoryConfirmModal({
   onClose,
   onConfirm,
 }: DeleteHistoryConfirmModalProps) {
+  useModalEscape(pendingDeleteId !== null, onClose);
+
   if (!pendingDeleteId) return null;
 
   const itemToDelete = history.find((h) => h.id === pendingDeleteId);

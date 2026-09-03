@@ -69,10 +69,14 @@ Key differentiators:
 │   ├── DiscardChangesConfirmModal.tsx # Confirmation modal for discarding unsaved prompt config changes
 │   ├── EngineControlsModal.tsx      # Engine configuration modal (model, temperature, API key vault, structured JSON output, JSON schema editor)
 │   ├── FooterStatusBar.tsx          # Bottom status bar showing engine, reasoning, temperature, API key label, live LocalStorage usage indicator, and dynamic version number from package.json
-│   ├── GenerationResultView.tsx     # Generation output panel with formatted markdown / raw / JSON syntax-highlighted toggle, thinking trace visualization, token count display, and estimated cost badge
+│   ├── /history                     # Decomposed subcomponents for HistoryViewerModal
+│   │   ├── HistoryCostPopover.tsx   # Edge-aware token expenditure inspection popover (Tier 4 z-[70]) with model isolation
+│   │   ├── HistoryDetailPanel.tsx   # Detail inspection view (specs, media gallery, parameters table, prompt, output)
+│   │   ├── HistoryImageCardWithHover.tsx # Portaled image thumbnail hover preview with SHA-256 hash badge (Tier 5 z-[80])
+│   │   └── HistoryListSidebar.tsx   # Left sidebar: fuzzy search, scope filter, tabs, history cards, inline rename
 │   ├── HistoryCardSummary.tsx       # Reusable history item preview card (timestamp, media badges, model, preset, excerpt)
 │   ├── HistorySection.tsx           # Collapsible history section in sidebar
-│   ├── HistoryViewerModal.tsx       # Full-screen history browser with import/export
+│   ├── HistoryViewerModal.tsx       # Full-screen history browser orchestrator coordinating sidebar, detail panel, and sub-modals
 │   ├── KofiButton.tsx               # Standalone Ko-fi tipping / support link button component
 │   ├── LabManualSection.tsx         # Collapsible quick-start guide section in sidebar
 │   ├── LoadWorkspaceConfirmModal.tsx # Confirmation modal for loading workspace history item
@@ -111,7 +115,10 @@ Key differentiators:
 │   ├── use-clipboard-image-paste.ts # Global clipboard image paste listener hook (Ctrl+V / Cmd+V) with MIME extraction and modal safety gates
 │   ├── use-generate-shortcut.ts     # Global generation keyboard shortcut hook (Ctrl+Enter / Cmd+Enter) with modal & loading safety gates
 │   ├── use-mobile.ts                # Screen size hook helper (< 768px breakpoint)
+│   ├── use-modal-stack.ts           # Universal LIFO Escape key modal stack coordinator (bubble-phase window listener)
 │   └── use-url-preset-import.ts     # URL preset import logic hook: query param detection, fetch, validation, dedup, workspace application, and openJsonPresetImport for local file workflow
+├── /types
+│   └── history.ts                   # Canonical source of truth for HistoryItem, media references, and token usage types
 ├── /assets                          # Reserved for future static asset storage (currently empty)
 ├── package.json                     # Project dependencies and scripts
 ├── tsconfig.json                    # TypeScript configuration (ES2017 target, bundler module resolution)
@@ -391,20 +398,28 @@ When introducing global or scoped keyboard shortcuts to PromptLab, adhere to the
 4. **Derived Transient UI State**:
    - Do not use `useEffect` to clear active modal/popover states on item selection changes. Store the active record ID (`const [activeId, setActiveId] = useState<string | null>(null)`) and derive visibility (`isOpen = activeId === item.id`) to avoid cascading re-renders and React compiler errors.
 
-### Rule T: Hierarchical Escape Key Handling & Modal Layering
+### Rule T: Universal LIFO Modal Escape Stack & Stacking Architecture
 When introducing, updating, or nesting modals, confirmation prompts, dropdown menus, and fullscreen overlays in PromptLab, adhere strictly to these layering and keyboard dismissal invariants:
-1. **Central Coordinator Pattern (`app/page.tsx`)**:
-   - All workspace-level modals (`isPromptConfigOpen`, `isHistoryViewerOpen`, `isProjectManagerOpen`, `isStorageModalOpen`, `isEngineConfigOpen`, `isYouTubeModalOpen`, `isFilesApiModalOpen`, `isLibraryOpen`) and system confirmation dialogs are coordinated centrally via the window-level <kbd>Escape</kbd> listener in `app/page.tsx`.
-2. **Strict Waterfall Priority (Alerts & Confirmations First)**:
-   - Never bundle confirmation dialogs and parent modals together in an unranked fallback `else` block.
-   - Confirmation dialogs (such as `isDiscardConfirmOpen`, `isPresetReplaceConfirmOpen`, `pendingLoadItem`, `pendingDeleteId`, `isHistoryClearConfirmOpen`, `isClearConfirmOpen`, `isUrlImportConfirmOpen`) and diff comparison overlays (`isCompareOpen`) must take precedence in the `if / else if` hierarchy. Pressing <kbd>Escape</kbd> must dismiss only the top-most confirmation or diff layer, preserving the underlying viewer/manager modal state.
-3. **Internal Sub-Interaction Event Isolation (`e.stopPropagation()`)**:
-   - Modals that feature internal transient controls (inline text renaming inputs, popovers, dropdown action menus, or internal creation cards) must intercept <kbd>Escape</kbd> locally and call `e.stopPropagation()` (or `e.preventDefault()`).
-   - This prevents key events from bubbling up to the window coordinator and inadvertently closing the parent modal during routine sub-actions.
-4. **Comprehensive Body Scroll-Lock Registration**:
-   - Every modal or fullscreen overlay state must be registered in both the global <kbd>Escape</kbd> listener and the `isAnyModalOpen` body scroll-lock `useEffect` (`document.body.style.overflow = "hidden"`) in `app/page.tsx`, as well as the `isAnyModalActive` compound safety gates for clipboard image paste and generation shortcuts.
-5. **Preemptive Scope Transparency for Deceptively Simple Fixes**:
-   - When addressing seemingly trivial user requests (e.g., "make key X close modal Y") that require multi-file defensive refactoring (such as event isolation or coordinator re-ordering), explicitly communicate the cascading hazards being prevented (e.g., double-dismissals, broken text inputs) in the proposal and response.
+
+1. **Universal LIFO Modal Escape Stack (`hooks/use-modal-stack.ts`)**:
+   - All modals, sheets, and full-screen dialogs must register via `useModalEscape(isOpen, onClose)`.
+   - The stack coordinates modal dismissals in strict Last-In, First-Out (LIFO) order using a window-level listener in the **bubbling phase**.
+   - When <kbd>Escape</kbd> is pressed, strictly the top-most active dialog's close handler is popped and executed, preventing double-dismissals of parent dialogs.
+2. **The 5-Tier Z-Index Stacking Context Scale**:
+   - Never use arbitrary magic numbers for z-indexes. Follow the standardized 5-tier stacking system:
+     - **Tier 1: Canvas / Tags** (`z-10`): Floating badges, card actions, asset status tags.
+     - **Tier 2: Primary Fullscreen Modals & Drawers** (`z-50`): `HistoryViewerModal`, `PromptConfigModal`, `ProjectManagerModal`, `AssetLibrarySidebar`, `EngineControlsModal`.
+     - **Tier 3: Sub-Modals & Confirmations** (`z-[60]`): `VideoPlayerModal` (when launched from history), `DeleteHistoryConfirmModal`, `ClearHistoryConfirmModal`, `LoadWorkspaceConfirmModal`, `PresetCompareModal`, `DiscardChangesConfirmModal`.
+     - **Tier 4: Floating Popovers & Action Menus** (`z-[70]`): `HistoryCostPopover`, Export JSON dropdowns, Quick Selector menus.
+     - **Tier 5: Portaled Hover Previews & Tooltips** (`z-[80]`): `HistoryImageCardWithHover` portal, help tooltips.
+3. **Sub-Overlay Capture-Phase Prioritization**:
+   - Transient popovers and dropdown menus (Tier 4) that exist inside an open modal must attach their <kbd>Escape</kbd> listener to `document` in the **capture phase** (`true`) with `e.preventDefault()`, `e.stopPropagation()`, and `e.stopImmediatePropagation()`.
+   - This ensures that pressing <kbd>Escape</kbd> while an export menu or cost popover is active dismisses *only* the sub-overlay, halting the event before it bubbles up to the `window` modal stack.
+4. **Input Field Isolation (Native Event Halts)**:
+   - Inline edit fields (such as slot renaming inputs) and search filter bars must intercept <kbd>Escape</kbd> and invoke `e.nativeEvent.stopImmediatePropagation()`.
+   - This allows clearing search queries or canceling inline edits without triggering modal closure.
+5. **Comprehensive Body Scroll-Lock Registration**:
+   - Every modal or fullscreen overlay state must be registered in the `isAnyModalOpen` body scroll-lock `useEffect` (`document.body.style.overflow = "hidden"`) in `app/page.tsx`, as well as the `isAnyModalActive` compound safety gates for clipboard image paste and generation shortcuts.
 
 ---
 

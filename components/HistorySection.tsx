@@ -2,33 +2,9 @@
 
 import React from "react";
 import { History, Star, Eye, ChevronDown, ChevronRight, FolderOpen, Trash2 } from "lucide-react";
+import { HistoryItem } from "../types/history";
 
-export interface HistoryItem {
-  id: string;
-  timestamp: string;
-  variables: Record<string, string>;
-  images: { id?: string; label: string; base64: string; mimeType: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; contentHash?: string }[];
-  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; processingMode?: "STATIC" | "AGENTIC" }[];
-  output: string;
-  filledPrompt: string;
-  promptTemplate?: string;
-  systemPrompt?: string;
-  presetLabel?: string;
-  name?: string;
-  model?: string;
-  thinkingLevel?: string;
-  temperature?: number;
-  maxTokens?: string;
-  isFavorite?: boolean;
-  tokenUsage?: {
-    promptTokens?: number;
-    candidatesTokens?: number;
-    totalTokens?: number;
-    cachedTokens?: number;
-    thoughtTokens?: number;
-  };
-  estimatedCost?: string;
-}
+export type { HistoryItem };
 
 interface HistorySectionProps {
   history: HistoryItem[];

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { X, Film, ExternalLink } from "lucide-react";
 import YouTubeIcon from "./YouTubeIcon";
 import { extractYouTubeVideoId, isYouTubeUrl } from "../lib/video-utils";
+import { useModalEscape } from "../hooks/use-modal-stack";
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -22,19 +23,7 @@ export default function VideoPlayerModal({
   subLabel,
   onClose,
 }: VideoPlayerModalProps) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-    }
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, onClose]);
+  useModalEscape(isOpen, onClose);
 
   if (!isOpen) return null;
 
@@ -47,7 +36,7 @@ export default function VideoPlayerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1A1A1A]/80 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#1A1A1A]/80 backdrop-blur-xs animate-fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
