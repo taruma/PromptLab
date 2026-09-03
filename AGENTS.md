@@ -378,6 +378,19 @@ When introducing global or scoped keyboard shortcuts to PromptLab, adhere to the
 - **Compound Execution & Overlay Gates**: Gate execution using compound state checks (`!isLoading && !isAnyModalActive`) so shortcuts never trigger duplicate background actions or fire while modals/dialogs are open.
 - **Brutalist Visual Affordances**: Pair shortcuts with compact `<kbd>` badges (`font-mono text-[9px] border border-[#D1D1CF] rounded-none`) and descriptive `title` tooltips on trigger buttons to ensure clear discoverability without cluttering mobile viewports (`hidden sm:inline-block`).
 
+### Rule S: Interactive Popovers, Boundary-Aware Positioning & Historical Isolation
+1. **Click-to-Toggle for Multi-Row Data**:
+   - Never use hover (`onMouseEnter`/`onMouseLeave`) for popovers containing multi-line tables, copyable values, or interactive controls. Use intentional click-to-toggle with active button styling (`aria-expanded`, emerald highlight ring).
+   - All interactive popovers must support four dismissal channels: toggle button click, outside-click detection, <kbd>Escape</kbd> key dismissal, and an explicit header close (<kbd>✕</kbd>) button.
+2. **Scroll-Container Boundary Awareness**:
+   - When placing `absolute` popovers inside scrollable containers (`overflow-y-auto` or `overflow-hidden`), never assume `left-0`.
+   - Popovers on triggers situated near the container's right margin must anchor to `right-0` to prevent horizontal clipping by the vertical scrollbar.
+   - For dynamically positioned triggers, measure clearance against the scroll container (`.closest(".overflow-y-auto")`) on open and flip alignment (`left-0` vs `right-0`), capped with `max-w-[calc(100vw-3rem)] sm:max-w-[340px]`.
+3. **Strict Historical Record Isolation**:
+   - When inspecting archived generation items in history explorers, modals, or comparison panels, all calculated metrics (token costs, breakdown rates, model headers) must strictly derive from the archived item's metadata (`item.model`), never leaking or falling back to the active workspace configuration.
+4. **Derived Transient UI State**:
+   - Do not use `useEffect` to clear active modal/popover states on item selection changes. Store the active record ID (`const [activeId, setActiveId] = useState<string | null>(null)`) and derive visibility (`isOpen = activeId === item.id`) to avoid cascading re-renders and React compiler errors.
+
 ---
 
 ## 6. Common Operations & Commands
