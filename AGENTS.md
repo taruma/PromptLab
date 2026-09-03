@@ -403,6 +403,8 @@ When introducing, updating, or nesting modals, confirmation prompts, dropdown me
    - This prevents key events from bubbling up to the window coordinator and inadvertently closing the parent modal during routine sub-actions.
 4. **Comprehensive Body Scroll-Lock Registration**:
    - Every modal or fullscreen overlay state must be registered in both the global <kbd>Escape</kbd> listener and the `isAnyModalOpen` body scroll-lock `useEffect` (`document.body.style.overflow = "hidden"`) in `app/page.tsx`, as well as the `isAnyModalActive` compound safety gates for clipboard image paste and generation shortcuts.
+5. **Preemptive Scope Transparency for Deceptively Simple Fixes**:
+   - When addressing seemingly trivial user requests (e.g., "make key X close modal Y") that require multi-file defensive refactoring (such as event isolation or coordinator re-ordering), explicitly communicate the cascading hazards being prevented (e.g., double-dismissals, broken text inputs) in the proposal and response.
 
 ---
 
