@@ -23,6 +23,14 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
   - **Safety Gates**: Shortcut is disabled when a generation sequence is currently processing (`isLoading`) or when any modal overlay or dialog (`isAnyModalActive`) is open.
   - **Visual Indicator**: Added a subtle Analog Brutalist `<kbd>` badge (`Ctrl+↵`) and descriptive tooltip to the "Generate Sequence" button, plus documentation in Step 4 of the Lab Manual.
 
+### Changed
+
+- **Click-to-Toggle Itemized Cost Breakdown Popover.**
+  - Replaced hover-activated cost breakdown with an intentional click-to-open and click-to-close toggle interaction in the main output panel (`components/GenerationResultView.tsx`), preventing accidental popover flashing on mouse movement.
+  - Added full keyboard accessibility with <kbd>Escape</kbd> key dismissal, outside-click detection, active visual state indicator on the badge button, and a dedicated close button (<kbd>✕</kbd>) in the popover header.
+  - **History Viewer Integration (`components/HistoryViewerModal.tsx`)**: Extended the interactive click-to-toggle cost breakdown popover to the Session History Explorer detail panel. Clicking the cost badge now inspects line-by-line token expenditures (prompt input, context cache savings, candidate output, reasoning thoughts, unit rates per 1M, and total cost) computed strictly using the specific model recorded on each historical generation item (`selectedItem.model`), rather than the active workspace model. Auto-resets popover state cleanly when switching history records or closing the modal.
+  - **Edge-Aware Popover Alignment**: Added dynamic container boundary detection in `HistoryViewerModal`. Because the cost badge is positioned near the right side of the Engine Specs row, the popover defaults to right alignment (`right-0`) and measures available clearance against the scrollable container (`.overflow-y-auto`) on click, preventing line item prices and header controls from being cut off by the vertical scrollbar.
+
 ---
 
 ## [v2.5.1] — September 3, 2026

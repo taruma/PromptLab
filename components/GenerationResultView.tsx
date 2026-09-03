@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Markdown from "react-markdown";
-import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight, Copy, Check, Braces, Lock, CheckCircle2 } from "lucide-react";
+import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight, Copy, Check, Braces, Lock, CheckCircle2, X } from "lucide-react";
 
 interface ReasoningSection {
   id: string;
@@ -240,18 +240,25 @@ export default function GenerationResultView({
   const [isCostPopoverOpen, setIsCostPopoverOpen] = useState<boolean>(false);
   const costPopoverRef = useRef<HTMLDivElement>(null);
 
-  // Close cost breakdown popover on outside click
+  // Close cost breakdown popover on outside click or Escape key
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (costPopoverRef.current && !costPopoverRef.current.contains(e.target as Node)) {
         setIsCostPopoverOpen(false);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsCostPopoverOpen(false);
+      }
+    };
     if (isCostPopoverOpen) {
       document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isCostPopoverOpen]);
 
@@ -397,8 +404,6 @@ export default function GenerationResultView({
                   <div
                     ref={costPopoverRef}
                     className="relative inline-block"
-                    onMouseEnter={() => setIsCostPopoverOpen(true)}
-                    onMouseLeave={() => setIsCostPopoverOpen(false)}
                   >
                     <button
                       type="button"
@@ -406,9 +411,15 @@ export default function GenerationResultView({
                         e.stopPropagation();
                         setIsCostPopoverOpen(prev => !prev);
                       }}
-                      className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 shadow-2xs cursor-pointer transition-colors"
+                      className={`border px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 shadow-2xs cursor-pointer transition-colors select-none ${
+                        isCostPopoverOpen
+                          ? "bg-emerald-200 text-emerald-950 border-emerald-400"
+                          : "bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-300"
+                      }`}
                       id="output-cost-estimate"
-                      title="Click or hover to inspect complete cost breakdown"
+                      title={isCostPopoverOpen ? "Click to close cost breakdown" : "Click to view cost breakdown"}
+                      aria-expanded={isCostPopoverOpen}
+                      aria-haspopup="dialog"
                     >
                       <span>{cost.formattedTotalCost}</span>
                       <span className="text-[7px] text-emerald-700 opacity-70">ⓘ</span>
@@ -424,9 +435,20 @@ export default function GenerationResultView({
                           <span className="font-bold uppercase tracking-wider text-[#1A1A1A] text-[9px]">
                             Cost Breakdown
                           </span>
-                          <span className="text-[8px] bg-[#EAEAE8] border border-[#D1D1CF] px-1 py-0.2 text-[#555] uppercase font-bold">
-                            {cost.modelName}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[8px] bg-[#EAEAE8] border border-[#D1D1CF] px-1 py-0.2 text-[#555] uppercase font-bold">
+                              {cost.modelName}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setIsCostPopoverOpen(false)}
+                              className="text-[#888884] hover:text-[#1A1A1A] p-0.5 hover:bg-[#EAEAE8] transition-colors cursor-pointer"
+                              title="Close cost breakdown"
+                              aria-label="Close cost breakdown"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Line items table */}
