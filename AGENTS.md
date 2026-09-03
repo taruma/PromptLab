@@ -391,6 +391,19 @@ When introducing global or scoped keyboard shortcuts to PromptLab, adhere to the
 4. **Derived Transient UI State**:
    - Do not use `useEffect` to clear active modal/popover states on item selection changes. Store the active record ID (`const [activeId, setActiveId] = useState<string | null>(null)`) and derive visibility (`isOpen = activeId === item.id`) to avoid cascading re-renders and React compiler errors.
 
+### Rule T: Hierarchical Escape Key Handling & Modal Layering
+When introducing, updating, or nesting modals, confirmation prompts, dropdown menus, and fullscreen overlays in PromptLab, adhere strictly to these layering and keyboard dismissal invariants:
+1. **Central Coordinator Pattern (`app/page.tsx`)**:
+   - All workspace-level modals (`isPromptConfigOpen`, `isHistoryViewerOpen`, `isProjectManagerOpen`, `isStorageModalOpen`, `isEngineConfigOpen`, `isYouTubeModalOpen`, `isFilesApiModalOpen`, `isLibraryOpen`) and system confirmation dialogs are coordinated centrally via the window-level <kbd>Escape</kbd> listener in `app/page.tsx`.
+2. **Strict Waterfall Priority (Alerts & Confirmations First)**:
+   - Never bundle confirmation dialogs and parent modals together in an unranked fallback `else` block.
+   - Confirmation dialogs (such as `isDiscardConfirmOpen`, `isPresetReplaceConfirmOpen`, `pendingLoadItem`, `pendingDeleteId`, `isHistoryClearConfirmOpen`, `isClearConfirmOpen`, `isUrlImportConfirmOpen`) and diff comparison overlays (`isCompareOpen`) must take precedence in the `if / else if` hierarchy. Pressing <kbd>Escape</kbd> must dismiss only the top-most confirmation or diff layer, preserving the underlying viewer/manager modal state.
+3. **Internal Sub-Interaction Event Isolation (`e.stopPropagation()`)**:
+   - Modals that feature internal transient controls (inline text renaming inputs, popovers, dropdown action menus, or internal creation cards) must intercept <kbd>Escape</kbd> locally and call `e.stopPropagation()` (or `e.preventDefault()`).
+   - This prevents key events from bubbling up to the window coordinator and inadvertently closing the parent modal during routine sub-actions.
+4. **Comprehensive Body Scroll-Lock Registration**:
+   - Every modal or fullscreen overlay state must be registered in both the global <kbd>Escape</kbd> listener and the `isAnyModalOpen` body scroll-lock `useEffect` (`document.body.style.overflow = "hidden"`) in `app/page.tsx`, as well as the `isAnyModalActive` compound safety gates for clipboard image paste and generation shortcuts.
+
 ---
 
 ## 6. Common Operations & Commands

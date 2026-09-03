@@ -974,27 +974,48 @@ export default function PromptGeneratorPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        // Confirmation & alert dialogs (top priority / highest z-index)
         if (isDiscardConfirmOpen) {
           setIsDiscardConfirmOpen(false);
-        } else if (isPromptConfigOpen) {
+        } else if (isPresetReplaceConfirmOpen) {
+          setIsPresetReplaceConfirmOpen(false);
+          setPendingQuickPreset(null);
+        } else if (pendingLoadItem) {
+          setPendingLoadItem(null);
+        } else if (pendingDeleteId) {
+          setPendingDeleteId(null);
+        } else if (isHistoryClearConfirmOpen) {
+          setIsHistoryClearConfirmOpen(false);
+        } else if (isClearConfirmOpen) {
+          setIsClearConfirmOpen(false);
+        } else if (isUrlImportConfirmOpen) {
+          setIsUrlImportConfirmOpen(false);
+          setUrlPresetData(null);
+        } else if (isCompareOpen) {
+          setIsCompareOpen(false);
+        }
+        // Major modals and panels
+        else if (isPromptConfigOpen) {
           const isModified = tempSystemPrompt !== systemPrompt || tempPromptTemplate !== promptTemplate;
           if (isModified) {
             setIsDiscardConfirmOpen(true);
           } else {
             setIsPromptConfigOpen(false);
           }
-        } else if (pendingLoadItem) {
-          setPendingLoadItem(null);
-        } else if (pendingDeleteId) {
-          setPendingDeleteId(null);
-        } else {
-          setIsLibraryOpen(false);
+        } else if (isHistoryViewerOpen) {
+          setIsHistoryViewerOpen(false);
+        } else if (isProjectManagerOpen) {
+          setIsProjectManagerOpen(false);
+        } else if (isStorageModalOpen) {
+          setIsStorageModalOpen(false);
+        } else if (isEngineConfigOpen) {
           setIsEngineConfigOpen(false);
-          setIsClearConfirmOpen(false);
-          setIsHistoryClearConfirmOpen(false);
-          setIsUrlImportConfirmOpen(false);
-          setIsCompareOpen(false);
-          setUrlPresetData(null);
+        } else if (isYouTubeModalOpen) {
+          setIsYouTubeModalOpen(false);
+        } else if (isFilesApiModalOpen) {
+          setIsFilesApiModalOpen(false);
+        } else if (isLibraryOpen) {
+          setIsLibraryOpen(false);
         }
       }
     };
@@ -1002,11 +1023,50 @@ export default function PromptGeneratorPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isPromptConfigOpen, isDiscardConfirmOpen, tempSystemPrompt, tempPromptTemplate, systemPrompt, promptTemplate, pendingLoadItem, pendingDeleteId]);
+  }, [
+    isPromptConfigOpen,
+    isDiscardConfirmOpen,
+    tempSystemPrompt,
+    tempPromptTemplate,
+    systemPrompt,
+    promptTemplate,
+    pendingLoadItem,
+    pendingDeleteId,
+    isHistoryClearConfirmOpen,
+    isClearConfirmOpen,
+    isUrlImportConfirmOpen,
+    isPresetReplaceConfirmOpen,
+    isCompareOpen,
+    isHistoryViewerOpen,
+    isProjectManagerOpen,
+    isStorageModalOpen,
+    isEngineConfigOpen,
+    isYouTubeModalOpen,
+    isFilesApiModalOpen,
+    isLibraryOpen,
+    setIsUrlImportConfirmOpen,
+    setUrlPresetData
+  ]);
 
   // Prevent body scrolling when any major modal is open
   useEffect(() => {
-    const isAnyModalOpen = isPromptConfigOpen || isEngineConfigOpen || isCompareOpen || isClearConfirmOpen || isHistoryClearConfirmOpen || isUrlImportConfirmOpen || isDiscardConfirmOpen || isLibraryOpen || !!pendingLoadItem || !!pendingDeleteId;
+    const isAnyModalOpen =
+      isPromptConfigOpen ||
+      isEngineConfigOpen ||
+      isCompareOpen ||
+      isClearConfirmOpen ||
+      isHistoryClearConfirmOpen ||
+      isUrlImportConfirmOpen ||
+      isDiscardConfirmOpen ||
+      isLibraryOpen ||
+      isHistoryViewerOpen ||
+      isProjectManagerOpen ||
+      isStorageModalOpen ||
+      isYouTubeModalOpen ||
+      isFilesApiModalOpen ||
+      isPresetReplaceConfirmOpen ||
+      !!pendingLoadItem ||
+      !!pendingDeleteId;
     if (isAnyModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -1015,7 +1075,24 @@ export default function PromptGeneratorPage() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isPromptConfigOpen, isEngineConfigOpen, isCompareOpen, isClearConfirmOpen, isHistoryClearConfirmOpen, isUrlImportConfirmOpen, isDiscardConfirmOpen, isLibraryOpen, pendingLoadItem, pendingDeleteId]);
+  }, [
+    isPromptConfigOpen,
+    isEngineConfigOpen,
+    isCompareOpen,
+    isClearConfirmOpen,
+    isHistoryClearConfirmOpen,
+    isUrlImportConfirmOpen,
+    isDiscardConfirmOpen,
+    isLibraryOpen,
+    isHistoryViewerOpen,
+    isProjectManagerOpen,
+    isStorageModalOpen,
+    isYouTubeModalOpen,
+    isFilesApiModalOpen,
+    isPresetReplaceConfirmOpen,
+    pendingLoadItem,
+    pendingDeleteId
+  ]);
 
   // Process selected image files
   const handleImageFiles = useCallback(async (files: FileList | File[], labelPrefix?: string) => {

@@ -212,6 +212,30 @@ export default function HistoryViewerModal({
   const [statusBanner, setStatusBanner] = useState<{ message: string; isError?: boolean } | null>(null);
   const historyFileInputRef = useRef<HTMLInputElement>(null);
   const selectedItemRef = useRef<HTMLDivElement | null>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close export dropdown menu on outside click or Escape key
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isExportMenuOpen) {
+        e.stopPropagation();
+        setIsExportMenuOpen(false);
+      }
+    };
+    if (isExportMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isExportMenuOpen]);
 
   // Cost breakdown popover state (keyed to selected item ID so it auto-resets when switching items)
   const [costPopoverItemId, setCostPopoverItemId] = useState<string | null>(null);
@@ -364,6 +388,7 @@ export default function HistoryViewerModal({
       setRenamingId(null);
     } else if (e.key === "Escape") {
       e.preventDefault();
+      e.stopPropagation();
       setRenamingId(null);
     }
   };
@@ -491,7 +516,7 @@ export default function HistoryViewerModal({
             </button>
 
             {/* Export Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={exportMenuRef}>
               <button
                 type="button"
                 onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}

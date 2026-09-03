@@ -31,6 +31,16 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
   - **History Viewer Integration (`components/HistoryViewerModal.tsx`)**: Extended the interactive click-to-toggle cost breakdown popover to the Session History Explorer detail panel. Clicking the cost badge now inspects line-by-line token expenditures (prompt input, context cache savings, candidate output, reasoning thoughts, unit rates per 1M, and total cost) computed strictly using the specific model recorded on each historical generation item (`selectedItem.model`), rather than the active workspace model. Auto-resets popover state cleanly when switching history records or closing the modal.
   - **Edge-Aware Popover Alignment**: Added dynamic container boundary detection in `HistoryViewerModal`. Because the cost badge is positioned near the right side of the Engine Specs row, the popover defaults to right alignment (`right-0`) and measures available clearance against the scrollable container (`.overflow-y-auto`) on click, preventing line item prices and header controls from being cut off by the vertical scrollbar.
 
+### Fixed
+
+- **Hierarchical <kbd>Escape</kbd> Key Modal Dismissal & History Viewer Navigation.**
+  - Fixed an issue where pressing <kbd>Escape</kbd> failed to close `HistoryViewerModal` (`isHistoryViewerOpen`), `ProjectManagerModal` (`isProjectManagerOpen`), and `StorageUsageModal` (`isStorageModalOpen`).
+  - Restructured the global <kbd>Escape</kbd> listener in `app/page.tsx` into a strict priority hierarchy: confirmation and alert dialogs (discard prompt changes, preset replace, load workspace, delete slot, clear history, clear session, and URL import confirmation) are dismissed first, preventing accidental simultaneous closure of underlying viewer modals.
+  - Added event isolation (`e.stopPropagation()`) for nested sub-interactions:
+    - In `HistoryViewerModal`: canceling inline slot renaming, closing the token cost breakdown popover, and closing the "Export JSON" dropdown menu now capture <kbd>Escape</kbd> without dismissing the parent viewer. Added outside-click detection and container ref for the export dropdown.
+    - In `ProjectManagerModal`: canceling internal project deletion prompts, workspace switch prompts, new project creation, or inline project renaming now captures <kbd>Escape</kbd> without closing the manager modal.
+  - Updated the body scroll-lock hook (`isAnyModalOpen`) to include all major modals (`isHistoryViewerOpen`, `isProjectManagerOpen`, `isStorageModalOpen`, `isPresetReplaceConfirmOpen`, `isYouTubeModalOpen`, `isFilesApiModalOpen`), ensuring background scrolling is locked whenever any modal is active.
+
 ---
 
 ## [v2.5.1] — September 3, 2026
