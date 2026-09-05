@@ -59,11 +59,30 @@ export interface HistoryItem {
 }
 
 export type HistorySearchScope = 
+  | "all"
   | "default" 
-  | "visual_reference" 
   | "idea" 
   | "output" 
+  | "visual_reference" 
   | "compiled_prompt";
+
+export type HistorySortOption = 
+  | "date_desc" 
+  | "date_asc" 
+  | "cost_desc" 
+  | "cost_asc" 
+  | "name_asc";
+
+export type HistoryMediaType = "image" | "video" | "audio" | "doc";
+
+export interface HistoryFilterState {
+  sortBy: HistorySortOption;
+  searchScope: HistorySearchScope;
+  presetFilter: string; // "all" | presetLabel | "custom"
+  modelFilter: string;  // "all" | modelName
+  thinkingFilter: string; // "all" | "HIGH" | "MEDIUM" | "LOW" | "MINIMAL" | "OFF"
+  mediaFilters: HistoryMediaType[]; // multi-select with AND logic
+}
 
 export interface HistoryExportResult {
   count: number;

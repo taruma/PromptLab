@@ -6,6 +6,18 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 
 ### Added
 
+- **History Modal Sidebar Overhaul: Sorting, Filtering & Grouping Engine (`components/history/HistoryListSidebar.tsx`, `lib/history-grouping.ts`).**
+  - **Collapsible Filter & Sort Drawer**: Integrated a compact `[SORT & FILTER ▾]` drawer button below the search input, displaying an active filter counter badge and an instant `[reset]` action. Houses all sorting, scoping, preset, model, thinking, and media filters in a clean retro-lab drawer to preserve vertical space for the slot list.
+  - **Multi-Select Media Filtering (AND Logic)**: Added interactive toggle chips (`IMG`, `VID`, `AUD`, `DOC`) supporting multi-selection with strict AND matching (e.g. `IMG` + `VID` returns only slots containing both reference images and video clips, while `DOC` matches uploaded text/markdown/PDF documents).
+  - **Dynamic Presets & Models Filtering**: Automatically extracts unique presets from historical records with item counts, plus a dedicated `Custom (No Preset)` option for ad-hoc prompts. Extracted unique models with dynamic item counts.
+  - **Reasoning Level Filter**: Added dropdown selector for filtering by thinking levels (`HIGH`, `MEDIUM`, `LOW`, `MINIMAL`, `OFF`).
+  - **Universal Search & Clarified Scopes**: Introduced a new **"All Content (Universal)"** default search scope that scans across titles, ideas, generated outputs, media reference labels, and compiled prompts in a single query. Clarified individual scope labels for explicit targeting ("Slot Name / Title", "Main Objective (Idea)", "Generated Output", "Media Labels (@image/@video)", and "Compiled Prompt Specs").
+  - **Smart Contextual Date Grouping**: When sorting by Date (newest or oldest), history records are sectioned under sticky, collapsible retro-lab headers (`TODAY`, `YESTERDAY`, `PREVIOUS 7 DAYS`, `OLDER`) with item counts and collapse/expand chevrons. Sorting by Cost or Name seamlessly transitions to a continuous flat ranked list with `#N` rank badges.
+  - **Cost Badges on Cost Sort**: History cards surface an emerald cost badge (`$0.0012`) and formatted token count on Row 3 exclusively when sorting by Cost, preventing visual clutter during standard browsing.
+  - **Keyboard Arrow Navigation**: Added <kbd>ArrowUp</kbd> and <kbd>ArrowDown</kbd> hotkeys to seamlessly step through visible filtered history slots with automatic smooth-scrolling, protected by focus safety gates on text inputs.
+  - **Inspected Slot Retention & Session Persistence**: Retains currently inspected history item in the detail panel even if filter changes exclude it from the sidebar list. Retains active filter/sort selections across modal opens/closes within the session.
+  - **Comprehensive Helper Module (`lib/history-grouping.ts`)**: Encapsulated robust date parsing (handling epoch IDs and formatted date strings), date bucketing, numeric cost parsing, AND-logic media filters, dynamic metadata extractors, and sorting functions into a dedicated utility module with full unit test coverage.
+
 - **Clipboard Image Paste Support (`Ctrl+V` / `Cmd+V`).**
   - Added native support for pasting screenshots and copied images directly from the OS clipboard into the active workspace using standard keyboard shortcuts (<kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd>).
   - Pasted images are automatically processed through PromptLab's HTML Canvas compression pipeline (`compressImageToJpeg` at 90% quality), hashed via SHA-256 (`computeContentHash`) for transparent IndexedDB deduplication, saved into `promptlab_db`, and mapped to dynamic `@imageN` template casting tags.

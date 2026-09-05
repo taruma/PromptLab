@@ -10,10 +10,14 @@ import {
   Loader2, 
   Star 
 } from "lucide-react";
-import { HistoryItem, HistorySearchScope } from "../types/history";
+import { HistoryItem, HistoryFilterState } from "../types/history";
 import { getStoredImage } from "../lib/indexeddb";
 import { exportHistoryToJSON, importHistoryFromJSON } from "../lib/history-export";
-import { matchesSearchQuery } from "../lib/search-utils";
+import { 
+  filterHistoryItems, 
+  sortHistoryItems, 
+  DEFAULT_FILTER_STATE 
+} from "../lib/history-grouping";
 import { useModalEscape } from "../hooks/use-modal-stack";
 import VideoPlayerModal from "./VideoPlayerModal";
 import { HistoryListSidebar } from "./history/HistoryListSidebar";
@@ -51,7 +55,7 @@ export default function HistoryViewerModal({
 
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchScope, setSearchScope] = useState<HistorySearchScope>("default");
+  const [filterState, setFilterState] = useState<HistoryFilterState>(DEFAULT_FILTER_STATE);
   const [activeTab, setActiveTab] = useState<"all" | "favorites">("all");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -95,15 +99,74 @@ export default function HistoryViewerModal({
     };
   }, [isExportMenuOpen]);
 
-  // Derive selectedItem from history and selectedItemId
+  // Reset all filters to default state
+  const handleResetFilters = () => {
+    setFilterState(DEFAULT_FILTER_STATE);
+  };
+
+  // Filter and sort history items based on search query, active tab, and filter criteria
+  const filteredHistory = React.useMemo(() => {
+    const filtered = filterHistoryItems(history, activeTab, searchQuery, filterState);
+    return sortHistoryItems(filtered, filterState.sortBy);
+  }, [history, activeTab, searchQuery, filterState]);
+
+  // Derive selectedItem from history and selectedItemId (retains selected item if available)
   const selectedItem = React.useMemo(() => {
     if (history.length === 0) return null;
     if (selectedItemId) {
       const found = history.find((item) => item.id === selectedItemId);
       if (found) return found;
     }
-    return history[0];
-  }, [history, selectedItemId]);
+    return filteredHistory[0] || history[0];
+  }, [history, filteredHistory, selectedItemId]);
+
+  // Keyboard Arrow Up / Arrow Down navigation through filtered history slots
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleArrowNavigation = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+
+      // Ignore when typing in input, textarea, select, or contenteditable
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT" ||
+          activeEl.getAttribute("contenteditable") === "true")
+      ) {
+        return;
+      }
+
+      if (filteredHistory.length === 0) return;
+
+      e.preventDefault();
+
+      const currentIndex = filteredHistory.findIndex(
+        (item) => item.id === (selectedItem?.id || "")
+      );
+
+      if (e.key === "ArrowDown") {
+        if (currentIndex === -1) {
+          setSelectedItemId(filteredHistory[0].id);
+        } else if (currentIndex < filteredHistory.length - 1) {
+          setSelectedItemId(filteredHistory[currentIndex + 1].id);
+        }
+      } else if (e.key === "ArrowUp") {
+        if (currentIndex === -1) {
+          setSelectedItemId(filteredHistory[filteredHistory.length - 1].id);
+        } else if (currentIndex > 0) {
+          setSelectedItemId(filteredHistory[currentIndex - 1].id);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleArrowNavigation);
+    return () => {
+      window.removeEventListener("keydown", handleArrowNavigation);
+    };
+  }, [isOpen, filteredHistory, selectedItem]);
 
   // Scroll selected item into view when modal opens or selected item changes
   useEffect(() => {
@@ -157,40 +220,6 @@ export default function HistoryViewerModal({
   }, [selectedItem]);
 
   if (!isOpen) return null;
-
-  // Filter history items by search query and activeTab
-  const filteredHistory = history.filter((item) => {
-    if (activeTab === "favorites" && !item.isFavorite) return false;
-    if (!searchQuery.trim()) return true;
-
-    if (searchScope === "default") {
-      const title = item.name || item.variables["idea"] || "Untitled Outline";
-      return matchesSearchQuery(title, searchQuery);
-    }
-
-    if (searchScope === "visual_reference") {
-      const imageLabels = (item.images || []).map((img) => img.label);
-      const videoLabels = (item.videos || []).map((vid) => vid.label);
-      return matchesSearchQuery([...imageLabels, ...videoLabels], searchQuery);
-    }
-
-    if (searchScope === "idea") {
-      const ideaVal = item.variables["idea"] || "";
-      return matchesSearchQuery(ideaVal, searchQuery);
-    }
-
-    if (searchScope === "output") {
-      const outputVal = item.output || "";
-      return matchesSearchQuery(outputVal, searchQuery);
-    }
-
-    if (searchScope === "compiled_prompt") {
-      const filledVal = item.filledPrompt || "";
-      return matchesSearchQuery(filledVal, searchQuery);
-    }
-
-    return true;
-  });
 
   const startRename = (item: HistoryItem, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -431,8 +460,9 @@ export default function HistoryViewerModal({
             setActiveTab={setActiveTab}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
-            searchScope={searchScope}
-            setSearchScope={setSearchScope}
+            filterState={filterState}
+            setFilterState={setFilterState}
+            onResetFilters={handleResetFilters}
             renamingId={renamingId}
             renameValue={renameValue}
             setRenameValue={setRenameValue}
