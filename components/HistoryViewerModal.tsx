@@ -483,6 +483,7 @@ export default function HistoryViewerModal({
             onClose={onClose}
             onCompareHistoryItem={onCompareHistoryItem}
             onPreviewVideo={setPreviewVideo}
+            onRenameHistoryItem={onRenameHistoryItem}
             costPopoverItemId={costPopoverItemId}
             setCostPopoverItemId={setCostPopoverItemId}
             popoverAlign={popoverAlign}

@@ -86,7 +86,7 @@ export const HistoryCostPopover: React.FC<HistoryCostPopoverProps> = ({
       <button
         type="button"
         onClick={handleButtonClick}
-        className={`flex items-center gap-1.5 px-2 py-0.5 border text-emerald-900 transition-colors select-none ${
+        className={`inline-flex items-center h-5 px-2 border text-emerald-900 text-[9px] font-mono font-bold uppercase tracking-wider leading-none transition-colors select-none ${
           b ? "cursor-pointer" : "cursor-default"
         } ${
           isOpen
@@ -101,12 +101,12 @@ export const HistoryCostPopover: React.FC<HistoryCostPopoverProps> = ({
         aria-expanded={isOpen}
         aria-haspopup={b ? "dialog" : undefined}
       >
-        <span className="text-[8px] text-emerald-700 uppercase font-bold">Cost</span>
-        <span className="font-extrabold text-[9px]">
+        <span className="text-[9px] text-emerald-700 font-semibold mr-1.5">COST:</span>
+        <span className="font-extrabold text-emerald-950">
           {displayCost}
         </span>
         {b && (
-          <span className="text-[7px] text-emerald-700 opacity-70">ⓘ</span>
+          <span className="text-[8px] text-emerald-700 opacity-70 ml-1">ⓘ</span>
         )}
       </button>
 
