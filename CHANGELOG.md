@@ -2,12 +2,12 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
-## [v2.6.0-dev] — Unreleased
+## [v2.6.0] — September 6, 2026
 
 ### Added
 
 - **History Modal Preview Panel Redesign: Modular Output Viewer & Retro Lab Aesthetics (`components/history/HistoryDetailPanel.tsx`, `components/history/HistoryOutputViewer.tsx`, `components/history/HistoryFullscreenOutputModal.tsx`).**
-  - **Modular Output & Reasoning Viewer (`HistoryOutputViewer.tsx`)**: Extracted generation output rendering into an isolated, reusable subcomponent featuring multi-mode rendering with **RAW Monospace as the default** on every modal open and slot change. Includes one-click mode switching to Formatted Markdown (`MD`) with styled tables/code blocks and Syntax-Highlighted JSON (`JSON`) with line numbers and token color coding. Displays live character, word, and line count indicators.
+  - **Modular Output & Reasoning Viewer (`HistoryOutputViewer.tsx`)**: Extracted generation output rendering into an isolated, reusable subcomponent featuring multi-mode rendering with **RAW Monospace as the default** on every modal open and slot change. Includes one-click mode switching to Formatted Markdown (`MD`) with styled tables/code blocks and Syntax-Highlighted JSON (`JSON`) with line numbers and token color coding. Displays live character and word count indicators in the toolbar, with an additional line counter surfaced when in JSON view mode.
   - **Collapsible Reasoning / Thinking Trace**: Automatically renders an expandable amber/slate accordion when the model generates thought tokens (`thinkingResult`), surfacing parsed reasoning sections and thought token count metrics.
   - **Distraction-Free Fullscreen Focus Modal (`HistoryFullscreenOutputModal.tsx`)**: Added a dedicated full-viewport reading modal overlay (Tier 3 `z-[60]`) for deep inspection of lengthy outputs and complex JSON payloads, fully integrated with the universal LIFO Escape key stack (`useModalEscape`) for seamless dismissal back to the history explorer.
   - **Inline Title Renaming**: Added an inline edit pencil trigger (`Edit3`) next to the sequence title in the detail header, allowing immediate renaming with <kbd>Enter</kbd> to save, <kbd>Escape</kbd> to cancel, and check/cancel action controls.
@@ -18,7 +18,7 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
   - **Dynamic Parameter Copy Triggers**: Added individual one-click copy buttons with transient `Copied!` visual feedback for each dynamic parameter value.
 
 - **History Modal Sidebar Overhaul: Sorting, Filtering & Grouping Engine (`components/history/HistoryListSidebar.tsx`, `lib/history-grouping.ts`).**
-  - **Collapsible Filter & Sort Drawer**: Integrated a compact `[SORT & FILTER ▾]` drawer button below the search input, displaying an active filter counter badge and an instant `[reset]` action. Houses all sorting, scoping, preset, model, thinking, and media filters in a clean retro-lab drawer to preserve vertical space for the slot list.
+  - **Collapsible Filter & Sort Drawer**: Integrated a compact `[SORT & FILTER ▾]` drawer button below the search input, displaying an active filter counter badge and an instant `[reset]` action. Houses all sorting, preset, model, thinking, and media filters in a clean retro-lab drawer to preserve vertical space for the slot list.
   - **Multi-Select Media Filtering (AND Logic)**: Added interactive toggle chips (`IMG`, `VID`, `AUD`, `DOC`) supporting multi-selection with strict AND matching (e.g. `IMG` + `VID` returns only slots containing both reference images and video clips, while `DOC` matches uploaded text/markdown/PDF documents).
   - **Dynamic Presets & Models Filtering**: Automatically extracts unique presets from historical records with item counts, plus a dedicated `Custom (No Preset)` option for ad-hoc prompts. Extracted unique models with dynamic item counts.
   - **Reasoning Level Filter**: Added dropdown selector for filtering by thinking levels (`HIGH`, `MEDIUM`, `LOW`, `MINIMAL`, `OFF`).
@@ -28,7 +28,7 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
   - **Cost Badges on Cost Sort**: History cards surface an emerald cost badge (`$0.0012`) and formatted token count on Row 3 exclusively when sorting by Cost, preventing visual clutter during standard browsing.
   - **Keyboard Arrow Navigation**: Added <kbd>ArrowUp</kbd> and <kbd>ArrowDown</kbd> hotkeys to seamlessly step through visible filtered history slots with automatic smooth-scrolling, protected by focus safety gates on text inputs.
   - **Inspected Slot Retention & Session Persistence**: Retains currently inspected history item in the detail panel even if filter changes exclude it from the sidebar list. Retains active filter/sort selections across modal opens/closes within the session.
-  - **Comprehensive Helper Module (`lib/history-grouping.ts`)**: Encapsulated robust date parsing (handling epoch IDs and formatted date strings), date bucketing, numeric cost parsing, AND-logic media filters, dynamic metadata extractors, and sorting functions into a dedicated utility module with full unit test coverage.
+  - **Comprehensive Helper Module (`lib/history-grouping.ts`)**: Encapsulated robust date parsing (handling epoch IDs and formatted date strings), date bucketing, numeric cost parsing, AND-logic media filters, dynamic metadata extractors, and sorting functions into a dedicated utility module.
 
 - **Clipboard Image Paste Support (`Ctrl+V` / `Cmd+V`).**
   - Added native support for pasting screenshots and copied images directly from the OS clipboard into the active workspace using standard keyboard shortcuts (<kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd>).
@@ -57,7 +57,7 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
   - Replaced duplicate interface definitions across `app/page.tsx`, `components/HistoryViewerModal.tsx`, `components/HistorySection.tsx`, `components/HistoryCardSummary.tsx`, and `lib/history-export.ts`.
 
 - **Modular History Viewer Decomposition (`components/history/`).**
-  - Decomposed the monolithic 1,430-line `HistoryViewerModal.tsx` down to a clean ~380-line orchestrator by extracting single-responsibility subcomponents into `components/history/`:
+  - Decomposed the monolithic 1,344-line `HistoryViewerModal.tsx` down to a clean ~500-line orchestrator by extracting single-responsibility subcomponents into `components/history/`:
     - `HistoryListSidebar.tsx`: Search bar with clear button, search scope selector dropdown, All/Favorites tabs, scrollable slot card list, and inline slot renaming.
     - `HistoryDetailPanel.tsx`: Header, engine specs bar, media gallery, dynamic parameters table, main objective / idea box, collapsible compiled prompt, and generation output preview.
     - `HistoryCostPopover.tsx`: Itemized token cost breakdown popover with edge-aware alignment and strict model rate isolation.
