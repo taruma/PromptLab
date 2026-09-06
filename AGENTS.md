@@ -36,6 +36,9 @@ Key differentiators:
 ## 3. Architecture & File Registry
 
 ```
+├── /.agents                         # Workspace-level agent rules and skills
+│   └── /rules
+│       └── modal-overlay-architecture.md # 3-tier event hierarchy, 5-tier z-index scale, and modal refactoring protocol
 ├── /app
 │   ├── /api
 │   │   ├── /generate/route.ts       # Main Gemini multi-modal generation handler (passes active prompts & fileUri parts)
@@ -69,6 +72,7 @@ Key differentiators:
 │   ├── DiscardChangesConfirmModal.tsx # Confirmation modal for discarding unsaved prompt config changes
 │   ├── EngineControlsModal.tsx      # Engine configuration modal (model, temperature, API key vault, structured JSON output, JSON schema editor)
 │   ├── FooterStatusBar.tsx          # Bottom status bar showing engine, reasoning, temperature, API key label, live LocalStorage usage indicator, and dynamic version number from package.json
+│   ├── GenerationResultView.tsx     # Generation output panel with formatted markdown / raw / JSON syntax-highlighted toggle, thinking trace visualization, token count display, and estimated cost badge
 │   ├── /history                     # Decomposed subcomponents for HistoryViewerModal
 │   │   ├── HistoryCostPopover.tsx   # Edge-aware token expenditure inspection popover (Tier 4 z-[70]) with model isolation
 │   │   ├── HistoryDetailPanel.tsx   # Detail inspection view (inline rename, unified metadata ribbon, references, adaptive specs, output)
@@ -364,6 +368,14 @@ When adding a new Gemini model or updating the default baseline, synchronize all
 - **Interactive Cost Breakdown Popover**: The `HistoryViewerModal` detail panel cost badge features a click-to-toggle popover displaying the itemized cost breakdown (prompt input, context cache savings, output response, reasoning thoughts, unit rates, and grand total). It strictly uses the specific model recorded on each historical generation item (`selectedItem.model`), rather than the active workspace model, ensuring historically accurate cost auditing. The popover features dynamic edge-aware alignment: it measures available clearance relative to the detail panel scroll container (`.overflow-y-auto`) and defaults to `right-0` (or `left-0` if left clearance is constrained) with `max-w-[calc(100vw-3rem)] sm:max-w-[340px]` to prevent right-edge clipping against the modal scrollbar. The popover dismisses on outside click, Escape key, or close button, and auto-resets when navigating between records.
 - **Visual Refresh**: Selected list items use a warm amber highlight (`bg-[#FEF3C7]`) with a thick left border; non-selected items have a transparent left border for consistent alignment. Cards use compact spacing (`px-3 py-2.5`), timestamps are styled in bold charcoal, and titles use single-line truncation (`line-clamp-1`). The "Default" search scope matches only the title/name field.
 - **Decoupled Image IDs**: History images are stored under unique generated IDs (`hist-img-{timestamp}-{idx}-{random}`) independent of active session image IDs, ensuring that deleting or modifying active images never breaks historical references.
+- **Modular History Preview Panel & Output Viewer**: The inspection area of `HistoryViewerModal` is decomposed into `HistoryDetailPanel.tsx` and `HistoryOutputViewer.tsx`:
+  - **Modular Output & Reasoning Viewer (`HistoryOutputViewer.tsx`)**: Extracted generation output rendering featuring multi-mode rendering with **RAW Monospace as the default** on every modal open and slot change. Includes one-click mode switching to Formatted Markdown (`MD`) and Syntax-Highlighted JSON (`JSON`) with line numbers and token coloring, plus live character, word, and line count indicators.
+  - **Collapsible Reasoning / Thinking Trace**: Renders an expandable amber/slate accordion when `thinkingResult` is present, surfacing parsed reasoning sections and thought token count metrics.
+  - **Fullscreen Focus Modal (`HistoryFullscreenOutputModal.tsx`)**: A dedicated full-viewport reading modal overlay (Tier 3 `z-[60]`) for deep inspection of lengthy outputs and complex JSON payloads, coordinated with `useModalEscape` for seamless dismissal.
+  - **Inline Title Renaming**: An inline edit pencil (`Edit3`) next to the sequence title allows immediate slot renaming with <kbd>Enter</kbd> to save and <kbd>Escape</kbd> to cancel.
+  - **Minimalist Icon-Only Action Cluster**: Replaces verbose text buttons with compact, square icon buttons with native tooltips: Favorite (`Star`), Diff (`GitCompare`), and Load Workspace (`FolderOpen`).
+  - **Unified Metadata Ribbon**: A compact, color-categorized ribbon directly below the title (Blue for Model, Amber for Reasoning, Purple for Preset, Emerald for Cost Popover, Slate for Tokens), with Temperature and Max Tokens displayed only when differing from default values. All pills are normalized to `h-5` with `text-[9px]`.
+  - **Adaptive Auto-Height Layout & Copy Triggers**: Adaptive containers for Main Objective and Dynamic Parameters maximize canvas space for output, with individual copy buttons providing transient visual feedback.
 - **Video History Metadata**: Video references are persisted in history items via an optional `videos` array of `HistoryVideoRef` objects, each carrying `label`, `mimeType`, `duration`, and optional `youtubeUrl`, `isYouTube`, and `base64` fields. The `base64` field enables runtime stream carry during history recall — videos with cached streams can be replayed immediately from the workspace after recall, while uncached MP4 references display a **NO LOCAL STREAM** placeholder in `VideoAssetCard`. YouTube references are playable via embedded iframe regardless of stream caching. History recall restores full video metadata; full video re-upload is required for regeneration of uncached references. History import/export preserves all video reference fields via the `HistoryVideoRef` interface in `lib/history-export.ts`. `VideoAssetCard` additionally renders a per-type top-right badge (`AUDIO` in purple, `DOC` in teal, `FILES API` in emerald, `YT` in red, or `MP4` in stone) for immediate visual type identification.
 
 ### Rule N: Preset Bulk Export & Import
@@ -426,7 +438,7 @@ When introducing, updating, or nesting modals, confirmation prompts, dropdown me
    - Never use arbitrary magic numbers for z-indexes. Follow the standardized 5-tier stacking system:
      - **Tier 1: Canvas / Tags** (`z-10`): Floating badges, card actions, asset status tags.
      - **Tier 2: Primary Fullscreen Modals & Drawers** (`z-50`): `HistoryViewerModal`, `PromptConfigModal`, `ProjectManagerModal`, `AssetLibrarySidebar`, `EngineControlsModal`.
-     - **Tier 3: Sub-Modals & Confirmations** (`z-[60]`): `VideoPlayerModal` (when launched from history), `DeleteHistoryConfirmModal`, `ClearHistoryConfirmModal`, `LoadWorkspaceConfirmModal`, `PresetCompareModal`, `DiscardChangesConfirmModal`.
+     - **Tier 3: Sub-Modals & Confirmations** (`z-[60]`): `HistoryFullscreenOutputModal`, `VideoPlayerModal` (when launched from history), `DeleteHistoryConfirmModal`, `ClearHistoryConfirmModal`, `LoadWorkspaceConfirmModal`, `PresetCompareModal`, `DiscardChangesConfirmModal`.
      - **Tier 4: Floating Popovers & Action Menus** (`z-[70]`): `HistoryCostPopover`, Export JSON dropdowns, Quick Selector menus.
      - **Tier 5: Portaled Hover Previews & Tooltips** (`z-[80]`): `HistoryImageCardWithHover` portal, help tooltips.
 3. **Sub-Overlay Capture-Phase Prioritization**:

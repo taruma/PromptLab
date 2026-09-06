@@ -50,7 +50,7 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
 - **Universal LIFO Modal Escape Stack (`hooks/use-modal-stack.ts`).**
   - Introduced a reusable `useModalEscape` hook powered by a global module-level Last-In, First-Out (LIFO) stack array to coordinate modal and overlay dismissals reliably.
   - Pressing <kbd>Escape</kbd> automatically pops and invokes strictly the topmost active overlay or dialog, preventing accidental double-closes or parent dismissals.
-  - Connected `HistoryViewerModal`, `VideoPlayerModal`, `DeleteHistoryConfirmModal`, `LoadWorkspaceConfirmModal`, and `ClearHistoryConfirmModal` to the universal stack.
+  - Connected `HistoryViewerModal`, `HistoryFullscreenOutputModal`, `VideoPlayerModal`, `DeleteHistoryConfirmModal`, `LoadWorkspaceConfirmModal`, and `ClearHistoryConfirmModal` to the universal stack.
 
 - **Canonical History Type System (`types/history.ts`).**
   - Established a dedicated `types/history.ts` module as the single source of truth for `HistoryItem`, `HistoryImage`, `HistoryVideo`, `HistoryTokenUsage`, `HistorySearchScope`, and `HistoryExportResult`.
@@ -62,10 +62,12 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
     - `HistoryDetailPanel.tsx`: Header, engine specs bar, media gallery, dynamic parameters table, main objective / idea box, collapsible compiled prompt, and generation output preview.
     - `HistoryCostPopover.tsx`: Itemized token cost breakdown popover with edge-aware alignment and strict model rate isolation.
     - `HistoryImageCardWithHover.tsx`: Portaled hover preview with viewport boundary detection and SHA-256 content hash badge.
+    - `HistoryOutputViewer.tsx`: Modular generation output & reasoning viewer with multi-mode rendering (Raw/MD/JSON), reasoning trace accordion, and live word/char counters.
+    - `HistoryFullscreenOutputModal.tsx`: Distraction-free full-viewport reading modal overlay (Tier 3 `z-[60]`) with LIFO Escape dismissal.
 
 - **Standardized 5-Tier Z-Index Stacking Architecture.**
   - Formalized consistent z-index tiers across all modal and popover surfaces: Tier 1 Canvas (`z-10`), Tier 2 Primary Modals (`z-50`), Tier 3 Sub-Modals & Confirmations (`z-[60]`), Tier 4 Floating Popovers & Menus (`z-[70]`), and Tier 5 Portaled Hover Previews (`z-[80]`).
-  - Elevated `VideoPlayerModal` when launched from History to Tier 3 (`z-[60]`) to stack properly above `HistoryViewerModal` (`z-50`).
+  - Elevated `VideoPlayerModal` and `HistoryFullscreenOutputModal` when launched from History to Tier 3 (`z-[60]`) to stack properly above `HistoryViewerModal` (`z-50`).
 
 ### Changed
 
