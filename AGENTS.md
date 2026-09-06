@@ -71,9 +71,11 @@ Key differentiators:
 │   ├── FooterStatusBar.tsx          # Bottom status bar showing engine, reasoning, temperature, API key label, live LocalStorage usage indicator, and dynamic version number from package.json
 │   ├── /history                     # Decomposed subcomponents for HistoryViewerModal
 │   │   ├── HistoryCostPopover.tsx   # Edge-aware token expenditure inspection popover (Tier 4 z-[70]) with model isolation
-│   │   ├── HistoryDetailPanel.tsx   # Detail inspection view (specs, media gallery, parameters table, prompt, output)
+│   │   ├── HistoryDetailPanel.tsx   # Detail inspection view (inline rename, unified metadata ribbon, references, adaptive specs, output)
+│   │   ├── HistoryFullscreenOutputModal.tsx # Distraction-free full-viewport reading modal overlay (Tier 3 z-[60]) with LIFO Escape dismissal
 │   │   ├── HistoryImageCardWithHover.tsx # Portaled image thumbnail hover preview with SHA-256 hash badge (Tier 5 z-[80])
-│   │   └── HistoryListSidebar.tsx   # Left sidebar: universal search with side scope selector dropdown, collapsible filter drawer, multi-select media filters, dynamic presets/models/reasoning, sticky date grouping, cost badges, and keyboard navigation
+│   │   ├── HistoryListSidebar.tsx   # Left sidebar: universal search with side scope selector dropdown, collapsible filter drawer, multi-select media filters, dynamic presets/models/reasoning, sticky date grouping, cost badges, and keyboard navigation
+│   │   └── HistoryOutputViewer.tsx  # Modular generation output & reasoning viewer with multi-mode rendering (Raw/MD/JSON), reasoning trace accordion, and live word/char counters
 │   ├── HistoryCardSummary.tsx       # Reusable history item preview card (timestamp, media badges, model, preset, excerpt)
 │   ├── HistorySection.tsx           # Collapsible history section in sidebar
 │   ├── HistoryViewerModal.tsx       # Full-screen history browser orchestrator coordinating sidebar, detail panel, and sub-modals
