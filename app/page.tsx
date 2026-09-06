@@ -102,33 +102,9 @@ import {
 import { computeContentHash, ensureHistoryHasContentHashes } from "../lib/content-hash";
 import { saveHistoryToLocalStorage, loadHistoryFromStorage } from "../lib/history-storage";
 
-export interface HistoryItem {
-  id: string;
-  timestamp: string;
-  variables: Record<string, string>;
-  images: { id?: string; label: string; base64: string; mimeType: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; contentHash?: string }[];
-  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; base64?: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; processingMode?: "STATIC" | "AGENTIC" }[];
-  output: string;
-  thinkingResult?: string;
-  filledPrompt: string;
-  promptTemplate?: string;
-  systemPrompt?: string;
-  presetLabel?: string;
-  name?: string;
-  model?: string;
-  thinkingLevel?: string;
-  temperature?: number;
-  maxTokens?: string;
-  isFavorite?: boolean;
-  tokenUsage?: {
-    promptTokens?: number;
-    candidatesTokens?: number;
-    totalTokens?: number;
-    cachedTokens?: number;
-    thoughtTokens?: number;
-  };
-  estimatedCost?: string;
-}
+import { HistoryItem } from "../types/history";
+
+export type { HistoryItem };
 
 export default function PromptGeneratorPage() {
   // Config loaded from backend or local storage
