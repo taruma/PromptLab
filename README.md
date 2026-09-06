@@ -27,25 +27,26 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 - **Quick Preset Switcher** — Switch between system and custom presets directly from the top navigation bar without opening a modal.
 
 ### 🖼️ Media References
-- **Image Uploads** — Drag and drop images as casting or scene references. Each asset auto-maps to `@imageN` and compresses to high-quality JPEG automatically.
+- **Image Uploads & Clipboard Paste** — Drag and drop images or paste directly from your OS clipboard with `Ctrl+V` / `Cmd+V`. Each asset auto-maps to `@imageN` and compresses to high-quality JPEG with automatic IndexedDB deduplication.
 - **Video Uploads (MP4)** — Upload MP4 videos alongside images, validated for length and size, and mapped to `@videoN` annotations. Preview videos in a full-screen player before generating.
 - **YouTube References** — Paste any YouTube URL to use as a video reference, mapped to `@videoN` alongside your uploaded videos.
-- **Gemini Files API** — Upload media files up to 2 GB via Google's Gemini Files API with real-time progress tracking. Browse and reuse previously uploaded files from a built-in file browser — no re-uploading needed.
+- **Gemini Files API** — Upload media files up to 2 GB (including audio and documents) via Google's Gemini Files API with real-time progress tracking. Browse and reuse previously uploaded files from a built-in file browser — no re-uploading needed.
 
 ### 🤖 AI Engine
 - **Multiple Gemini Models** — Switch between Gemini 3.8 Flash, 3.7 Flash, 3.6 Flash, 3.5 Flash-Lite, 3.1 Pro Preview, and more.
 - **Temperature & Reasoning Control** — Fine-tune creativity (0.0–2.0) and choose from four reasoning effort levels (MINIMAL through HIGH).
-- **Engine Reasoning Trace** — Watch the model's internal thinking process stream in real-time alongside your output, with a pulsing indicator during active processing.
-- **Token Usage & Cost Tracking** — See exactly how many tokens each generation used (input, output, and cached), with a real-time estimated cost in USD.
+- **Engine Reasoning Trace** — Watch the model's internal thinking process stream in real-time alongside your output, with an expandable trace accordion saved to history.
+- **Token Usage & Itemized Cost Tracking** — Inspect line-by-line token expenditures (prompt input, context cache savings, candidate output, and thought tokens) in an interactive popover with verified USD estimates.
 
-### 📊 Output
-- **Dual-Mode Rendering** — Toggle between richly formatted Markdown (headings, lists, bold) and traditional raw monospace text.
-- **Live Character Count** — See your output length at a glance with a formatted `{N} CHARS` badge.
+### 📊 Output & Ergonomics
+- **Tri-Mode Rendering** — Toggle between richly formatted Markdown (headings, tables, code fences), traditional raw monospace text, and syntax-highlighted JSON with line numbers.
+- **Live Character & Word Counters** — See output metrics at a glance with live `{N} CHARS • {N} WORDS` badges.
+- **Keyboard Shortcuts** — Synthesize sequences instantly with `Ctrl+Enter` / `Cmd+Enter`, and navigate modal dialogs with a predictable LIFO `Escape` stack.
 - **Real-Time Streaming** — Watch generations appear word-by-word via Server-Sent Events.
 
 ### 💾 Workspace
 - **Multi-Project Support** — Create independent workspaces, each with their own prompts, presets, history, and asset library. Switch between them from the top bar.
-- **Session History** — Past generations are saved locally. Favorite entries, search with fuzzy matching, compare historical prompts against your current workspace with a built-in diff viewer, and export/import as JSON for backup.
+- **Session History Overhaul** — Full-screen history browser with collapsible filter drawer, multi-select media filters (IMG/VID/AUD/DOC with AND logic), contextual date grouping (Today, Yesterday, 7 Days, Older), view density toggle (Detailed vs Compact), universal search scopes, and fullscreen focus inspection.
 - **Asset Library** — A persistent image sidebar for uploading, browsing, searching, and reusing images across any workspace without re-uploading.
 - **Workspace Clone** — Create a new project by copying your current prompts, presets, and assets — perfect for exploring variations.
 

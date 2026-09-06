@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   FolderKanban,
   X,
@@ -90,6 +90,34 @@ export default function ProjectManagerModal({
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle escape key for internal sub-states (delete confirm, switch confirm, create form, rename)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (pendingDeleteId) {
+          e.stopPropagation();
+          setPendingDeleteId(null);
+        } else if (pendingSwitchId) {
+          e.stopPropagation();
+          setPendingSwitchId(null);
+        } else if (isCreating) {
+          e.stopPropagation();
+          setIsCreating(false);
+        } else if (editingId) {
+          e.stopPropagation();
+          setEditingId(null);
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, pendingDeleteId, pendingSwitchId, isCreating, editingId]);
 
   if (!isOpen) return null;
 

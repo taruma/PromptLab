@@ -57,6 +57,8 @@ import FooterStatusBar from "../components/FooterStatusBar";
 import StorageUsageModal from "../components/StorageUsageModal";
 import GenerationResultView from "../components/GenerationResultView";
 import { useUrlPresetImport } from "../hooks/use-url-preset-import";
+import { useClipboardImagePaste } from "../hooks/use-clipboard-image-paste";
+import { useGenerateShortcut } from "../hooks/use-generate-shortcut";
 import { calculateEstimatedCost } from "../lib/pricing";
 import {
   exportPresetsToJSON,
@@ -100,33 +102,9 @@ import {
 import { computeContentHash, ensureHistoryHasContentHashes } from "../lib/content-hash";
 import { saveHistoryToLocalStorage, loadHistoryFromStorage } from "../lib/history-storage";
 
-export interface HistoryItem {
-  id: string;
-  timestamp: string;
-  variables: Record<string, string>;
-  images: { id?: string; label: string; base64: string; mimeType: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; contentHash?: string }[];
-  videos?: { id?: string; label: string; mimeType?: string; duration?: number; youtubeUrl?: string; isYouTube?: boolean; base64?: string; isFilesApi?: boolean; fileUri?: string; expirationTime?: string; processingMode?: "STATIC" | "AGENTIC" }[];
-  output: string;
-  thinkingResult?: string;
-  filledPrompt: string;
-  promptTemplate?: string;
-  systemPrompt?: string;
-  presetLabel?: string;
-  name?: string;
-  model?: string;
-  thinkingLevel?: string;
-  temperature?: number;
-  maxTokens?: string;
-  isFavorite?: boolean;
-  tokenUsage?: {
-    promptTokens?: number;
-    candidatesTokens?: number;
-    totalTokens?: number;
-    cachedTokens?: number;
-    thoughtTokens?: number;
-  };
-  estimatedCost?: string;
-}
+import { HistoryItem } from "../types/history";
+
+export type { HistoryItem };
 
 export default function PromptGeneratorPage() {
   // Config loaded from backend or local storage
@@ -972,27 +950,48 @@ export default function PromptGeneratorPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        // Confirmation & alert dialogs (top priority / highest z-index)
         if (isDiscardConfirmOpen) {
           setIsDiscardConfirmOpen(false);
-        } else if (isPromptConfigOpen) {
+        } else if (isPresetReplaceConfirmOpen) {
+          setIsPresetReplaceConfirmOpen(false);
+          setPendingQuickPreset(null);
+        } else if (pendingLoadItem) {
+          setPendingLoadItem(null);
+        } else if (pendingDeleteId) {
+          setPendingDeleteId(null);
+        } else if (isHistoryClearConfirmOpen) {
+          setIsHistoryClearConfirmOpen(false);
+        } else if (isClearConfirmOpen) {
+          setIsClearConfirmOpen(false);
+        } else if (isUrlImportConfirmOpen) {
+          setIsUrlImportConfirmOpen(false);
+          setUrlPresetData(null);
+        } else if (isCompareOpen) {
+          setIsCompareOpen(false);
+        }
+        // Major modals and panels
+        else if (isPromptConfigOpen) {
           const isModified = tempSystemPrompt !== systemPrompt || tempPromptTemplate !== promptTemplate;
           if (isModified) {
             setIsDiscardConfirmOpen(true);
           } else {
             setIsPromptConfigOpen(false);
           }
-        } else if (pendingLoadItem) {
-          setPendingLoadItem(null);
-        } else if (pendingDeleteId) {
-          setPendingDeleteId(null);
-        } else {
-          setIsLibraryOpen(false);
+        } else if (isHistoryViewerOpen) {
+          setIsHistoryViewerOpen(false);
+        } else if (isProjectManagerOpen) {
+          setIsProjectManagerOpen(false);
+        } else if (isStorageModalOpen) {
+          setIsStorageModalOpen(false);
+        } else if (isEngineConfigOpen) {
           setIsEngineConfigOpen(false);
-          setIsClearConfirmOpen(false);
-          setIsHistoryClearConfirmOpen(false);
-          setIsUrlImportConfirmOpen(false);
-          setIsCompareOpen(false);
-          setUrlPresetData(null);
+        } else if (isYouTubeModalOpen) {
+          setIsYouTubeModalOpen(false);
+        } else if (isFilesApiModalOpen) {
+          setIsFilesApiModalOpen(false);
+        } else if (isLibraryOpen) {
+          setIsLibraryOpen(false);
         }
       }
     };
@@ -1000,11 +999,50 @@ export default function PromptGeneratorPage() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isPromptConfigOpen, isDiscardConfirmOpen, tempSystemPrompt, tempPromptTemplate, systemPrompt, promptTemplate, pendingLoadItem, pendingDeleteId]);
+  }, [
+    isPromptConfigOpen,
+    isDiscardConfirmOpen,
+    tempSystemPrompt,
+    tempPromptTemplate,
+    systemPrompt,
+    promptTemplate,
+    pendingLoadItem,
+    pendingDeleteId,
+    isHistoryClearConfirmOpen,
+    isClearConfirmOpen,
+    isUrlImportConfirmOpen,
+    isPresetReplaceConfirmOpen,
+    isCompareOpen,
+    isHistoryViewerOpen,
+    isProjectManagerOpen,
+    isStorageModalOpen,
+    isEngineConfigOpen,
+    isYouTubeModalOpen,
+    isFilesApiModalOpen,
+    isLibraryOpen,
+    setIsUrlImportConfirmOpen,
+    setUrlPresetData
+  ]);
 
   // Prevent body scrolling when any major modal is open
   useEffect(() => {
-    const isAnyModalOpen = isPromptConfigOpen || isEngineConfigOpen || isCompareOpen || isClearConfirmOpen || isHistoryClearConfirmOpen || isUrlImportConfirmOpen || isDiscardConfirmOpen || isLibraryOpen || !!pendingLoadItem || !!pendingDeleteId;
+    const isAnyModalOpen =
+      isPromptConfigOpen ||
+      isEngineConfigOpen ||
+      isCompareOpen ||
+      isClearConfirmOpen ||
+      isHistoryClearConfirmOpen ||
+      isUrlImportConfirmOpen ||
+      isDiscardConfirmOpen ||
+      isLibraryOpen ||
+      isHistoryViewerOpen ||
+      isProjectManagerOpen ||
+      isStorageModalOpen ||
+      isYouTubeModalOpen ||
+      isFilesApiModalOpen ||
+      isPresetReplaceConfirmOpen ||
+      !!pendingLoadItem ||
+      !!pendingDeleteId;
     if (isAnyModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -1013,10 +1051,27 @@ export default function PromptGeneratorPage() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isPromptConfigOpen, isEngineConfigOpen, isCompareOpen, isClearConfirmOpen, isHistoryClearConfirmOpen, isUrlImportConfirmOpen, isDiscardConfirmOpen, isLibraryOpen, pendingLoadItem, pendingDeleteId]);
+  }, [
+    isPromptConfigOpen,
+    isEngineConfigOpen,
+    isCompareOpen,
+    isClearConfirmOpen,
+    isHistoryClearConfirmOpen,
+    isUrlImportConfirmOpen,
+    isDiscardConfirmOpen,
+    isLibraryOpen,
+    isHistoryViewerOpen,
+    isProjectManagerOpen,
+    isStorageModalOpen,
+    isYouTubeModalOpen,
+    isFilesApiModalOpen,
+    isPresetReplaceConfirmOpen,
+    pendingLoadItem,
+    pendingDeleteId
+  ]);
 
   // Process selected image files
-  const handleImageFiles = async (files: FileList) => {
+  const handleImageFiles = useCallback(async (files: FileList | File[], labelPrefix?: string) => {
     const validImages = Array.from(files).filter(f => f.type.startsWith("image/"));
     if (validImages.length === 0) return;
 
@@ -1028,10 +1083,13 @@ export default function PromptGeneratorPage() {
         const base64 = await compressImageToJpeg(file, 0.9);
         const contentHash = await computeContentHash(base64);
         // Suggest a nice default label based on filename or numbering
-        const rawName = file.name.split(".")[0];
-        const cleanLabel = rawName
-          .replace(/[_-]/g, " ")
-          .replace(/\b\w/g, c => c.toUpperCase());
+        const rawName = file.name ? file.name.split(".")[0] : "";
+        const isGenericName = !rawName || rawName.toLowerCase() === "image" || rawName.toLowerCase() === "blob";
+        const cleanLabel = (labelPrefix && isGenericName)
+          ? `${labelPrefix} ${uploadedImages.length + i + 1}`
+          : rawName
+              ? rawName.replace(/[_-]/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+              : `Image ${uploadedImages.length + i + 1}`;
 
         const imgId = `${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
         try {
@@ -1056,7 +1114,46 @@ export default function PromptGeneratorPage() {
       // Append and assign proper @image numbers in order
       return [...prev, ...newUploaded];
     });
-  };
+  }, [uploadedImages.length]);
+
+  // Clipboard paste listener to allow pasting images directly from clipboard (Ctrl+V / Cmd+V)
+  const isAnyModalActive = Boolean(
+    isPromptConfigOpen ||
+    isEngineConfigOpen ||
+    isCompareOpen ||
+    isClearConfirmOpen ||
+    isHistoryClearConfirmOpen ||
+    isUrlImportConfirmOpen ||
+    isDiscardConfirmOpen ||
+    isLibraryOpen ||
+    isHistoryViewerOpen ||
+    isYouTubeModalOpen ||
+    isFilesApiModalOpen ||
+    isStorageModalOpen ||
+    isProjectManagerOpen ||
+    isPresetReplaceConfirmOpen ||
+    pendingLoadItem ||
+    pendingDeleteId
+  );
+
+  const handleBeforePaste = useCallback(() => {
+    setIsVisualAssetsOpen(true);
+    try {
+      localStorage.setItem("prompt_generator_visual_assets_open", "true");
+    } catch (err) {
+      // ignore
+    }
+  }, []);
+
+  const handlePasteImages = useCallback((files: File[]) => {
+    handleImageFiles(files, "Pasted Image");
+  }, [handleImageFiles]);
+
+  useClipboardImagePaste({
+    isEnabled: !isAnyModalActive,
+    onBeforePaste: handleBeforePaste,
+    onPasteImages: handlePasteImages,
+  });
 
   // Drag and drop event handlers
   const handleDrag = (e: React.DragEvent) => {
@@ -2151,6 +2248,12 @@ export default function PromptGeneratorPage() {
     return "Custom Key";
   };
 
+  // Keyboard shortcut listener to trigger generation (Ctrl+Enter / Cmd+Enter)
+  useGenerateShortcut({
+    onGenerate: handleGeneratePrompt,
+    isEnabled: !isLoading && !isAnyModalActive,
+  });
+
   return (
     <div className="min-h-screen bg-[#F4F4F2] flex flex-col font-sans text-[#1A1A1A]" id="main-content">
       {/* Header */}
@@ -2241,6 +2344,7 @@ export default function PromptGeneratorPage() {
                   : "bg-[#1A1A1A] text-white hover:bg-[#333] border border-[#1A1A1A]"
               }`}
               id="generate-prompt-btn"
+              title="Generate Sequence (Ctrl + Enter)"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -2248,7 +2352,12 @@ export default function PromptGeneratorPage() {
                   Synthesizing Sequence...
                 </span>
               ) : (
-                "Generate Sequence"
+                <span className="flex items-center justify-center gap-2">
+                  <span>Generate Sequence</span>
+                  <kbd className="hidden sm:inline-block font-mono text-[9px] tracking-normal px-1.5 py-0.5 bg-white/10 text-white/70 border border-white/20 rounded-none font-normal">
+                    Ctrl+↵
+                  </kbd>
+                </span>
               )}
             </button>
           </div>

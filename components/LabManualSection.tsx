@@ -70,7 +70,7 @@ export default function LabManualSection({
               <div className="flex flex-col gap-0.5">
                 <span className="font-sans font-bold uppercase tracking-wider text-[10px] text-[#1A1A1A]">Synthesize &amp; Inspect</span>
                 <p className="text-[#888884] text-[11px] leading-relaxed">
-                  Set Gemini models, reasoning effort, or custom API keys in <strong className="text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded-none border border-indigo-200">Engine</strong>. Hit <strong className="text-[#1A1A1A]">Generate Sequence</strong> to stream real-time thinking traces, cost estimates, and toggle Formatted/Raw views.
+                  Set Gemini models, reasoning effort, or custom API keys in <strong className="text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded-none border border-indigo-200">Engine</strong>. Hit <strong className="text-[#1A1A1A]">Generate Sequence</strong> (or press <kbd className="font-mono bg-[#EAEAE8] border border-[#D1D1CF] px-1 py-0.5 text-[9px] text-[#1A1A1A] font-normal">Ctrl+Enter</kbd>) to stream real-time thinking traces, cost estimates, and toggle Formatted/Raw views.
                 </p>
               </div>
             </div>

@@ -36,6 +36,9 @@ Key differentiators:
 ## 3. Architecture & File Registry
 
 ```
+├── /.agents                         # Workspace-level agent rules and skills
+│   └── /rules
+│       └── modal-overlay-architecture.md # 3-tier event hierarchy, 5-tier z-index scale, and modal refactoring protocol
 ├── /app
 │   ├── /api
 │   │   ├── /generate/route.ts       # Main Gemini multi-modal generation handler (passes active prompts & fileUri parts)
@@ -70,9 +73,16 @@ Key differentiators:
 │   ├── EngineControlsModal.tsx      # Engine configuration modal (model, temperature, API key vault, structured JSON output, JSON schema editor)
 │   ├── FooterStatusBar.tsx          # Bottom status bar showing engine, reasoning, temperature, API key label, live LocalStorage usage indicator, and dynamic version number from package.json
 │   ├── GenerationResultView.tsx     # Generation output panel with formatted markdown / raw / JSON syntax-highlighted toggle, thinking trace visualization, token count display, and estimated cost badge
+│   ├── /history                     # Decomposed subcomponents for HistoryViewerModal
+│   │   ├── HistoryCostPopover.tsx   # Edge-aware token expenditure inspection popover (Tier 4 z-[70]) with model isolation
+│   │   ├── HistoryDetailPanel.tsx   # Detail inspection view (inline rename, unified metadata ribbon, references, adaptive specs, output)
+│   │   ├── HistoryFullscreenOutputModal.tsx # Distraction-free full-viewport reading modal overlay (Tier 3 z-[60]) with LIFO Escape dismissal
+│   │   ├── HistoryImageCardWithHover.tsx # Portaled image thumbnail hover preview with SHA-256 hash badge (Tier 5 z-[80])
+│   │   ├── HistoryListSidebar.tsx   # Left sidebar: universal search with side scope selector dropdown, collapsible filter drawer, multi-select media filters, dynamic presets/models/reasoning, sticky date grouping, cost badges, and keyboard navigation
+│   │   └── HistoryOutputViewer.tsx  # Modular generation output & reasoning viewer with multi-mode rendering (Raw/MD/JSON), reasoning trace accordion, and live word/char counters
 │   ├── HistoryCardSummary.tsx       # Reusable history item preview card (timestamp, media badges, model, preset, excerpt)
 │   ├── HistorySection.tsx           # Collapsible history section in sidebar
-│   ├── HistoryViewerModal.tsx       # Full-screen history browser with import/export
+│   ├── HistoryViewerModal.tsx       # Full-screen history browser orchestrator coordinating sidebar, detail panel, and sub-modals
 │   ├── KofiButton.tsx               # Standalone Ko-fi tipping / support link button component
 │   ├── LabManualSection.tsx         # Collapsible quick-start guide section in sidebar
 │   ├── LoadWorkspaceConfirmModal.tsx # Confirmation modal for loading workspace history item
@@ -99,6 +109,7 @@ Key differentiators:
 │   ├── indexeddb.ts                 # IndexedDB helper module with content-hash deduplication (v3 schema), cross-project image reference protection, master promotion on deletion, and background deduplication migration
 │   ├── asset-library-export.ts     # Asset library JSON import/export utilities
 │   ├── history-export.ts           # History JSON import/export utilities
+│   ├── history-grouping.ts          # History sorting, date bucketing (Today/Yesterday/7d/Older), AND-logic media filtering, preset/model metadata extractors
 │   ├── history-storage.ts          # History storage wrapper & migration helper (IndexedDB project storage with automatic legacy LocalStorage cleanup)
 │   ├── preset-export.ts            # User preset bulk export/import utilities with duplicate detection, configurable import strategy (duplicate/replace), unique name generation, and skip-reason differentiation
 │   ├── projects.ts                 # Multi-project workspace management (CRUD, import/export, cross-tab sync) with automatic garbage-collection of unreferenced image assets on project deletion
@@ -108,8 +119,13 @@ Key differentiators:
 │   ├── storage-utils.ts            # Browser storage diagnostics (LocalStorage key-by-key breakdown, IndexedDB origin quota via navigator.storage.estimate)
 │   └── content-hash.ts             # SHA-256 content hashing for image deduplication with FNV-1a fallback, and legacy history contentHash backfill utility
 ├── /hooks
+│   ├── use-clipboard-image-paste.ts # Global clipboard image paste listener hook (Ctrl+V / Cmd+V) with MIME extraction and modal safety gates
+│   ├── use-generate-shortcut.ts     # Global generation keyboard shortcut hook (Ctrl+Enter / Cmd+Enter) with modal & loading safety gates
 │   ├── use-mobile.ts                # Screen size hook helper (< 768px breakpoint)
+│   ├── use-modal-stack.ts           # Universal LIFO Escape key modal stack coordinator (bubble-phase window listener)
 │   └── use-url-preset-import.ts     # URL preset import logic hook: query param detection, fetch, validation, dedup, workspace application, and openJsonPresetImport for local file workflow
+├── /types
+│   └── history.ts                   # Canonical source of truth for HistoryItem, media references, and token usage types
 ├── /assets                          # Reserved for future static asset storage (currently empty)
 ├── package.json                     # Project dependencies and scripts
 ├── tsconfig.json                    # TypeScript configuration (ES2017 target, bundler module resolution)
@@ -159,10 +175,21 @@ PromptLab is crafted in an **Analog Brutalist Retro Lab** aesthetic. Any new com
   - Active Generation Output: Traditional serif typeface (`font-serif`) for readable script and narrative output.
   - **Space Grotesk** is loaded as `--font-display` in the layout but is not currently applied in any component.
 
-- **Design Elements**:
-  - Sharp corners only: `rounded-none` or subtle default radii. Avoid heavily pill-shaped buttons or rounded UI cards.
-  - Symmetrical layouts with clear, stark borders (`border border-[#D1D1CF]`).
-  - Active states on hover should use transparent color overlays or bold border highlights rather than flashy gradient animations.
+  - Design Elements:
+    - Sharp corners only: `rounded-none` or subtle default radii. Avoid heavily pill-shaped buttons or rounded UI cards.
+    - Symmetrical layouts with clear, stark borders (`border border-[#D1D1CF]`).
+    - Active states on hover should use transparent color overlays or bold border highlights rather than flashy gradient animations.
+    - **UI Restraint & Minimal Controls**: Avoid adding unsolicited action buttons or toolbar clutter for features that already operate via standard keyboard shortcuts (e.g. `Ctrl+V` paste) or existing dropzones, unless explicitly requested by the user. Keep toolbars compact and intentional.
+    - **Metadata Badge Ribbons & Status Pills Alignment**:
+      - Always normalize all metadata badge pills (Model, Reasoning, Preset, Tokens, Cost) to a consistent height (`h-5` / 20px), `leading-none`, and matching font size (`text-[9px]` for both label and value) to ensure identical horizontal text baseline alignment across both `<div>` elements and `<button>` triggers.
+      - Always nest metadata ribbons directly within the title's vertical flex column rather than placing them as an independent sibling block below the header flexbox row, preventing artificial vertical gaps caused by neighboring action button heights.
+      - **Inline Badge Placement**: Place status tags (e.g. `DEFAULT`, `NEW`, `ENV`) inline immediately adjacent to their label (`flex items-center gap-1.5`), rather than pushing them to the far right with `justify-between`. In single-column dropdowns and menus, far-right alignment creates awkward whitespace chasms and feels detached.
+      - **Font-Metric Cushioning**: Always cushion badge tags with explicit vertical padding (e.g. `px-1 py-0.2`) and synchronized `leading-none` or `inline-flex items-center justify-center` to eliminate 2–3px font-metric baseline drift against neighboring text.
+    - **High-Density List & Compact Card Ergonomics**:
+      - **Omit Redundant Chronology**: In compact card views, omit timestamps whenever sticky date group headers (`TODAY`, `YESTERDAY`) or active sort options already establish temporal sequence.
+      - **Indicator Dots over Bulky Text Badges**: In tight list views, replace heavy text chip boxes (`[1 IMG] [1 VID]`) with minimalist, color-coded circular indicator dots (`w-1.5 h-1.5 rounded-full`) with native tooltips (Black for Images, Amber for Videos, Purple for Audio, Teal for Documents).
+      - **Preserve Narrative Excerpts**: Never completely drop generation output previews in compact modes; preserve at least a single-line italic output excerpt (`truncate`) so users retain narrative context without opening the detail panel.
+      - **Icon-Only Integrated Input Triggers**: When embedding secondary controls (such as search scope selectors or view toggles) directly on the edge of text inputs, keep the trigger **strictly icon-only** without text labels or chevrons. This preserves precious horizontal space and prevents placeholder/text clipping in fixed-width sidebars (~320px).
 
 ---
 
@@ -225,7 +252,8 @@ When adding a new Gemini model or updating the default baseline, synchronize all
    - Update fallback model parameter in `calculateEstimatedCost(item.model || "...", item.tokenUsage)`.
 8. **Versioning & Documentation**:
    - Bump version in `package.json` and `package-lock.json`.
-   - Add entry to `CHANGELOG.md` and create `docs/RELEASE_NOTES_vX.X.X.md`.
+   - Add entry to `CHANGELOG.md`. If the version is still in active development or pre-release (e.g. `-dev` tag), format the section header strictly as `## [vX.Y.Z-dev] — Unreleased` without a release date. Only attach calendar release dates to finalized, shipped releases.
+   - Create `docs/RELEASE_NOTES_vX.X.X.md` when finalizing a release.
    - Synchronize `AGENTS.md` and `README.md`.
 
 ### Rule D: Multi-modal Reference Handling (Images, Videos, Audio, Documents & Files API)
@@ -258,7 +286,7 @@ When adding a new Gemini model or updating the default baseline, synchronize all
 - **Thinking Result Persistence**: The `thinkingResult` string state is persisted to `localStorage` (`prompt_generator_thinking_result`) and stored in `HistoryItem` objects (`thinkingResult` field), so reasoning traces survive page refreshes and history save/restore cycles.
 - **Token Usage Capture & Cost Estimation**: The server-side handler captures `usageMetadata` (prompt token count, candidates/output token count, total token count, cached content token count, and thought tokens count) from each Gemini API stream chunk and broadcasts them as `usage` SSE events to the client. The client parses these events into a `tokenUsage` state object and displays real-time token counts in the output panel footer (`TOKENS: {total} ({prompt} IN [{cached} CACHED] / {candidates} OUT [+{thoughts} THOUGHTS])`).
 - **Character Count Display**: When a generation result is present, a live character count badge (`{N} CHARS` using `toLocaleString()` formatting) is displayed next to the "Generation Result" header in the output panel.
-- **Estimated Cost Badge & Itemized Breakdown Popover**: An emerald-green estimated API cost badge is rendered alongside the character count in the output panel, computed via `calculateEstimatedCost(selectedModel, tokenUsage)` from `lib/pricing.ts`. To avoid premature intermediate calculations during streaming, the cost badge remains hidden while `isLoading === true` and renders immediately once generation completes. Hovering (or tapping on touch devices) over the cost badge opens an interactive Retro Lab brutalist popover displaying the complete line-by-line itemized calculation: uncached prompt input tokens and cost, context cache tokens with savings, output response tokens, reasoning thought tokens, unit rates per 1M, and total USD cost.
+- **Estimated Cost Badge & Itemized Breakdown Popover**: An emerald-green estimated API cost badge is rendered alongside the character count in the output panel, computed via `calculateEstimatedCost(selectedModel, tokenUsage)` from `lib/pricing.ts`. To avoid premature intermediate calculations during streaming, the cost badge remains hidden while `isLoading === true` and renders immediately once generation completes. Clicking the cost badge toggles open an interactive Retro Lab brutalist popover displaying the complete line-by-line itemized calculation (with dismissal on outside click, Escape key, or dedicated close button): uncached prompt input tokens and cost, context cache tokens with savings, output response tokens, reasoning thought tokens, unit rates per 1M, and total USD cost.
 - **Token Usage State Persistence**: The active `tokenUsage` state is persisted to `localStorage` (`prompt_generator_token_usage`) so it survives page refreshes alongside other session state, and restored on mount.
 
 ### Rule F: Per-Preset Formatting & Multi-Mode Output Rendering
@@ -331,10 +359,23 @@ When adding a new Gemini model or updating the default baseline, synchronize all
 - **Favorite Toggle & Filter Tabs**: History items can be favorited for quick access, with filter tabs (All / Favorites / Recent) for browsing. The collapsible history section in the sidebar provides an inline view with expandable history cards.
 - **History Import/Export**: History data can be exported as JSON files (including date, compact timestamp, and unique 4-character suffix in the filename) and imported back via the HistoryViewerModal, enabling cross-device migration and backup.
 - **Clear History with Confirmation**: A "Clear All History" action (accessible via the full-screen `HistoryViewerModal`) triggers a confirmation modal warning that the operation deletes all saved history items and permanently purges their associated images from IndexedDB. This is irreversible. The inline sidebar `HistorySection` no longer exposes a direct "Clear All" button — the `setIsHistoryClearConfirmOpen` prop is optional.
-- **Fuzzy Search & Scope Filtering**: The `HistoryViewerModal` search field uses `matchesSearchQuery()` from `lib/search-utils.ts` for fuzzy matching with hyphen/punctuation normalization and multi-word token matching. A collapsible search scope selector allows filtering by Title, Visual Reference Labels, Main Objective/Idea, Saved Output Text, or Compiled Prompt Specs. The search input includes a clear-search `X` button.
-- **Output Excerpts in List Items**: The `HistoryViewerModal` sidebar list displays a 2-line italic excerpt of the cleaned generation output (markdown symbols stripped, ~140 characters) beneath each history card, giving users quick context without opening the detail panel. Auto-scroll (`scrollIntoView` with smooth behavior) ensures the active selected item is always visible.
+- **Universal Search & Integrated Side Scope Selector**: The `HistoryViewerModal` search field defaults to "All Content (Universal)", checking Title, Idea, dynamic parameter keys & values (`item.variables`), Output, Media labels, and Compiled Prompt using `matchesSearchQuery()` from `lib/search-utils.ts`. An attached scope selector directly on the search input box provides immediate switching via a compact icon button opening a rich `w-72` popover menu targeting: "All Content (Universal)", "Slot Name / Title", "Main Objective (Idea)", "Generated Output", "Media Reference Labels", "Dynamic Parameters", and "Compiled Prompt Specs". The search input includes a clear-search `X` button and captures Escape to clear.
+- **Collapsible Filter & Sort Drawer**: A single compact `[SORT & FILTER ▾]` toggle button in the sidebar header expands a panel housing: Sort By (Date Newest/Oldest, Cost Highest/Lowest, Title A-Z), Preset Filter (dynamic presets with counts + "Custom (No Preset)"), Model Filter, Reasoning Level Filter (HIGH, MEDIUM, LOW, MINIMAL, OFF), and Multi-Select Media Filter chips (`IMG`, `VID`, `AUD`, `DOC`) with strict AND matching. An active filter count badge and a one-click `reset` link appear on the trigger button.
+- **Smart Contextual Date Grouping**: When sorting by Date (newest or oldest), history items are grouped under sticky, collapsible section headers (`TODAY`, `YESTERDAY`, `PREVIOUS 7 DAYS`, `OLDER`) with item counts and smooth toggle chevrons. When sorting by Cost or Name, the list automatically displays as a continuous flat ranked list with `#N` rank badges.
+- **Cost Badges on Cost Sort**: History cards surface an emerald cost badge (`$0.0012`) and formatted token count on Row 3 exclusively when the user sorts by Cost, avoiding visual clutter during regular browsing.
+- **Keyboard Arrow Navigation & Inspected Slot Retention**: Pressing `ArrowUp` or `ArrowDown` steps through the filtered history items, auto-scrolling into view (bypassed when focused inside inputs or selects). When filter changes exclude the currently inspected slot, the detail panel retains that slot's view to preserve user context.
+- **View Density Modes (Detailed vs Compact)**: The sidebar header includes a 2-button view density switcher (`LayoutList` vs `Rows`) directly on the tabs row to toggle between rich 4-row cards (timestamp, media badges, title, model/preset/cost badges, and 2-line italic output excerpts) and streamlined 2-line compact cards (star, rank, title, media indicator dots, cost badge on cost sort, and single-line italic output excerpt with dates and model tags omitted for scannability). Selection is persisted across sessions in `localStorage` (`promptlab_history_density_mode`). Auto-scroll (`scrollIntoView` with smooth behavior) ensures the active selected item is always visible in both modes.
+- **Interactive Cost Breakdown Popover**: The `HistoryViewerModal` detail panel cost badge features a click-to-toggle popover displaying the itemized cost breakdown (prompt input, context cache savings, output response, reasoning thoughts, unit rates, and grand total). It strictly uses the specific model recorded on each historical generation item (`selectedItem.model`), rather than the active workspace model, ensuring historically accurate cost auditing. The popover features dynamic edge-aware alignment: it measures available clearance relative to the detail panel scroll container (`.overflow-y-auto`) and defaults to `right-0` (or `left-0` if left clearance is constrained) with `max-w-[calc(100vw-3rem)] sm:max-w-[340px]` to prevent right-edge clipping against the modal scrollbar. The popover dismisses on outside click, Escape key, or close button, and auto-resets when navigating between records.
 - **Visual Refresh**: Selected list items use a warm amber highlight (`bg-[#FEF3C7]`) with a thick left border; non-selected items have a transparent left border for consistent alignment. Cards use compact spacing (`px-3 py-2.5`), timestamps are styled in bold charcoal, and titles use single-line truncation (`line-clamp-1`). The "Default" search scope matches only the title/name field.
 - **Decoupled Image IDs**: History images are stored under unique generated IDs (`hist-img-{timestamp}-{idx}-{random}`) independent of active session image IDs, ensuring that deleting or modifying active images never breaks historical references.
+- **Modular History Preview Panel & Output Viewer**: The inspection area of `HistoryViewerModal` is decomposed into `HistoryDetailPanel.tsx` and `HistoryOutputViewer.tsx`:
+  - **Modular Output & Reasoning Viewer (`HistoryOutputViewer.tsx`)**: Extracted generation output rendering featuring multi-mode rendering with **RAW Monospace as the default** on every modal open and slot change. Includes one-click mode switching to Formatted Markdown (`MD`) and Syntax-Highlighted JSON (`JSON`) with line numbers and token coloring, plus live character, word, and line count indicators.
+  - **Collapsible Reasoning / Thinking Trace**: Renders an expandable amber/slate accordion when `thinkingResult` is present, surfacing parsed reasoning sections and thought token count metrics.
+  - **Fullscreen Focus Modal (`HistoryFullscreenOutputModal.tsx`)**: A dedicated full-viewport reading modal overlay (Tier 3 `z-[60]`) for deep inspection of lengthy outputs and complex JSON payloads, coordinated with `useModalEscape` for seamless dismissal.
+  - **Inline Title Renaming**: An inline edit pencil (`Edit3`) next to the sequence title allows immediate slot renaming with <kbd>Enter</kbd> to save and <kbd>Escape</kbd> to cancel.
+  - **Minimalist Icon-Only Action Cluster**: Replaces verbose text buttons with compact, square icon buttons with native tooltips: Favorite (`Star`), Diff (`GitCompare`), and Load Workspace (`FolderOpen`).
+  - **Unified Metadata Ribbon**: A compact, color-categorized ribbon directly below the title (Blue for Model, Amber for Reasoning, Purple for Preset, Emerald for Cost Popover, Slate for Tokens), with Temperature and Max Tokens displayed only when differing from default values. All pills are normalized to `h-5` with `text-[9px]`.
+  - **Adaptive Auto-Height Layout & Copy Triggers**: Adaptive containers for Main Objective and Dynamic Parameters maximize canvas space for output, with individual copy buttons providing transient visual feedback.
 - **Video History Metadata**: Video references are persisted in history items via an optional `videos` array of `HistoryVideoRef` objects, each carrying `label`, `mimeType`, `duration`, and optional `youtubeUrl`, `isYouTube`, and `base64` fields. The `base64` field enables runtime stream carry during history recall — videos with cached streams can be replayed immediately from the workspace after recall, while uncached MP4 references display a **NO LOCAL STREAM** placeholder in `VideoAssetCard`. YouTube references are playable via embedded iframe regardless of stream caching. History recall restores full video metadata; full video re-upload is required for regeneration of uncached references. History import/export preserves all video reference fields via the `HistoryVideoRef` interface in `lib/history-export.ts`. `VideoAssetCard` additionally renders a per-type top-right badge (`AUDIO` in purple, `DOC` in teal, `FILES API` in emerald, `YT` in red, or `MP4` in stone) for immediate visual type identification.
 
 ### Rule N: Preset Bulk Export & Import
@@ -359,6 +400,64 @@ When adding a new Gemini model or updating the default baseline, synchronize all
 - **No Absolute `file:///` URLs in Committed Files**: While AI coding assistants use `file:///` links in interactive chat conversations for IDE navigation, committed repository files (such as files in `/docs`, `CHANGELOG.md`, `README.md`, or source code comments) must **NEVER** contain local absolute `file:///` paths.
 - **Path Formatting Standard**: Always use clean code ticks (e.g., `lib/pricing.ts`, `app/page.tsx`) or relative Markdown links when referencing files in documentation.
 
+### Rule Q: Modular Hook Extraction for Workspace Logic
+**DO NOT inflate `app/page.tsx` with large DOM listeners, multi-step lifecycle effects, or isolated sub-system logic.**
+- `app/page.tsx` serves as the declarative root workspace coordinating state and rendering layouts.
+- Any new window/document event listeners (e.g. clipboard paste, keyboard shortcuts), complex URL parsers, or isolated feature integrations must be encapsulated in dedicated custom hooks under `/hooks` (following the pattern of `useUrlPresetImport`, `useClipboardImagePaste`, and `useGenerateShortcut`).
+- `app/page.tsx` should only invoke the hook with declarative callbacks and boolean guards (e.g., `isEnabled: !isLoading && !isAnyModalActive`).
+
+### Rule R: Global Keyboard Shortcuts & Input Safety
+When introducing global or scoped keyboard shortcuts to PromptLab, adhere to these invariants:
+- **Cross-Platform Compatibility**: Always support both `e.ctrlKey` (Windows/Linux) and `e.metaKey` (macOS Command key).
+- **Input Side-Effect Suppression**: Call `e.preventDefault()` on intercepted key events to prevent unintended side effects (such as inserting unwanted newline characters in active `<textarea>` elements or triggering accidental form submissions).
+- **Listener Ref Stability**: Use `useRef` inside custom shortcut hooks to store the active callback reference (`callbackRef.current = callback`), avoiding listener detachment and re-attachment thrashing on every form keystroke.
+- **Compound Execution & Overlay Gates**: Gate execution using compound state checks (`!isLoading && !isAnyModalActive`) so shortcuts never trigger duplicate background actions or fire while modals/dialogs are open.
+- **Brutalist Visual Affordances**: Pair shortcuts with compact `<kbd>` badges (`font-mono text-[9px] border border-[#D1D1CF] rounded-none`) and descriptive `title` tooltips on trigger buttons to ensure clear discoverability without cluttering mobile viewports (`hidden sm:inline-block`).
+
+### Rule S: Interactive Popovers, Boundary-Aware Positioning & Historical Isolation
+1. **Click-to-Toggle for Multi-Row Data**:
+   - Never use hover (`onMouseEnter`/`onMouseLeave`) for popovers containing multi-line tables, copyable values, or interactive controls. Use intentional click-to-toggle with active button styling (`aria-expanded`, emerald highlight ring).
+   - All interactive popovers must support four dismissal channels: toggle button click, outside-click detection, <kbd>Escape</kbd> key dismissal, and an explicit header close (<kbd>✕</kbd>) button.
+2. **Scroll-Container Boundary Awareness**:
+   - When placing `absolute` popovers inside scrollable containers (`overflow-y-auto` or `overflow-hidden`), never assume `left-0`.
+   - Popovers on triggers situated near the container's right margin must anchor to `right-0` to prevent horizontal clipping by the vertical scrollbar.
+   - For dynamically positioned triggers, measure clearance against the scroll container (`.closest(".overflow-y-auto")`) on open and flip alignment (`left-0` vs `right-0`), capped with `max-w-[calc(100vw-3rem)] sm:max-w-[340px]`.
+3. **Strict Historical Record Isolation**:
+   - When inspecting archived generation items in history explorers, modals, or comparison panels, all calculated metrics (token costs, breakdown rates, model headers) must strictly derive from the archived item's metadata (`item.model`), never leaking or falling back to the active workspace configuration.
+4. **Derived Transient UI State**:
+   - Do not use `useEffect` to clear active modal/popover states on item selection changes. Store the active record ID (`const [activeId, setActiveId] = useState<string | null>(null)`) and derive visibility (`isOpen = activeId === item.id`) to avoid cascading re-renders and React compiler errors.
+
+### Rule T: Universal LIFO Modal Escape Stack & Stacking Architecture
+When introducing, updating, or nesting modals, confirmation prompts, dropdown menus, and fullscreen overlays in PromptLab, adhere strictly to these layering and keyboard dismissal invariants:
+
+1. **Universal LIFO Modal Escape Stack (`hooks/use-modal-stack.ts`)**:
+   - All modals, sheets, and full-screen dialogs must register via `useModalEscape(isOpen, onClose)`.
+   - The stack coordinates modal dismissals in strict Last-In, First-Out (LIFO) order using a window-level listener in the **bubbling phase**.
+   - When <kbd>Escape</kbd> is pressed, strictly the top-most active dialog's close handler is popped and executed, preventing double-dismissals of parent dialogs.
+2. **The 5-Tier Z-Index Stacking Context Scale**:
+   - Never use arbitrary magic numbers for z-indexes. Follow the standardized 5-tier stacking system:
+     - **Tier 1: Canvas / Tags** (`z-10`): Floating badges, card actions, asset status tags.
+     - **Tier 2: Primary Fullscreen Modals & Drawers** (`z-50`): `HistoryViewerModal`, `PromptConfigModal`, `ProjectManagerModal`, `AssetLibrarySidebar`, `EngineControlsModal`.
+     - **Tier 3: Sub-Modals & Confirmations** (`z-[60]`): `HistoryFullscreenOutputModal`, `VideoPlayerModal` (when launched from history), `DeleteHistoryConfirmModal`, `ClearHistoryConfirmModal`, `LoadWorkspaceConfirmModal`, `PresetCompareModal`, `DiscardChangesConfirmModal`.
+     - **Tier 4: Floating Popovers & Action Menus** (`z-[70]`): `HistoryCostPopover`, Export JSON dropdowns, Quick Selector menus.
+     - **Tier 5: Portaled Hover Previews & Tooltips** (`z-[80]`): `HistoryImageCardWithHover` portal, help tooltips.
+3. **Sub-Overlay Capture-Phase Prioritization**:
+   - Transient popovers and dropdown menus (Tier 4) that exist inside an open modal must attach their <kbd>Escape</kbd> listener to `document` in the **capture phase** (`true`) with `e.preventDefault()`, `e.stopPropagation()`, and `e.stopImmediatePropagation()`.
+   - This ensures that pressing <kbd>Escape</kbd> while an export menu or cost popover is active dismisses *only* the sub-overlay, halting the event before it bubbles up to the `window` modal stack.
+4. **Input Field Isolation (Native Event Halts)**:
+   - Inline edit fields (such as slot renaming inputs) and search filter bars must intercept <kbd>Escape</kbd> and invoke `e.nativeEvent.stopImmediatePropagation()`.
+   - This allows clearing search queries or canceling inline edits without triggering modal closure.
+5. **Comprehensive Body Scroll-Lock Registration**:
+   - Every modal or fullscreen overlay state must be registered in the `isAnyModalOpen` body scroll-lock `useEffect` (`document.body.style.overflow = "hidden"`) in `app/page.tsx`, as well as the `isAnyModalActive` compound safety gates for clipboard image paste and generation shortcuts.
+
+### Rule U: Proactive Documentation Synchronization
+**NEVER consider a task or feature complete without updating the documentation first.**
+Whenever new components are created, refactored, or UI capabilities are added:
+1. Update `CHANGELOG.md` under `[Unreleased]` with detailed functional and architectural bullet points.
+2. Update the architecture component registry in `AGENTS.md` (e.g. under `components/history/` or other relevant folders).
+3. Complete documentation updates **BEFORE** generating conventional commit messages (`/cmsg`) or closing the task.
+4. **Avoid `file:///` Absolute URLs**: Never use local machine `file:///` URIs in `CHANGELOG.md`, `AGENTS.md`, git commit messages, or release documentation. Always use clean code ticks or repository-relative paths (e.g. `components/history/HistoryListSidebar.tsx`) so documentation remains clean, portable, and legible across environments and GitHub (reinforcing Rule P).
+
 ---
 
 ## 6. Common Operations & Commands
@@ -373,6 +472,14 @@ The `dev` script runs `next dev -p 3000 -H 0.0.0.0`, binding to all network inte
 ```bash
 npm run lint
 npm run build
+```
+
+### Windows Build Troubleshooting
+If `npm run build` fails with:
+`[Error [PageNotFoundError]: Cannot find module for page: /_not-found]`
+This is caused by a locked or stale `.next` build cache directory on Windows. Resolve it immediately by purging the cache before rebuilding:
+```powershell
+Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; npm run build
 ```
 
 ### Production Start & Cleanup

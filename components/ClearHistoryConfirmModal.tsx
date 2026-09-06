@@ -2,7 +2,8 @@
 
 import React from "react";
 import { Trash2, Star } from "lucide-react";
-import { HistoryItem } from "./HistorySection";
+import { HistoryItem } from "../types/history";
+import { useModalEscape } from "../hooks/use-modal-stack";
 
 interface ClearHistoryConfirmModalProps {
   isOpen: boolean;
@@ -19,6 +20,8 @@ export default function ClearHistoryConfirmModal({
   onClearUnfavorited,
   onClearAll,
 }: ClearHistoryConfirmModalProps) {
+  useModalEscape(isOpen, onClose);
+
   if (!isOpen) return null;
 
   const favCount = history.filter((h) => h.isFavorite).length;

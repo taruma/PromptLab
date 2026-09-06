@@ -2,6 +2,97 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
+## [v2.6.0] — September 6, 2026
+
+### Added
+
+- **History Modal Preview Panel Redesign: Modular Output Viewer & Retro Lab Aesthetics (`components/history/HistoryDetailPanel.tsx`, `components/history/HistoryOutputViewer.tsx`, `components/history/HistoryFullscreenOutputModal.tsx`).**
+  - **Modular Output & Reasoning Viewer (`HistoryOutputViewer.tsx`)**: Extracted generation output rendering into an isolated, reusable subcomponent featuring multi-mode rendering with **RAW Monospace as the default** on every modal open and slot change. Includes one-click mode switching to Formatted Markdown (`MD`) with styled tables/code blocks and Syntax-Highlighted JSON (`JSON`) with line numbers and token color coding. Displays live character and word count indicators in the toolbar, with an additional line counter surfaced when in JSON view mode.
+  - **Collapsible Reasoning / Thinking Trace**: Automatically renders an expandable amber/slate accordion when the model generates thought tokens (`thinkingResult`), surfacing parsed reasoning sections and thought token count metrics.
+  - **Distraction-Free Fullscreen Focus Modal (`HistoryFullscreenOutputModal.tsx`)**: Added a dedicated full-viewport reading modal overlay (Tier 3 `z-[60]`) for deep inspection of lengthy outputs and complex JSON payloads, fully integrated with the universal LIFO Escape key stack (`useModalEscape`) for seamless dismissal back to the history explorer.
+  - **Inline Title Renaming**: Added an inline edit pencil trigger (`Edit3`) next to the sequence title in the detail header, allowing immediate renaming with <kbd>Enter</kbd> to save, <kbd>Escape</kbd> to cancel, and check/cancel action controls.
+  - **Minimalist Icon-Only Action Cluster**: Replaced verbose text buttons with compact, square icon-only buttons with descriptive native tooltips: Favorite (`Star`), Diff (`GitCompare`), and Load Workspace (`FolderOpen`).
+  - **Unified Color-Coded Metadata Ribbon**: Eliminated the redundant "Engine Specs:" label and separate horizontal divider. Integrated a compact, color-categorized ribbon directly below the title (Blue for Model, Amber for Reasoning, Purple for Preset, Emerald for interactive Cost Popover, Slate for Tokens), with Temperature and Max Tokens displayed only when differing from default values. All pills are harmonized to a pixel-aligned `h-5` height with unified `text-[9px]` baseline metrics.
+  - **Direct, Informative Labeling**: Replaced verbose phrasing (`"SPEC // SLOT"`, `"Synthesized on..."`) with clean, direct labels: `Generated: {timestamp} • #{id}` and `References ({count})`.
+  - **Adaptive Auto-Height Layout**: Removed rigid `min-h-[220px] max-h-[300px]` constraints from the Main Objective / Idea and Dynamic Parameters block, letting containers adapt naturally to content height and maximizing visible canvas space for the output.
+  - **Dynamic Parameter Copy Triggers**: Added individual one-click copy buttons with transient `Copied!` visual feedback for each dynamic parameter value.
+
+- **History Modal Sidebar Overhaul: Sorting, Filtering & Grouping Engine (`components/history/HistoryListSidebar.tsx`, `lib/history-grouping.ts`).**
+  - **Collapsible Filter & Sort Drawer**: Integrated a compact `[SORT & FILTER ▾]` drawer button below the search input, displaying an active filter counter badge and an instant `[reset]` action. Houses all sorting, preset, model, thinking, and media filters in a clean retro-lab drawer to preserve vertical space for the slot list.
+  - **Multi-Select Media Filtering (AND Logic)**: Added interactive toggle chips (`IMG`, `VID`, `AUD`, `DOC`) supporting multi-selection with strict AND matching (e.g. `IMG` + `VID` returns only slots containing both reference images and video clips, while `DOC` matches uploaded text/markdown/PDF documents).
+  - **Dynamic Presets & Models Filtering**: Automatically extracts unique presets from historical records with item counts, plus a dedicated `Custom (No Preset)` option for ad-hoc prompts. Extracted unique models with dynamic item counts.
+  - **Reasoning Level Filter**: Added dropdown selector for filtering by thinking levels (`HIGH`, `MEDIUM`, `LOW`, `MINIMAL`, `OFF`).
+  - **Universal Search & Integrated Side Scope Selector**: Embedded a dedicated scope switcher directly onto the right edge of the search input box as a compact icon-only trigger (`[Scope Icon]`), opening a rich `w-72` dropdown detailing each target search area with icons, title, inline `DEFAULT` badge, and subtitle descriptions. Defaults to **"All Content (Universal)"** (scanning titles, main objectives, dynamic parameter keys & values, generated output, media labels, and compiled prompt specs), with explicit targeting options for "Slot Name / Title", "Main Objective (Idea)", "Generated Output", "Media Reference Labels", "Dynamic Parameters" (matching form input variable names and values), and "Compiled Prompt Specs".
+  - **View Density Toggle (Detailed vs Compact)**: Added a 2-button view density switcher (`[LayoutList]` vs `[Rows]`) directly on the header tabs row, allowing users to toggle between rich 4-row cards (with narrative output excerpts and full badge stacks) and streamlined 2-line compact cards (star, rank, title, media indicator dots, cost metrics on cost sort, and single-line output excerpt with dates and model tags removed for maximum clarity). Preference is persisted in `localStorage` (`promptlab_history_density_mode`).
+  - **Smart Contextual Date Grouping**: When sorting by Date (newest or oldest), history records are sectioned under sticky, collapsible retro-lab headers (`TODAY`, `YESTERDAY`, `PREVIOUS 7 DAYS`, `OLDER`) with item counts and collapse/expand chevrons. Sorting by Cost or Name seamlessly transitions to a continuous flat ranked list with `#N` rank badges.
+  - **Cost Badges on Cost Sort**: History cards surface an emerald cost badge (`$0.0012`) and formatted token count on Row 3 exclusively when sorting by Cost, preventing visual clutter during standard browsing.
+  - **Keyboard Arrow Navigation**: Added <kbd>ArrowUp</kbd> and <kbd>ArrowDown</kbd> hotkeys to seamlessly step through visible filtered history slots with automatic smooth-scrolling, protected by focus safety gates on text inputs.
+  - **Inspected Slot Retention & Session Persistence**: Retains currently inspected history item in the detail panel even if filter changes exclude it from the sidebar list. Retains active filter/sort selections across modal opens/closes within the session.
+  - **Comprehensive Helper Module (`lib/history-grouping.ts`)**: Encapsulated robust date parsing (handling epoch IDs and formatted date strings), date bucketing, numeric cost parsing, AND-logic media filters, dynamic metadata extractors, and sorting functions into a dedicated utility module.
+
+- **Clipboard Image Paste Support (`Ctrl+V` / `Cmd+V`).**
+  - Added native support for pasting screenshots and copied images directly from the OS clipboard into the active workspace using standard keyboard shortcuts (<kbd>Ctrl+V</kbd> / <kbd>Cmd+V</kbd>).
+  - Pasted images are automatically processed through PromptLab's HTML Canvas compression pipeline (`compressImageToJpeg` at 90% quality), hashed via SHA-256 (`computeContentHash`) for transparent IndexedDB deduplication, saved into `promptlab_db`, and mapped to dynamic `@imageN` template casting tags.
+  - Added smart auto-labeling for pasted images: detects generic names assigned by browsers and operating systems (such as `image.png`, `image`, or empty `blob`) and assigns sequential labels (`Pasted Image 1`, `Pasted Image 2`, etc.) while preserving custom filenames when dragging or uploading files.
+  - Added auto-expansion behavior: automatically opens and persists the Visual Assets accordion section when an image is pasted, providing immediate visual feedback in the workspace grid.
+  - **Modular Architecture (`hooks/use-clipboard-image-paste.ts`)**: Encapsulated the entire clipboard event lifecycle, MIME type inspection (`image/*`), and safe keyboard handling into a reusable custom React hook, keeping `app/page.tsx` clean and declarative.
+  - **Context-Aware Safety Gates**:
+    - **No Text Interference**: Clipboard events containing only text or HTML are bypassed, ensuring native text paste inside `<input>` and `<textarea>` fields (Main Objective, dynamic parameter forms, prompt editors, search bars) functions completely uninterrupted.
+    - **Modal Protection**: Automatically bypasses workspace image paste whenever any major modal or overlay (Prompt Config, Engine Controls, History Viewer, Files API, Preset Compare, Storage Usage, Project Manager) is active.
+
+- **Generation Keyboard Shortcut (`Ctrl+Enter` / `Cmd+Enter`).**
+  - Added native keyboard shortcut support to trigger sequence synthesis (`handleGeneratePrompt`) using standard <kbd>Ctrl+Enter</kbd> (Windows/Linux) or <kbd>Cmd+Enter</kbd> (macOS).
+  - Integrated `e.preventDefault()` handling to prevent accidental newline insertions when triggering generation from multiline `<textarea>` elements (such as **Main Objective / Idea**).
+  - **Modular Architecture (`hooks/use-generate-shortcut.ts`)**: Extracted keyboard event listening and callback ref synchronization into a dedicated custom hook to avoid re-binding window listeners on every keystroke.
+  - **Safety Gates**: Shortcut is disabled when a generation sequence is currently processing (`isLoading`) or when any modal overlay or dialog (`isAnyModalActive`) is open.
+  - **Visual Indicator**: Added a subtle Analog Brutalist `<kbd>` badge (`Ctrl+↵`) and descriptive tooltip to the "Generate Sequence" button, plus documentation in Step 4 of the Lab Manual.
+
+- **Universal LIFO Modal Escape Stack (`hooks/use-modal-stack.ts`).**
+  - Introduced a reusable `useModalEscape` hook powered by a global module-level Last-In, First-Out (LIFO) stack array to coordinate modal and overlay dismissals reliably.
+  - Pressing <kbd>Escape</kbd> automatically pops and invokes strictly the topmost active overlay or dialog, preventing accidental double-closes or parent dismissals.
+  - Connected `HistoryViewerModal`, `HistoryFullscreenOutputModal`, `VideoPlayerModal`, `DeleteHistoryConfirmModal`, `LoadWorkspaceConfirmModal`, and `ClearHistoryConfirmModal` to the universal stack.
+
+- **Canonical History Type System (`types/history.ts`).**
+  - Established a dedicated `types/history.ts` module as the single source of truth for `HistoryItem`, `HistoryImage`, `HistoryVideo`, `HistoryTokenUsage`, `HistorySearchScope`, and `HistoryExportResult`.
+  - Replaced duplicate interface definitions across `app/page.tsx`, `components/HistoryViewerModal.tsx`, `components/HistorySection.tsx`, `components/HistoryCardSummary.tsx`, and `lib/history-export.ts`.
+
+- **Modular History Viewer Decomposition (`components/history/`).**
+  - Decomposed the monolithic 1,344-line `HistoryViewerModal.tsx` down to a clean ~500-line orchestrator by extracting single-responsibility subcomponents into `components/history/`:
+    - `HistoryListSidebar.tsx`: Search bar with clear button, search scope selector dropdown, All/Favorites tabs, scrollable slot card list, and inline slot renaming.
+    - `HistoryDetailPanel.tsx`: Header, engine specs bar, media gallery, dynamic parameters table, main objective / idea box, collapsible compiled prompt, and generation output preview.
+    - `HistoryCostPopover.tsx`: Itemized token cost breakdown popover with edge-aware alignment and strict model rate isolation.
+    - `HistoryImageCardWithHover.tsx`: Portaled hover preview with viewport boundary detection and SHA-256 content hash badge.
+    - `HistoryOutputViewer.tsx`: Modular generation output & reasoning viewer with multi-mode rendering (Raw/MD/JSON), reasoning trace accordion, and live word/char counters.
+    - `HistoryFullscreenOutputModal.tsx`: Distraction-free full-viewport reading modal overlay (Tier 3 `z-[60]`) with LIFO Escape dismissal.
+
+- **Standardized 5-Tier Z-Index Stacking Architecture.**
+  - Formalized consistent z-index tiers across all modal and popover surfaces: Tier 1 Canvas (`z-10`), Tier 2 Primary Modals (`z-50`), Tier 3 Sub-Modals & Confirmations (`z-[60]`), Tier 4 Floating Popovers & Menus (`z-[70]`), and Tier 5 Portaled Hover Previews (`z-[80]`).
+  - Elevated `VideoPlayerModal` and `HistoryFullscreenOutputModal` when launched from History to Tier 3 (`z-[60]`) to stack properly above `HistoryViewerModal` (`z-50`).
+
+### Changed
+
+- **Click-to-Toggle Itemized Cost Breakdown Popover.**
+  - Replaced hover-activated cost breakdown with an intentional click-to-open and click-to-close toggle interaction in the main output panel (`components/GenerationResultView.tsx`), preventing accidental popover flashing on mouse movement.
+  - Added full keyboard accessibility with <kbd>Escape</kbd> key dismissal, outside-click detection, active visual state indicator on the badge button, and a dedicated close button (<kbd>✕</kbd>) in the popover header.
+  - **History Viewer Integration (`components/HistoryViewerModal.tsx`)**: Extended the interactive click-to-toggle cost breakdown popover to the Session History Explorer detail panel. Clicking the cost badge now inspects line-by-line token expenditures (prompt input, context cache savings, candidate output, reasoning thoughts, unit rates per 1M, and total cost) computed strictly using the specific model recorded on each historical generation item (`selectedItem.model`), rather than the active workspace model. Auto-resets popover state cleanly when switching history records or closing the modal.
+  - **Edge-Aware Popover Alignment**: Added dynamic container boundary detection in `HistoryViewerModal`. Because the cost badge is positioned near the right side of the Engine Specs row, the popover defaults to right alignment (`right-0`) and measures available clearance against the scrollable container (`.overflow-y-auto`) on click, preventing line item prices and header controls from being cut off by the vertical scrollbar.
+
+### Fixed
+
+- **Hierarchical <kbd>Escape</kbd> Key Modal Dismissal & History Viewer Navigation.**
+  - Fixed an issue where pressing <kbd>Escape</kbd> failed to close `HistoryViewerModal` (`isHistoryViewerOpen`), `ProjectManagerModal` (`isProjectManagerOpen`), and `StorageUsageModal` (`isStorageModalOpen`).
+  - Restructured the global <kbd>Escape</kbd> listener in `app/page.tsx` into a strict priority hierarchy: confirmation and alert dialogs (discard prompt changes, preset replace, load workspace, delete slot, clear history, clear session, and URL import confirmation) are dismissed first, preventing accidental simultaneous closure of underlying viewer modals.
+  - Added event isolation (`e.stopPropagation()`) for nested sub-interactions:
+    - In `HistoryViewerModal`: canceling inline slot renaming, closing the token cost breakdown popover, and closing the "Export JSON" dropdown menu now capture <kbd>Escape</kbd> without dismissing the parent viewer. Added outside-click detection and container ref for the export dropdown.
+    - In `ProjectManagerModal`: canceling internal project deletion prompts, workspace switch prompts, new project creation, or inline project renaming now captures <kbd>Escape</kbd> without closing the manager modal.
+  - Updated the body scroll-lock hook (`isAnyModalOpen`) to include all major modals (`isHistoryViewerOpen`, `isProjectManagerOpen`, `isStorageModalOpen`, `isPresetReplaceConfirmOpen`, `isYouTubeModalOpen`, `isFilesApiModalOpen`), ensuring background scrolling is locked whenever any modal is active.
+
+- **Sub-Overlay <kbd>Escape</kbd> Prioritization in History Viewer.**
+  - Fixed an issue where pressing <kbd>Escape</kbd> while the "Export JSON" dropdown menu or the "Cost Breakdown" popover was open closed the entire `HistoryViewerModal`.
+  - Configured `useModalEscape` window listener to use the standard bubbling phase, while dropdown and popover listeners capture on `document` with `e.preventDefault()`, `e.stopPropagation()`, and `e.stopImmediatePropagation()`, guaranteeing sub-overlays dismiss without triggering parent modal closure.
+  - Added native event propagation halts on inline renaming inputs and search filter inputs in `HistoryListSidebar`, allowing one-key search query clearing via <kbd>Escape</kbd> without closing the modal.
+  - Fixed latent double-close bug where closing `VideoPlayerModal` via <kbd>Escape</kbd> inadvertently closed `HistoryViewerModal`.
+
 ---
 
 ## [v2.5.1] — September 3, 2026
