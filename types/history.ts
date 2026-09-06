@@ -64,6 +64,7 @@ export type HistorySearchScope =
   | "idea" 
   | "output" 
   | "visual_reference" 
+  | "parameters"
   | "compiled_prompt";
 
 export type HistorySortOption = 

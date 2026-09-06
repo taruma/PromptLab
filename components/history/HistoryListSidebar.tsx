@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   Search,
   Trash2,
@@ -11,6 +11,13 @@ import {
   SlidersHorizontal,
   ChevronDown,
   RotateCcw,
+  Globe,
+  Tag,
+  Target,
+  FileText,
+  Paperclip,
+  Sliders,
+  Terminal,
 } from "lucide-react";
 import {
   HistoryItem,
@@ -25,6 +32,66 @@ import {
   getUniqueModels,
   countActiveFilters,
 } from "../../lib/history-grouping";
+
+export interface SearchScopeOption {
+  id: HistorySearchScope;
+  label: string;
+  shortLabel: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+export const SEARCH_SCOPE_OPTIONS: SearchScopeOption[] = [
+  {
+    id: "all",
+    label: "All Content (Universal)",
+    shortLabel: "ALL",
+    description: "Searches Title, Idea, Params, Output, Media & Prompts",
+    icon: Globe,
+  },
+  {
+    id: "default",
+    label: "Slot Name / Title",
+    shortLabel: "TITLE",
+    description: "Custom slot names or auto-derived outline titles",
+    icon: Tag,
+  },
+  {
+    id: "idea",
+    label: "Main Objective (Idea)",
+    shortLabel: "IDEA",
+    description: "Dedicated {{idea}} objective textarea contents",
+    icon: Target,
+  },
+  {
+    id: "output",
+    label: "Generated Output",
+    shortLabel: "OUTPUT",
+    description: "Synthesized narrative response and story text",
+    icon: FileText,
+  },
+  {
+    id: "visual_reference",
+    label: "Media Reference Labels",
+    shortLabel: "MEDIA",
+    description: "Casting labels (@image, @video, @audio, @doc)",
+    icon: Paperclip,
+  },
+  {
+    id: "parameters",
+    label: "Dynamic Parameters",
+    shortLabel: "PARAMS",
+    description: "Form inputs: variable names and customized values",
+    icon: Sliders,
+  },
+  {
+    id: "compiled_prompt",
+    label: "Compiled Prompt Specs",
+    shortLabel: "PROMPT",
+    description: "Full assembled prompt instructions sent to engine",
+    icon: Terminal,
+  },
+];
 
 export interface HistoryListSidebarProps {
   history: HistoryItem[];
@@ -75,11 +142,45 @@ export const HistoryListSidebar: React.FC<HistoryListSidebarProps> = ({
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [collapsedBuckets, setCollapsedBuckets] = useState<Record<string, boolean>>({});
+  const [isScopeMenuOpen, setIsScopeMenuOpen] = useState(false);
+  const scopeMenuRef = useRef<HTMLDivElement>(null);
 
   // Dynamic presets and models extracted from historical records
   const uniquePresets = useMemo(() => getUniquePresets(history), [history]);
   const uniqueModels = useMemo(() => getUniqueModels(history), [history]);
   const activeFilterCount = useMemo(() => countActiveFilters(filterState), [filterState]);
+
+  const currentScope = useMemo(() => {
+    return (
+      SEARCH_SCOPE_OPTIONS.find((s) => s.id === filterState.searchScope) ||
+      SEARCH_SCOPE_OPTIONS[0]
+    );
+  }, [filterState.searchScope]);
+
+  // Close scope dropdown on outside click or Escape
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (scopeMenuRef.current && !scopeMenuRef.current.contains(e.target as Node)) {
+        setIsScopeMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isScopeMenuOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        setIsScopeMenuOpen(false);
+      }
+    };
+    if (isScopeMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown, true);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [isScopeMenuOpen]);
 
   const isCostSorting = filterState.sortBy === "cost_desc" || filterState.sortBy === "cost_asc";
   const isDateSorting = filterState.sortBy === "date_desc" || filterState.sortBy === "date_asc";
@@ -321,7 +422,7 @@ export const HistoryListSidebar: React.FC<HistoryListSidebarProps> = ({
   return (
     <div className="w-full md:w-80 flex flex-col shrink-0 bg-[#FAF9F6] h-1/3 md:h-full min-h-[180px] md:min-h-0">
       {/* Header: Tabs, Search Bar, & Filter Drawer Toggle */}
-      <div className="p-3.5 border-b border-[#D1D1CF] bg-white space-y-2.5">
+      <div className="p-3.5 border-b border-[#D1D1CF] bg-white space-y-2.5 relative z-20">
         {/* Tabs: All vs Favorites */}
         <div className="flex items-center gap-1 border-b border-[#D1D1CF] pb-2">
           <button
@@ -347,10 +448,10 @@ export const HistoryListSidebar: React.FC<HistoryListSidebarProps> = ({
           </button>
         </div>
 
-        {/* Search Input Bar */}
-        <div className="relative">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 pointer-events-none">
-            <Search className="w-3.5 h-3.5 text-[#888884]" />
+        {/* Search Input Bar with Integrated Scope Selector on the side */}
+        <div className="relative flex items-stretch border border-[#D1D1CF] bg-[#FAF9F6] focus-within:border-[#1A1A1A] transition-all">
+          <span className="pl-2.5 text-[#888884] pointer-events-none flex items-center shrink-0">
+            <Search className="w-3.5 h-3.5" />
           </span>
           <input
             type="text"
@@ -364,19 +465,91 @@ export const HistoryListSidebar: React.FC<HistoryListSidebarProps> = ({
                 setSearchQuery("");
               }
             }}
-            placeholder="Search history slots..."
-            className="w-full bg-[#FAF9F6] border border-[#D1D1CF] py-1.5 pl-8 pr-7 text-[10px] uppercase tracking-wider font-bold outline-none focus:border-[#1A1A1A] transition-all rounded-none text-[#1A1A1A] placeholder-stone-400"
+            placeholder={
+              filterState.searchScope === "all"
+                ? "Search all content & params..."
+                : `Search in ${currentScope.label}...`
+            }
+            className="w-full bg-transparent py-1.5 pl-2 pr-1 text-[10px] uppercase tracking-wider font-bold outline-none text-[#1A1A1A] placeholder-stone-400 min-w-0"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute inset-y-0 right-0 flex items-center pr-2 text-[#888884] hover:text-[#1A1A1A] transition-colors cursor-pointer"
+              className="px-1.5 flex items-center text-[#888884] hover:text-[#1A1A1A] transition-colors cursor-pointer shrink-0"
               title="Clear search"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
             </button>
           )}
+
+          {/* Scope Selector on Side of Search Box */}
+          <div className="relative border-l border-[#D1D1CF] shrink-0 flex items-stretch" ref={scopeMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsScopeMenuOpen(!isScopeMenuOpen)}
+              className={`px-2.5 py-1.5 flex items-center justify-center cursor-pointer transition-colors ${
+                isScopeMenuOpen || filterState.searchScope !== "all"
+                  ? "bg-[#1A1A1A] text-white"
+                  : "bg-white text-[#555] hover:text-[#1A1A1A] hover:bg-[#F4F4F2]"
+              }`}
+              title={`Search Scope: ${currentScope.label} (Click to change)`}
+              aria-label={`Search Scope: ${currentScope.label}`}
+            >
+              <currentScope.icon className="w-3.5 h-3.5 shrink-0" />
+            </button>
+
+            {/* Scope Dropdown Menu with Rich Details */}
+            {isScopeMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-72 bg-white border border-[#D1D1CF] shadow-xl z-50 py-1 font-mono text-[9px] uppercase tracking-wider divide-y divide-[#EAEAE8] rounded-none animate-fade-in">
+                <div className="px-2.5 py-1 text-[7.5px] font-bold text-[#888884] uppercase tracking-widest bg-[#FAF9F6]">
+                  Target Search Area
+                </div>
+                {SEARCH_SCOPE_OPTIONS.map((opt) => {
+                  const isSelected = filterState.searchScope === opt.id;
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setFilterState((prev) => ({ ...prev, searchScope: opt.id }));
+                        setIsScopeMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 flex items-start gap-2 hover:bg-[#FAF9F6] transition-colors cursor-pointer ${
+                        isSelected ? "bg-[#FEF3C7] border-l-2 border-l-[#1A1A1A]" : ""
+                      }`}
+                    >
+                      <Icon
+                        className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
+                          isSelected ? "text-[#1A1A1A]" : "text-[#888884]"
+                        }`}
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`text-[9px] font-bold leading-none ${
+                              isSelected ? "text-[#1A1A1A]" : "text-[#444]"
+                            }`}
+                          >
+                            {opt.label}
+                          </span>
+                          {opt.id === "all" && (
+                            <span className="inline-flex items-center px-1 py-0.2 text-[7px] font-mono font-bold uppercase tracking-wider border border-[#D1D1CF] bg-white text-[#666] leading-none shrink-0">
+                              DEFAULT
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[8px] text-[#888884] font-sans normal-case tracking-normal leading-tight mt-1">
+                          {opt.description}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Sort & Filter Collapsible Drawer Trigger Button */}
@@ -445,29 +618,6 @@ export const HistoryListSidebar: React.FC<HistoryListSidebarProps> = ({
                 </select>
               </div>
 
-              {/* Row 2: Search Scope (Area) */}
-              <div className="flex flex-col gap-1">
-                <span className="text-[8px] font-bold text-[#888884] uppercase tracking-wider">
-                  Search Scope (Area):
-                </span>
-                <select
-                  value={filterState.searchScope}
-                  onChange={(e) =>
-                    setFilterState((prev) => ({
-                      ...prev,
-                      searchScope: e.target.value as HistorySearchScope,
-                    }))
-                  }
-                  className="w-full bg-white border border-[#D1D1CF] text-[9px] uppercase tracking-wider font-bold py-1 px-1.5 outline-none focus:border-[#1A1A1A] text-[#1A1A1A] cursor-pointer rounded-none h-7"
-                >
-                  <option value="all">All Content (Universal)</option>
-                  <option value="default">Slot Name / Title</option>
-                  <option value="idea">Main Objective (Idea)</option>
-                  <option value="output">Generated Output</option>
-                  <option value="visual_reference">Media Labels (@image/@video)</option>
-                  <option value="compiled_prompt">Compiled Prompt Specs</option>
-                </select>
-              </div>
 
               {/* Row 3: Preset Filter */}
               <div className="flex flex-col gap-1">

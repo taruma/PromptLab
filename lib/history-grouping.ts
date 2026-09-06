@@ -162,8 +162,11 @@ export function matchItemSearch(
     const imageLabels = (item.images || []).map((img) => img.label);
     const videoLabels = (item.videos || []).map((vid) => vid.label);
     const filledPrompt = item.filledPrompt || "";
+    const paramKeys = Object.keys(item.variables || {});
+    const paramValues = Object.values(item.variables || {});
+
     return matchesSearchQuery(
-      [title, idea, output, ...imageLabels, ...videoLabels, filledPrompt],
+      [title, idea, output, ...imageLabels, ...videoLabels, filledPrompt, ...paramKeys, ...paramValues],
       trimmed
     );
   }
@@ -187,6 +190,12 @@ export function matchItemSearch(
     const imageLabels = (item.images || []).map((img) => img.label);
     const videoLabels = (item.videos || []).map((vid) => vid.label);
     return matchesSearchQuery([...imageLabels, ...videoLabels], trimmed);
+  }
+
+  if (scope === "parameters") {
+    const paramKeys = Object.keys(item.variables || {});
+    const paramValues = Object.values(item.variables || {});
+    return matchesSearchQuery([...paramKeys, ...paramValues], trimmed);
   }
 
   if (scope === "compiled_prompt") {
