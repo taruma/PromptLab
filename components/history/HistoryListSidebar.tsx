@@ -242,7 +242,7 @@ export const HistoryListSidebar: React.FC<HistoryListSidebarProps> = ({
 
     const rawOutput = item.output || "";
     const cleanedText = rawOutput
-      ? rawOutput.replace(/[#*`_>~-]/g, " ").replace(/\s+/g, " ").trim()
+      ? rawOutput.slice(0, 300).replace(/[#*`_>~-]/g, " ").replace(/\s+/g, " ").trim()
       : "No output generated.";
     const outputExcerpt =
       cleanedText.length > 140 ? cleanedText.slice(0, 137) + "..." : cleanedText;

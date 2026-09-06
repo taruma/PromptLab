@@ -106,19 +106,20 @@ export default function HistoryViewerModal({
 
   // Filter and sort history items based on search query, active tab, and filter criteria
   const filteredHistory = React.useMemo(() => {
+    if (!isOpen) return [];
     const filtered = filterHistoryItems(history, activeTab, searchQuery, filterState);
     return sortHistoryItems(filtered, filterState.sortBy);
-  }, [history, activeTab, searchQuery, filterState]);
+  }, [isOpen, history, activeTab, searchQuery, filterState]);
 
   // Derive selectedItem from history and selectedItemId (retains selected item if available)
   const selectedItem = React.useMemo(() => {
-    if (history.length === 0) return null;
+    if (!isOpen || history.length === 0) return null;
     if (selectedItemId) {
       const found = history.find((item) => item.id === selectedItemId);
       if (found) return found;
     }
     return filteredHistory[0] || history[0];
-  }, [history, filteredHistory, selectedItemId]);
+  }, [isOpen, history, filteredHistory, selectedItemId]);
 
   // Keyboard Arrow Up / Arrow Down navigation through filtered history slots
   useEffect(() => {
@@ -181,34 +182,50 @@ export default function HistoryViewerModal({
     }
   }, [isOpen, selectedItem]);
 
-  // Resolve images asynchronously whenever the selected item changes
+  // Resolve images asynchronously whenever the modal is open and the selected item changes
   useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
     let isMounted = true;
     async function resolveImages() {
-      if (!selectedItem) {
-        await Promise.resolve();
+      if (!selectedItem || !selectedItem.images || selectedItem.images.length === 0) {
         if (isMounted) {
           setResolvedImages({});
         }
         return;
       }
 
-      const imagesMap: Record<string, string> = {};
-      if (selectedItem.images) {
-        for (const img of selectedItem.images) {
-          if (img.id) {
-            try {
-              const b64 = await getStoredImage(img.id);
-              if (b64) {
-                imagesMap[img.id] = b64;
-              }
-            } catch (err) {
-              console.error("Failed to load history image:", err);
-            }
+      const validImages = selectedItem.images.filter(
+        (img): img is typeof img & { id: string } => typeof img.id === "string" && img.id.length > 0
+      );
+      if (validImages.length === 0) {
+        if (isMounted) {
+          setResolvedImages({});
+        }
+        return;
+      }
+
+      const results = await Promise.all(
+        validImages.map(async (img) => {
+          try {
+            const b64 = await getStoredImage(img.id);
+            return { id: img.id, b64 };
+          } catch (err) {
+            console.error("Failed to load history image:", err);
+            return { id: img.id, b64: null };
+          }
+        })
+      );
+
+      if (isMounted) {
+        const imagesMap: Record<string, string> = {};
+        for (const res of results) {
+          if (res.b64) {
+            imagesMap[res.id] = res.b64;
           }
         }
-      }
-      if (isMounted) {
         setResolvedImages(imagesMap);
       }
     }
@@ -216,8 +233,9 @@ export default function HistoryViewerModal({
     resolveImages();
     return () => {
       isMounted = false;
+      setResolvedImages({});
     };
-  }, [selectedItem]);
+  }, [isOpen, selectedItem]);
 
   if (!isOpen) return null;
 
@@ -284,12 +302,13 @@ export default function HistoryViewerModal({
     setStatusBanner(null);
     try {
       const text = await file.text();
-      const { updatedHistory, importedCount } = await importHistoryFromJSON(text, history);
+      const { updatedHistory, importedCount, skippedCount } = await importHistoryFromJSON(text, history);
       if (onImportHistory) {
         onImportHistory(updatedHistory);
       }
+      const skippedMsg = skippedCount > 0 ? ` (${skippedCount} already up-to-date skipped)` : "";
       setStatusBanner({
-        message: `Successfully imported ${importedCount} history record(s) with embedded images!`,
+        message: `Successfully imported ${importedCount} history record(s)${skippedMsg}!`,
       });
     } catch (err: any) {
       setStatusBanner({

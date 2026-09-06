@@ -182,16 +182,24 @@ export const HistoryOutputViewer: React.FC<HistoryOutputViewerProps> = ({
   tokenUsage,
   model,
 }) => {
-  const cleanJson = useMemo(() => extractCleanJson(output), [output]);
-
   const [viewMode, setViewMode] = useState<"formatted" | "raw" | "json">("raw");
+
+  // Only extract and format JSON lazily when JSON view mode is actively selected
+  const cleanJson = useMemo(() => {
+    if (viewMode !== "json") {
+      return { parsed: null, formatted: "", isValid: false };
+    }
+    return extractCleanJson(output);
+  }, [output, viewMode]);
+
   const [copied, setCopied] = useState(false);
   const [isReasoningOpen, setIsReasoningOpen] = useState(false);
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
 
   const handleCopy = () => {
     if (!output) return;
-    const textToCopy = viewMode === "json" && cleanJson.isValid ? cleanJson.formatted : output;
+    const jsonTarget = viewMode === "json" ? (cleanJson.isValid ? cleanJson : extractCleanJson(output)) : null;
+    const textToCopy = jsonTarget?.isValid ? jsonTarget.formatted : output;
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
