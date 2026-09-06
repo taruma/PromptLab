@@ -176,6 +176,16 @@ PromptLab is crafted in an **Analog Brutalist Retro Lab** aesthetic. Any new com
     - Symmetrical layouts with clear, stark borders (`border border-[#D1D1CF]`).
     - Active states on hover should use transparent color overlays or bold border highlights rather than flashy gradient animations.
     - **UI Restraint & Minimal Controls**: Avoid adding unsolicited action buttons or toolbar clutter for features that already operate via standard keyboard shortcuts (e.g. `Ctrl+V` paste) or existing dropzones, unless explicitly requested by the user. Keep toolbars compact and intentional.
+    - **Metadata Badge Ribbons & Status Pills Alignment**:
+      - Always normalize all metadata badge pills (Model, Reasoning, Preset, Tokens, Cost) to a consistent height (`h-5` / 20px), `leading-none`, and matching font size (`text-[9px]` for both label and value) to ensure identical horizontal text baseline alignment across both `<div>` elements and `<button>` triggers.
+      - Always nest metadata ribbons directly within the title's vertical flex column rather than placing them as an independent sibling block below the header flexbox row, preventing artificial vertical gaps caused by neighboring action button heights.
+      - **Inline Badge Placement**: Place status tags (e.g. `DEFAULT`, `NEW`, `ENV`) inline immediately adjacent to their label (`flex items-center gap-1.5`), rather than pushing them to the far right with `justify-between`. In single-column dropdowns and menus, far-right alignment creates awkward whitespace chasms and feels detached.
+      - **Font-Metric Cushioning**: Always cushion badge tags with explicit vertical padding (e.g. `px-1 py-0.2`) and synchronized `leading-none` or `inline-flex items-center justify-center` to eliminate 2–3px font-metric baseline drift against neighboring text.
+    - **High-Density List & Compact Card Ergonomics**:
+      - **Omit Redundant Chronology**: In compact card views, omit timestamps whenever sticky date group headers (`TODAY`, `YESTERDAY`) or active sort options already establish temporal sequence.
+      - **Indicator Dots over Bulky Text Badges**: In tight list views, replace heavy text chip boxes (`[1 IMG] [1 VID]`) with minimalist, color-coded circular indicator dots (`w-1.5 h-1.5 rounded-full`) with native tooltips (Black for Images, Amber for Videos, Purple for Audio, Teal for Documents).
+      - **Preserve Narrative Excerpts**: Never completely drop generation output previews in compact modes; preserve at least a single-line italic output excerpt (`truncate`) so users retain narrative context without opening the detail panel.
+      - **Icon-Only Integrated Input Triggers**: When embedding secondary controls (such as search scope selectors or view toggles) directly on the edge of text inputs, keep the trigger **strictly icon-only** without text labels or chevrons. This preserves precious horizontal space and prevents placeholder/text clipping in fixed-width sidebars (~320px).
 
 ---
 
@@ -428,6 +438,14 @@ When introducing, updating, or nesting modals, confirmation prompts, dropdown me
 5. **Comprehensive Body Scroll-Lock Registration**:
    - Every modal or fullscreen overlay state must be registered in the `isAnyModalOpen` body scroll-lock `useEffect` (`document.body.style.overflow = "hidden"`) in `app/page.tsx`, as well as the `isAnyModalActive` compound safety gates for clipboard image paste and generation shortcuts.
 
+### Rule U: Proactive Documentation Synchronization
+**NEVER consider a task or feature complete without updating the documentation first.**
+Whenever new components are created, refactored, or UI capabilities are added:
+1. Update `CHANGELOG.md` under `[Unreleased]` with detailed functional and architectural bullet points.
+2. Update the architecture component registry in `AGENTS.md` (e.g. under `components/history/` or other relevant folders).
+3. Complete documentation updates **BEFORE** generating conventional commit messages (`/cmsg`) or closing the task.
+4. **Avoid `file:///` Absolute URLs**: Never use local machine `file:///` URIs in `CHANGELOG.md`, `AGENTS.md`, git commit messages, or release documentation. Always use clean code ticks or repository-relative paths (e.g. `components/history/HistoryListSidebar.tsx`) so documentation remains clean, portable, and legible across environments and GitHub (reinforcing Rule P).
+
 ---
 
 ## 6. Common Operations & Commands
@@ -442,6 +460,14 @@ The `dev` script runs `next dev -p 3000 -H 0.0.0.0`, binding to all network inte
 ```bash
 npm run lint
 npm run build
+```
+
+### Windows Build Troubleshooting
+If `npm run build` fails with:
+`[Error [PageNotFoundError]: Cannot find module for page: /_not-found]`
+This is caused by a locked or stale `.next` build cache directory on Windows. Resolve it immediately by purging the cache before rebuilding:
+```powershell
+Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; npm run build
 ```
 
 ### Production Start & Cleanup
