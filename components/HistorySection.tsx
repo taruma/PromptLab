@@ -163,7 +163,7 @@ export default function HistorySection({
 
                     const rawOutput = item.output || "";
                     const outputExcerpt = rawOutput
-                      ? rawOutput.replace(/[#*`_>~-]/g, " ").replace(/\s+/g, " ").trim()
+                      ? rawOutput.slice(0, 250).replace(/[#*`_>~-]/g, " ").replace(/\s+/g, " ").trim()
                       : "No output preview";
 
                     return (

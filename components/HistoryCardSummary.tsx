@@ -14,7 +14,7 @@ export default function HistoryCardSummary({ item, className = "" }: HistoryCard
   const title = item.name || item.variables["idea"] || "Untitled Outline";
   const rawOutput = item.output || "";
   const cleanedText = rawOutput
-    ? rawOutput.replace(/[#*`_>~-]/g, " ").replace(/\s+/g, " ").trim()
+    ? rawOutput.slice(0, 400).replace(/[#*`_>~-]/g, " ").replace(/\s+/g, " ").trim()
     : "No output generated.";
   const outputExcerpt = cleanedText.length > 220
     ? cleanedText.slice(0, 217) + "..."

@@ -266,29 +266,40 @@ export function sortHistoryItems(
   items: HistoryItem[],
   sortBy: HistorySortOption
 ): HistoryItem[] {
-  const shallowCopy = [...items];
+  if (items.length <= 1) return [...items];
 
   switch (sortBy) {
-    case "date_desc":
-      return shallowCopy.sort((a, b) => parseHistoryDate(b) - parseHistoryDate(a));
-    case "date_asc":
-      return shallowCopy.sort((a, b) => parseHistoryDate(a) - parseHistoryDate(b));
-    case "cost_desc":
-      return shallowCopy.sort(
-        (a, b) => parseCostNumeric(b.estimatedCost) - parseCostNumeric(a.estimatedCost)
-      );
-    case "cost_asc":
-      return shallowCopy.sort(
-        (a, b) => parseCostNumeric(a.estimatedCost) - parseCostNumeric(b.estimatedCost)
-      );
-    case "name_asc":
-      return shallowCopy.sort((a, b) => {
-        const titleA = (a.name || a.variables["idea"] || "Untitled Outline").toLowerCase();
-        const titleB = (b.name || b.variables["idea"] || "Untitled Outline").toLowerCase();
-        return titleA.localeCompare(titleB);
-      });
+    case "date_desc": {
+      const mapped = items.map((item) => ({ item, val: parseHistoryDate(item) }));
+      return mapped.sort((a, b) => b.val - a.val).map((entry) => entry.item);
+    }
+    case "date_asc": {
+      const mapped = items.map((item) => ({ item, val: parseHistoryDate(item) }));
+      return mapped.sort((a, b) => a.val - b.val).map((entry) => entry.item);
+    }
+    case "cost_desc": {
+      const mapped = items.map((item) => ({
+        item,
+        val: parseCostNumeric(item.estimatedCost),
+      }));
+      return mapped.sort((a, b) => b.val - a.val).map((entry) => entry.item);
+    }
+    case "cost_asc": {
+      const mapped = items.map((item) => ({
+        item,
+        val: parseCostNumeric(item.estimatedCost),
+      }));
+      return mapped.sort((a, b) => a.val - b.val).map((entry) => entry.item);
+    }
+    case "name_asc": {
+      const mapped = items.map((item) => ({
+        item,
+        val: (item.name || item.variables["idea"] || "Untitled Outline").toLowerCase(),
+      }));
+      return mapped.sort((a, b) => a.val.localeCompare(b.val)).map((entry) => entry.item);
+    }
     default:
-      return shallowCopy;
+      return [...items];
   }
 }
 

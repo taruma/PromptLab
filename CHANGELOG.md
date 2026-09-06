@@ -2,6 +2,18 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
+## [v2.6.1] — Unreleased
+
+### Performance
+
+- **History Modal & Card Rendering Performance Overhaul (`components/history/`, `lib/history-grouping.ts`, `lib/search-utils.ts`).**
+  - **Card Excerpt Regex Pre-Slicing (`HistoryListSidebar.tsx`, `HistoryCardSummary.tsx`, `HistorySection.tsx`)**: Pre-slices `rawOutput` to 250–400 characters prior to markdown symbol stripping (`replace(/[#*`_>~-]/g, " ").replace(/\s+/g, " ").trim()`). Eliminates multi-pass regex scanning across full-length generation outputs (often 5,000–30,000+ characters) on every card render cycle, dramatically cutting string allocations and garbage collection overhead.
+  - **Modal Closed-State Guards & Memory Cleanup (`HistoryViewerModal.tsx`)**: Guarded `filteredHistory` and `selectedItem` memoization with `if (!isOpen)` checks to bypass filtering and sorting computations while typing in prompts or working in the main workspace. Automatically clears `resolvedImages` state to `{}` when the modal closes, releasing base64 image data from memory and preventing background IndexedDB image queries.
+  - **Parallelized Reference Image Resolution (`HistoryViewerModal.tsx`)**: Refactored the sequential `for...of` image loading loop to use `Promise.all` across valid reference images (`validImages`), fetching base64 image blobs from IndexedDB concurrently and reducing slot-switching latency for multi-image records.
+  - **Lazy JSON Extraction & Formatting (`HistoryOutputViewer.tsx`)**: Deferred `extractCleanJson` execution via `useMemo` so that `JSON.parse` and pretty-printing only run when `viewMode === "json"`. Navigating history items in the default `"raw"` or `"formatted"` view modes completely bypasses JSON parsing overhead.
+  - **Pre-Mapped Sorting Comparator (`lib/history-grouping.ts`)**: Re-architected `sortHistoryItems` with a Schwartzian transform pattern (pre-mapping sort values once per item before `.sort()`), reducing date parsing (`parseHistoryDate`), cost parsing (`parseCostNumeric`), and title lowercasing from $O(N \log N)$ comparator calls down to $O(N)$ linear passes. Added an immediate early-exit guard for lists with $\le 1$ items.
+  - **Search Substring Fast-Path (`lib/search-utils.ts`)**: Reordered `matchesSearchQuery` to test direct case-insensitive substring matching (`rawCombined.includes(rawQuery)`) before running text normalization, skipping 4 regex replacement passes per target text whenever a direct match is present.
+
 ## [v2.6.0] — September 6, 2026
 
 ### Added

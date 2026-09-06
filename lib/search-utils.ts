@@ -28,19 +28,20 @@ export function matchesSearchQuery(
   if (!searchQuery || !searchQuery.trim()) return true;
 
   const rawQuery = searchQuery.trim().toLowerCase();
-  const normalizedQuery = normalizeText(searchQuery);
-
   const targetArray = Array.isArray(targets) ? targets : [targets];
   const validTargets = targetArray.filter((t): t is string => typeof t === "string" && t.length > 0);
 
   if (validTargets.length === 0) return false;
 
-  // Combine raw and normalized target representations
+  // Direct case-insensitive substring match first (fastest path, avoids 4 regexes per target)
   const rawCombined = validTargets.map((t) => t.toLowerCase()).join(" ");
+  if (rawCombined.includes(rawQuery)) return true;
+
+  // Lazily compute normalized representations only when direct match misses
+  const normalizedQuery = normalizeText(searchQuery);
   const normalizedCombined = validTargets.map((t) => normalizeText(t)).join(" ");
 
-  // Direct substring matches
-  if (rawCombined.includes(rawQuery)) return true;
+  // Direct normalized substring matches
   if (normalizedQuery && normalizedCombined.includes(normalizedQuery)) return true;
 
   // Keyword token matching: ensure every query word appears in raw or normalized target
