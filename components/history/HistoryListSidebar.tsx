@@ -18,6 +18,8 @@ import {
   Paperclip,
   Sliders,
   Terminal,
+  LayoutList,
+  Rows,
 } from "lucide-react";
 import {
   HistoryItem,
@@ -145,6 +147,28 @@ export const HistoryListSidebar: React.FC<HistoryListSidebarProps> = ({
   const [isScopeMenuOpen, setIsScopeMenuOpen] = useState(false);
   const scopeMenuRef = useRef<HTMLDivElement>(null);
 
+  // View density mode: "detailed" (4-row card with excerpt) vs "compact" (ultra-dense single line)
+  const [densityMode, setDensityMode] = useState<"detailed" | "compact">(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("promptlab_history_density_mode");
+        if (saved === "detailed" || saved === "compact") return saved;
+      } catch (e) {
+        // Fallback
+      }
+    }
+    return "detailed";
+  });
+
+  const handleSetDensityMode = (mode: "detailed" | "compact") => {
+    setDensityMode(mode);
+    try {
+      localStorage.setItem("promptlab_history_density_mode", mode);
+    } catch (e) {
+      // Fallback
+    }
+  };
+
   // Dynamic presets and models extracted from historical records
   const uniquePresets = useMemo(() => getUniquePresets(history), [history]);
   const uniqueModels = useMemo(() => getUniqueModels(history), [history]);
@@ -240,6 +264,170 @@ export const HistoryListSidebar: React.FC<HistoryListSidebarProps> = ({
             !v.mimeType.startsWith("audio/"))
       )
     ).length;
+
+    // Compact Mode: Sleek 2-line card (Title + Media dots + Single-line excerpt)
+    if (densityMode === "compact") {
+      return (
+        <div
+          key={item.id}
+          ref={isSelected ? selectedItemRef : null}
+          onClick={() => onSelectItem(item.id)}
+          className={`px-3 py-1.5 cursor-pointer transition-all flex flex-col gap-0.5 group relative ${
+            isSelected
+              ? "bg-[#FEF3C7] border-l-2 border-l-[#1A1A1A]"
+              : item.isFavorite
+              ? "bg-[#FFFDF5] hover:bg-[#FFF9E6] border-l-2 border-l-amber-400"
+              : "bg-white hover:bg-[#F4F4F2] border-l-2 border-l-transparent"
+          }`}
+        >
+          {/* Line 1: Star, Rank, Title / Rename, Media Dots, Cost Badge, Actions */}
+          <div className="flex items-center justify-between gap-1.5 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              {onToggleFavorite && (
+                <button
+                  type="button"
+                  onClick={(e) => onToggleFavorite(item.id, e)}
+                  className={`p-0.5 -ml-1 transition-colors cursor-pointer shrink-0 ${
+                    item.isFavorite
+                      ? "text-amber-500 hover:text-amber-600"
+                      : "text-[#888884] hover:text-amber-500 opacity-50 group-hover:opacity-100"
+                  }`}
+                  title={item.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                >
+                  <Star className={`w-3 h-3 ${item.isFavorite ? "fill-amber-400 text-amber-500" : ""}`} />
+                </button>
+              )}
+
+              {/* Rank index when sorting by Cost or Name */}
+              {typeof index === "number" && !isDateSorting && (
+                <span className="bg-[#EAEAE8] text-[#1A1A1A] font-bold px-1 py-0.2 text-[7.5px] font-mono leading-none shrink-0">
+                  #{index + 1}
+                </span>
+              )}
+
+              {/* Title or Inline Rename Input */}
+              {renamingId === item.id ? (
+                <div
+                  className="flex items-center gap-1 w-full min-w-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="text"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => onRenameKeyDown(item.id, e)}
+                    autoFocus
+                    className="w-full bg-white border border-[#1A1A1A] px-1 py-0 text-[9.5px] font-bold text-[#1A1A1A] rounded-none outline-none leading-none h-5"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => onSaveRename(item.id, e)}
+                    className="p-0.5 hover:text-emerald-600 transition-colors shrink-0 cursor-pointer"
+                    title="Save Name"
+                  >
+                    <Check className="w-3 h-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onCancelRename}
+                    className="p-0.5 hover:text-red-500 transition-colors shrink-0 cursor-pointer"
+                    title="Cancel"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <h4
+                  className={`text-[10px] font-bold uppercase tracking-tight truncate leading-tight min-w-0 ${
+                    isSelected
+                      ? "text-[#1A1A1A] font-black"
+                      : "text-[#333330] group-hover:text-[#1A1A1A]"
+                  }`}
+                  title={displayTitle}
+                >
+                  {displayTitle}
+                </h4>
+              )}
+            </div>
+
+            {/* Right: Cost Badge (on Cost Sort), Media Indicator Dots, Actions */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Cost Badge surfaced when sorting by Cost */}
+              {isCostSorting && item.estimatedCost && (
+                <span className="border border-emerald-400 bg-emerald-50 text-emerald-800 px-1 py-0.2 font-mono text-[7.5px] shrink-0 uppercase font-bold leading-none">
+                  {item.estimatedCost}
+                </span>
+              )}
+
+              {/* Media Indicator Dots */}
+              {(Boolean(item.images?.length) || vidCount > 0 || audCount > 0 || docCount > 0) && (
+                <div className="flex items-center gap-1 shrink-0" title="Attached media references">
+                  {item.images && item.images.length > 0 && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-[#1A1A1A] shrink-0"
+                      title={`${item.images.length} Image reference${item.images.length > 1 ? "s" : ""}`}
+                    />
+                  )}
+                  {vidCount > 0 && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"
+                      title={`${vidCount} Video reference${vidCount > 1 ? "s" : ""}`}
+                    />
+                  )}
+                  {audCount > 0 && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-purple-600 shrink-0"
+                      title={`${audCount} Audio reference${audCount > 1 ? "s" : ""}`}
+                    />
+                  )}
+                  {docCount > 0 && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-teal-600 shrink-0"
+                      title={`${docCount} Document reference${docCount > 1 ? "s" : ""}`}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Actions on Hover */}
+              {renamingId !== item.id && (
+                <div className="flex items-center gap-0.5 md:opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => onStartRename(item, e)}
+                    className="text-[#888884] hover:text-[#1A1A1A] p-0.5 transition-colors cursor-pointer"
+                    title="Rename history slot"
+                  >
+                    <Edit2 className="w-2.5 h-2.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteHistoryItem(item.id);
+                    }}
+                    className="text-[#888884] hover:text-red-500 p-0.5 transition-colors cursor-pointer"
+                    title="Delete history slot"
+                  >
+                    <Trash2 className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Line 2: Single-line Output Excerpt */}
+          <p
+            className={`text-[9px] font-sans italic truncate leading-tight transition-colors ${
+              isSelected ? "text-[#444]" : "text-[#888884] group-hover:text-[#666]"
+            }`}
+            title={cleanedText}
+          >
+            &ldquo;{outputExcerpt}&rdquo;
+          </p>
+        </div>
+      );
+    }
 
     return (
       <div
@@ -423,7 +611,7 @@ export const HistoryListSidebar: React.FC<HistoryListSidebarProps> = ({
     <div className="w-full md:w-80 flex flex-col shrink-0 bg-[#FAF9F6] h-1/3 md:h-full min-h-[180px] md:min-h-0">
       {/* Header: Tabs, Search Bar, & Filter Drawer Toggle */}
       <div className="p-3.5 border-b border-[#D1D1CF] bg-white space-y-2.5 relative z-20">
-        {/* Tabs: All vs Favorites */}
+        {/* Tabs: All vs Favorites & View Density Toggle */}
         <div className="flex items-center gap-1 border-b border-[#D1D1CF] pb-2">
           <button
             onClick={() => setActiveTab("all")}
@@ -446,6 +634,36 @@ export const HistoryListSidebar: React.FC<HistoryListSidebarProps> = ({
             <Star className={`w-3 h-3 ${activeTab === "favorites" ? "fill-amber-400 text-amber-400" : ""}`} />
             Favorites ({history.filter((h) => h.isFavorite).length})
           </button>
+
+          {/* View Density Toggle: Detailed vs Ultra-Dense Compact */}
+          <div className="flex items-center gap-0.5 ml-1 border-l border-[#D1D1CF] pl-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleSetDensityMode("detailed")}
+              className={`p-1 border transition-colors cursor-pointer ${
+                densityMode === "detailed"
+                  ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                  : "bg-[#FAF9F6] text-[#888884] border-[#D1D1CF] hover:text-[#1A1A1A] hover:bg-white"
+              }`}
+              title="Detailed View (rich cards with output excerpts)"
+              aria-label="Detailed View"
+            >
+              <LayoutList className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetDensityMode("compact")}
+              className={`p-1 border transition-colors cursor-pointer ${
+                densityMode === "compact"
+                  ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+                  : "bg-[#FAF9F6] text-[#888884] border-[#D1D1CF] hover:text-[#1A1A1A] hover:bg-white"
+              }`}
+              title="Compact View (ultra-dense single-line rows)"
+              aria-label="Compact View"
+            >
+              <Rows className="w-3 h-3" />
+            </button>
+          </div>
         </div>
 
         {/* Search Input Bar with Integrated Scope Selector on the side */}
