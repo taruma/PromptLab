@@ -2,7 +2,7 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
-## [v2.6.1] — Unreleased
+## [v2.6.1] — September 6, 2026
 
 ### Performance
 
