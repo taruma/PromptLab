@@ -185,7 +185,6 @@ export default function HistoryViewerModal({
   // Resolve images asynchronously whenever the modal is open and the selected item changes
   useEffect(() => {
     if (!isOpen) {
-      setResolvedImages({});
       return;
     }
 
@@ -234,6 +233,7 @@ export default function HistoryViewerModal({
     resolveImages();
     return () => {
       isMounted = false;
+      setResolvedImages({});
     };
   }, [isOpen, selectedItem]);
 
@@ -302,12 +302,13 @@ export default function HistoryViewerModal({
     setStatusBanner(null);
     try {
       const text = await file.text();
-      const { updatedHistory, importedCount } = await importHistoryFromJSON(text, history);
+      const { updatedHistory, importedCount, skippedCount } = await importHistoryFromJSON(text, history);
       if (onImportHistory) {
         onImportHistory(updatedHistory);
       }
+      const skippedMsg = skippedCount > 0 ? ` (${skippedCount} already up-to-date skipped)` : "";
       setStatusBanner({
-        message: `Successfully imported ${importedCount} history record(s) with embedded images!`,
+        message: `Successfully imported ${importedCount} history record(s)${skippedMsg}!`,
       });
     } catch (err: any) {
       setStatusBanner({
