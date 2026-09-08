@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
-import { Eye, X, Sparkles, RotateCcw } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Eye, X, Sparkles, RotateCcw, Camera, Loader2, Check } from "lucide-react";
 import { useModalEscape } from "@/hooks/use-modal-stack";
 import MultiModeOutputView from "@/components/MultiModeOutputView";
 import { isAuteurScript } from "@/lib/auteur-parser";
-import { extractCleanJson } from "@/lib/output-render-helpers";
+import { extractCleanJson, type OutputViewMode } from "@/lib/output-render-helpers";
+import { exportElementToPng } from "@/lib/image-export";
 
 export interface OutputRendererModalProps {
   isOpen: boolean;
   onClose: () => void;
   activeGenerationResult?: string;
+  projectName?: string;
 }
 
 const DRAFT_STORAGE_KEY = "prompt_generator_output_renderer_draft";
@@ -19,6 +21,7 @@ export default function OutputRendererModal({
   isOpen,
   onClose,
   activeGenerationResult = "",
+  projectName,
 }: OutputRendererModalProps) {
   // Default is empty unless a persisted draft exists in localStorage
   const [rawText, setRawText] = useState<string>(() => {
@@ -36,6 +39,10 @@ export default function OutputRendererModal({
   });
 
   const [activeMobileTab, setActiveMobileTab] = useState<"source" | "preview">("source");
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const [viewMode, setViewMode] = useState<OutputViewMode | undefined>(undefined);
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   // Wire into PromptLab's standard LIFO Escape stack
   useModalEscape(isOpen, onClose);
@@ -49,6 +56,7 @@ export default function OutputRendererModal({
   const isAuteur = isAuteurScript(rawText);
   const jsonCheck = extractCleanJson(rawText);
   const isJson = jsonCheck.isValid;
+  const effectiveMode: OutputViewMode = viewMode || (isAuteur ? "auteur" : isJson ? "json" : "formatted");
 
   const updateText = (newText: string) => {
     setRawText(newText);
@@ -71,6 +79,26 @@ export default function OutputRendererModal({
 
   const handleClear = () => {
     updateText("");
+  };
+
+  const handleExportPng = async () => {
+    if (!contentRef.current || !rawText.trim() || isExporting) return;
+    try {
+      setIsExporting(true);
+      await exportElementToPng(contentRef.current, {
+        projectName,
+        viewMode: effectiveMode,
+        pixelRatio: 2,
+        backgroundColor: "#FFFFFF",
+        padding: 24,
+      });
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 2500);
+    } catch (err) {
+      console.error("Failed to export PNG screenshot", err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -210,14 +238,50 @@ export default function OutputRendererModal({
           >
             <MultiModeOutputView
               content={rawText}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
               defaultViewMode={isAuteur ? "auteur" : isJson ? "json" : "formatted"}
               showToolbar={true}
               showStats={false}
               showCopyButton={true}
+              contentContainerRef={contentRef}
               toolbarExtraLeft={
                 <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[#888884]">
                   Preview
                 </span>
+              }
+              toolbarExtraRight={
+                <button
+                  type="button"
+                  onClick={handleExportPng}
+                  disabled={!rawText.trim() || isExporting}
+                  className={`h-[22px] px-2 text-[8px] sm:text-[9px] font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 border disabled:opacity-40 disabled:cursor-not-allowed ${
+                    exportSuccess
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : isExporting
+                      ? "bg-[#FAF9F6] text-[#888884] border-[#D1D1CF] cursor-wait"
+                      : "bg-[#FAF9F6] text-[#1A1A1A] border-[#D1D1CF] hover:bg-[#EAEAE8] hover:border-[#1A1A1A]"
+                  }`}
+                  title="Export full output as uncompressed PNG screenshot"
+                  id="output-renderer-export-png-btn"
+                >
+                  {isExporting ? (
+                    <>
+                      <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                      <span>Exporting...</span>
+                    </>
+                  ) : exportSuccess ? (
+                    <>
+                      <Check className="w-2.5 h-2.5" />
+                      <span>Saved PNG</span>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-2.5 h-2.5 text-[#1A1A1A]" />
+                      <span>PNG</span>
+                    </>
+                  )}
+                </button>
               }
               emptyMessage="Enter or paste text on the left to preview formatted output."
               className="h-full"

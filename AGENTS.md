@@ -111,6 +111,7 @@ Key differentiators:
 │   ├── utils.ts                     # UI utility functions (cn(), diff engine, image compression, date formatting)
 │   ├── auteur-parser.ts             # High-performance, schema-tolerant parser for Auteur Script generation outputs with macroStates/subStates structure, open regex header matching, and format auto-detection (isAuteurScript)
 │   ├── output-render-helpers.tsx    # Shared output rendering helpers: JSON extraction & line syntax highlighting, brutalist Markdown component mappings, and view mode types
+│   ├── image-export.ts              # Full-height DOM-to-PNG export utility using html-to-image with 2x retina sharpness and standardized screenshot naming
 │   ├── indexeddb.ts                 # IndexedDB helper module with content-hash deduplication (v3 schema), cross-project image reference protection, master promotion on deletion, and background deduplication migration
 │   ├── asset-library-export.ts     # Asset library JSON import/export utilities
 │   ├── history-export.ts           # History JSON import/export utilities
@@ -534,6 +535,13 @@ PromptLab provides a dedicated, full-bleed split-screen testing environment (`co
    - Registers with the universal LIFO Escape key stack via `useModalEscape(isOpen, onClose)`.
    - Included in the `isAnyModalActive` compound safety gates in `app/page.tsx` to prevent accidental generation triggers or clipboard image pastes while typing in the renderer editor.
    - **Visual Restraint**: Follows strict Analog Brutalist retro lab styling without unsolicited sample buttons, redundant sub-footers, or promotional copy.
+4. **Full-Height Lossless PNG Screenshot Export (`lib/image-export.ts`)**:
+   - Scoped strictly to the Output Renderer preview toolbar (`[Camera Icon] PNG`, disabled when text is empty).
+   - **Full Unconstrained Height**: Captures the inner rendered output container at true `scrollHeight` using `html-to-image`, capturing long-form outputs (e.g. extensive Auteur Script timelines) in a single seamless image without cropping or manual stitching.
+   - **High-DPI Retina Sharpness**: Uses `pixelRatio: 2` with lossless 24-bit PNG formatting, keeping small monospace text, character lines, and status badges razor-sharp when zoomed in.
+   - **Standardized Screenshot Filename**: Prefixed with `screenshot_` for quick identification in downloads:
+     `screenshot_promptlab_{projectSlug}_{viewMode}_{YYYY-MM-DD}_{HHMMSS}_{uniqueId}.png`.
+   - **Transient Feedback**: Displays `EXPORTING...` with a spinner during render, transitioning to a green `Saved PNG` state upon download completion.
 
 ---
 

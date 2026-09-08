@@ -2671,6 +2671,7 @@ export default function PromptGeneratorPage() {
           isOpen={isOutputRendererOpen}
           onClose={() => setIsOutputRendererOpen(false)}
           activeGenerationResult={generationResult}
+          projectName={activeProject?.name}
         />
       )}
     </div>

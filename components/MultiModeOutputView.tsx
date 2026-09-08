@@ -36,6 +36,7 @@ export interface MultiModeOutputViewProps {
   emptyMessage?: string;
   className?: string;
   contentClassName?: string;
+  contentContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export default function MultiModeOutputView({
@@ -52,6 +53,7 @@ export default function MultiModeOutputView({
   emptyMessage = "No output content to render. Type or paste text to preview.",
   className = "",
   contentClassName = "",
+  contentContainerRef,
 }: MultiModeOutputViewProps) {
   const [internalViewMode, setInternalViewMode] = useState<OutputViewMode>(defaultViewMode);
   const [copied, setCopied] = useState(false);
@@ -114,8 +116,6 @@ export default function MultiModeOutputView({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 ml-auto">
-            {toolbarExtraRight}
-
             {/* Segmented View Mode Toggle */}
             <div
               className="flex items-center bg-white border border-[#D1D1CF] p-0.5"
@@ -234,69 +234,73 @@ export default function MultiModeOutputView({
                 )}
               </button>
             )}
+
+            {toolbarExtraRight}
           </div>
         </div>
       )}
 
       {/* Main Content Area */}
       <div className={`flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar ${contentClassName}`}>
-        {!content || !content.trim() ? (
-          <div className="h-full min-h-[200px] flex items-center justify-center text-center p-6 text-[#A8A8A4]">
-            <p className="text-xs font-mono italic max-w-md">{emptyMessage}</p>
-          </div>
-        ) : resolvedMode === "formatted" ? (
-          <div className="markdown-body">
-            <Markdown components={outputMarkdownComponents}>{content}</Markdown>
-          </div>
-        ) : resolvedMode === "json" ? (
-          <div className="flex flex-col gap-2">
-            {/* JSON Validation Ribbon */}
-            <div className="flex items-center justify-between pb-2 border-b border-[#D1D1CF]/60">
-              <div className="flex items-center gap-1.5 font-mono text-[9px]">
-                {cleanJson.isValid ? (
-                  <span className="text-emerald-800 bg-emerald-50 border border-emerald-300 px-2 py-0.5 font-bold uppercase flex items-center gap-1">
-                    <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" /> Valid JSON
-                  </span>
-                ) : (
-                  <span className="text-amber-800 bg-amber-50 border border-amber-300 px-2 py-0.5 font-bold uppercase flex items-center gap-1">
-                    <AlertCircle className="w-2.5 h-2.5 text-amber-600" /> Raw / Unparsed JSON
-                  </span>
-                )}
-                {isStructuredOutput && (
-                  <span className="text-emerald-800 bg-emerald-100/70 border border-emerald-300 px-2 py-0.5 font-bold uppercase flex items-center gap-1">
-                    <Lock className="w-2 h-2" /> Structured Mode
-                  </span>
-                )}
-              </div>
+        <div ref={contentContainerRef} className="min-h-full">
+          {!content || !content.trim() ? (
+            <div className="h-full min-h-[200px] flex items-center justify-center text-center p-6 text-[#A8A8A4]">
+              <p className="text-xs font-mono italic max-w-md">{emptyMessage}</p>
             </div>
+          ) : resolvedMode === "formatted" ? (
+            <div className="markdown-body">
+              <Markdown components={outputMarkdownComponents}>{content}</Markdown>
+            </div>
+          ) : resolvedMode === "json" ? (
+            <div className="flex flex-col gap-2">
+              {/* JSON Validation Ribbon */}
+              <div className="flex items-center justify-between pb-2 border-b border-[#D1D1CF]/60">
+                <div className="flex items-center gap-1.5 font-mono text-[9px]">
+                  {cleanJson.isValid ? (
+                    <span className="text-emerald-800 bg-emerald-50 border border-emerald-300 px-2 py-0.5 font-bold uppercase flex items-center gap-1">
+                      <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" /> Valid JSON
+                    </span>
+                  ) : (
+                    <span className="text-amber-800 bg-amber-50 border border-amber-300 px-2 py-0.5 font-bold uppercase flex items-center gap-1">
+                      <AlertCircle className="w-2.5 h-2.5 text-amber-600" /> Raw / Unparsed JSON
+                    </span>
+                  )}
+                  {isStructuredOutput && (
+                    <span className="text-emerald-800 bg-emerald-100/70 border border-emerald-300 px-2 py-0.5 font-bold uppercase flex items-center gap-1">
+                      <Lock className="w-2 h-2" /> Structured Mode
+                    </span>
+                  )}
+                </div>
+              </div>
 
-            {/* Line-Numbered Syntax Highlight Table */}
-            <div className="bg-[#FAFAF9] border border-[#D1D1CF] p-3 overflow-x-auto text-[11px] md:text-xs font-mono leading-relaxed select-text custom-scrollbar">
-              <div className="table w-full border-collapse">
-                {(cleanJson.formatted || content).split("\n").map((line, idx) => {
-                  const highlighted = highlightJsonLine(line, idx);
-                  return (
-                    <div key={idx} className="table-row leading-5 hover:bg-[#F0F0EE]/60 transition-colors">
-                      <span className="table-cell select-none text-right pr-3.5 pl-0.5 text-[10px] font-mono text-[#888884]/60 border-r border-[#D1D1CF]/40 min-w-[32px] align-top">
-                        {idx + 1}
-                      </span>
-                      <span className="table-cell pl-3.5 whitespace-pre font-mono align-top text-[#1A1A1A]">
-                        {highlighted.length > 0 ? highlighted : "\u00A0"}
-                      </span>
-                    </div>
-                  );
-                })}
+              {/* Line-Numbered Syntax Highlight Table */}
+              <div className="bg-[#FAFAF9] border border-[#D1D1CF] p-3 overflow-x-auto text-[11px] md:text-xs font-mono leading-relaxed select-text custom-scrollbar">
+                <div className="table w-full border-collapse">
+                  {(cleanJson.formatted || content).split("\n").map((line, idx) => {
+                    const highlighted = highlightJsonLine(line, idx);
+                    return (
+                      <div key={idx} className="table-row leading-5 hover:bg-[#F0F0EE]/60 transition-colors">
+                        <span className="table-cell select-none text-right pr-3.5 pl-0.5 text-[10px] font-mono text-[#888884]/60 border-r border-[#D1D1CF]/40 min-w-[32px] align-top">
+                          {idx + 1}
+                        </span>
+                        <span className="table-cell pl-3.5 whitespace-pre font-mono align-top text-[#1A1A1A]">
+                          {highlighted.length > 0 ? highlighted : "\u00A0"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        ) : resolvedMode === "auteur" ? (
-          <AuteurScriptView content={content} />
-        ) : (
-          /* Raw Monospace View */
-          <pre className="text-[11px] md:text-xs font-mono leading-relaxed text-[#1A1A1A] whitespace-pre-wrap font-normal select-text">
-            {content}
-          </pre>
-        )}
+          ) : resolvedMode === "auteur" ? (
+            <AuteurScriptView content={content} />
+          ) : (
+            /* Raw Monospace View */
+            <pre className="text-[11px] md:text-xs font-mono leading-relaxed text-[#1A1A1A] whitespace-pre-wrap font-normal select-text">
+              {content}
+            </pre>
+          )}
+        </div>
       </div>
     </div>
   );
