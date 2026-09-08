@@ -62,8 +62,8 @@ Key differentiators:
 │   ├── AddFilesApiModal.tsx         # Modal for uploading multi-modal files (video, image, audio, PDF, text docs up to 2 GB) to Gemini Files API
 │   ├── AddYouTubeModal.tsx          # Modal for adding YouTube video URL references
 │   ├── AppHeader.tsx                # Top navigation bar with logo and action buttons
-│   ├── AssetExportDropdown.tsx      # Dropdown for backing up and restoring asset library items (JSON)
-│   ├── AssetImportModal.tsx         # Modal for importing asset library JSON with duplicate detection
+│   ├── AssetExportDropdown.tsx      # Dropdown for backing up and restoring asset library items (JSON) with All, Favorites, and Selected scopes
+│   ├── AssetImportModal.tsx         # Pre-import inspection modal with thumbnail grid, duplicate detection, and strategy selection
 │   ├── AssetLibrarySidebar.tsx      # Persistent image asset library sidebar (IndexedDB-backed) with drag & drop JSON restore, 2-step deletion safety, asset pinning/favoriting, select mode, and compact 2-row toolbar
 │   ├── AudioPlayerModal.tsx         # Dedicated modal for previewing/playing audio assets attached via Files API or local files
 │   ├── AuteurScriptView.tsx         # Dedicated brutalist visualizer for structured Auteur Script outputs featuring collapsible staging blocks, compact execution cards, dynamic badge sizing, and persistent section collapse
@@ -113,7 +113,7 @@ Key differentiators:
 │   ├── output-render-helpers.tsx    # Shared output rendering helpers: JSON extraction & line syntax highlighting, brutalist Markdown component mappings, and view mode types
 │   ├── image-export.ts              # Full-height DOM-to-PNG export utility using html-to-image with 2x retina sharpness and standardized screenshot naming
 │   ├── indexeddb.ts                 # IndexedDB helper module with content-hash deduplication (v3 schema), cross-project image reference protection, master promotion on deletion, and background deduplication migration
-│   ├── asset-library-export.ts     # Asset library JSON import/export utilities
+│   ├── asset-library-export.ts     # Asset library JSON import/export utilities (v1.1 pool, streaming Blob serialization, contentHash deduplication)
 │   ├── history-export.ts           # History JSON import/export utilities
 │   ├── history-grouping.ts          # History sorting, date bucketing (Today/Yesterday/7d/Older), AND-logic media filtering, preset/model metadata extractors
 │   ├── history-storage.ts          # History storage wrapper & migration helper (IndexedDB project storage with automatic legacy LocalStorage cleanup)
@@ -358,7 +358,10 @@ When adding a new Gemini model or updating the default baseline, synchronize all
 - **Select Mode & Bulk Operations**: An explicit `Select` button toggles bulk selection checkboxes on demand, keeping the browsing view clean when not in select mode. In select mode, users can perform batch actions including `Select All` / `Deselect All`, bulk JSON export, and multi-item deletion.
 - **Two-Step Deletion Safety**: Clicking the trash button on an asset transforms it into a highlighted red state ("CONFIRM" / Check icon) with a 4-second confirmation window before auto-canceling, preventing accidental deletions without intrusive popup modals.
 - **Drag-and-Drop JSON Library Restore**: The upload dropzone in `AssetLibrarySidebar.tsx` supports dropping both image references and `.json` asset library backup exports. Dropping or selecting a `.json` file automatically triggers `AssetImportModal` for preview, duplicate detection, and import strategy resolution.
-- **Backup / Restore Menu Dropdown**: The header action button in `AssetExportDropdown.tsx` is clearly labeled "Backup / Restore" for intuitive user understanding. The header container uses `relative z-30` styling to ensure dropdown menus overlay properly over the upload dropzone and asset list.
+- **Backup / Restore Menu Dropdown**: The header action button in `AssetExportDropdown.tsx` is clearly labeled "Backup / Restore" for intuitive user understanding. Supports exporting **All**, **Favorites / Pinned**, or **Selected** assets, and attaches an Escape key listener in the document capture phase per the modal/overlay architecture.
+- **v1.1 Deduplicated Image Pool & Chunked Streaming Export**: Exports (`lib/asset-library-export.ts`) consolidate image assets into a top-level `images: Record<string, string>` dictionary keyed by SHA-256 `contentHash`. Discrete JSON chunks are streamed directly into `new Blob(chunks, { type: "application/json" })`, eliminating monolithic string memory allocation and preventing V8 `RangeError: Invalid string length` crashes on large asset libraries.
+- **Pre-Import Visual Inspection Modal (`AssetImportModal.tsx`)**: An Analog Brutalist inspection dashboard displaying a real-time summary breakdown ribbon (`TOTAL IN FILE`, `+NEW UNIQUE`, `ALREADY EXISTS`), scrollable thumbnail preview grid with `NEW` (emerald) and `EXISTS` (amber) status tags, and intelligent strategy controls (`Merge` vs `Overwrite`). Supports dual-criteria duplicate detection (**SHA-256 `contentHash`** OR **asset `id`**) with an asynchronous background hash resolver for existing session assets that lack pre-computed hashes, ensuring 100% accurate duplicate detection on re-imports. Coordinated with `useModalEscape` for LIFO Escape dismissal.
+- **Defensive Format Verification**: The import parser inspects `parsed.type`, rejecting accidental uploads of Project backups (`promptlab_project`), History exports (`promptlab_history_export`), or Presets exports (`promptlab_user_presets`) with clear, descriptive error messaging.
 - **Cross-Workspace Reuse**: Images from the library can be added to the active workspace via `onAddImageToWorkspace` callback, creating a `@imageN` reference with the library label.
 - **Library Cleanup**: Deleting a library image removes both the IndexedDB blob and its localStorage metadata entry. Upload deduplication prevents duplicate images with matching base64 content.
 

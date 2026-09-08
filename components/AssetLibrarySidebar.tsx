@@ -40,6 +40,7 @@ import {
   processAssetImport,
   AssetExportItem
 } from "../lib/asset-library-export";
+import { computeContentHash } from "../lib/content-hash";
 
 import { ProjectAsset, getCurrentProjectId } from "../lib/projects";
 
@@ -51,6 +52,7 @@ interface LibraryImage {
   createdAt?: number;
   isFavorite?: boolean;
   isPinned?: boolean;
+  contentHash?: string;
 }
 
 interface AssetLibrarySidebarProps {
@@ -221,7 +223,11 @@ export default function AssetLibrarySidebar({
           parsed.map(async (img) => {
             try {
               const base64 = await getStoredImage(img.id);
-              return { ...img, base64: base64 || "" };
+              let contentHash = img.contentHash;
+              if (!contentHash && base64) {
+                contentHash = await computeContentHash(base64);
+              }
+              return { ...img, base64: base64 || "", contentHash };
             } catch (err) {
               console.error(`Failed to load library image ${img.id} from IndexedDB:`, err);
               return { ...img, base64: "" };
@@ -390,8 +396,9 @@ export default function AssetLibrarySidebar({
           .replace(/\b\w/g, (c) => c.toUpperCase());
 
         const libraryImgId = `lib-img-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
+        const contentHash = await computeContentHash(base64);
 
-        await saveStoredImage(libraryImgId, base64);
+        await saveStoredImage(libraryImgId, base64, contentHash);
 
         newLibraryItems.push({
           id: libraryImgId,
@@ -399,6 +406,7 @@ export default function AssetLibrarySidebar({
           base64: base64,
           mimeType: "image/jpeg",
           createdAt: Date.now(),
+          contentHash,
         });
       } catch (err) {
         console.error("Failed to add image to library:", file.name, err);
@@ -499,20 +507,31 @@ export default function AssetLibrarySidebar({
     setSelectedIds(new Set());
   };
 
-  const handleExportAllAssets = () => {
+  const handleExportAllAssets = async () => {
     try {
-      const { filename } = exportAssetLibraryJSON(libraryImages, "all", undefined, projectName);
+      const { filename } = await exportAssetLibraryJSON(libraryImages, "all", undefined, projectName);
       showToast("success", `Exported all ${libraryImages.length} assets (${filename}).`);
     } catch (err: any) {
       showToast("error", err?.message || "Failed to export assets.");
     }
   };
 
-  const handleExportSelectedAssets = () => {
+  const handleExportFavoriteAssets = async () => {
+    try {
+      const favoriteAssets = libraryImages.filter((img) => img.isFavorite || img.isPinned);
+      if (favoriteAssets.length === 0) return;
+      const { filename } = await exportAssetLibraryJSON(favoriteAssets, "favorites", undefined, projectName);
+      showToast("success", `Exported ${favoriteAssets.length} favorite/pinned assets (${filename}).`);
+    } catch (err: any) {
+      showToast("error", err?.message || "Failed to export favorite assets.");
+    }
+  };
+
+  const handleExportSelectedAssets = async () => {
     try {
       const selectedAssets = libraryImages.filter((img) => selectedIds.has(img.id));
       if (selectedAssets.length === 0) return;
-      const { filename } = exportAssetLibraryJSON(selectedAssets, "selected", undefined, projectName);
+      const { filename } = await exportAssetLibraryJSON(selectedAssets, "selected", undefined, projectName);
       showToast("success", `Exported ${selectedAssets.length} selected assets (${filename}).`);
     } catch (err: any) {
       showToast("error", err?.message || "Failed to export selected assets.");
@@ -533,14 +552,15 @@ export default function AssetLibrarySidebar({
     assets: AssetExportItem[]
   ) => {
     try {
-      const { newAssets, count } = await processAssetImport(assets, mode, libraryImages);
+      const { newAssets, importedCount, skippedCount } = await processAssetImport(assets, mode, libraryImages);
       setLibraryImages(newAssets);
       setSelectedIds(new Set());
+      const skipMsg = skippedCount > 0 ? ` (${skippedCount} duplicates skipped)` : "";
       showToast(
         "success",
         mode === "overwrite"
-          ? `Library overwritten with ${count} imported assets.`
-          : `Imported ${count} assets into library.`
+          ? `Library overwritten with ${importedCount} assets.`
+          : `Imported ${importedCount} assets into library${skipMsg}.`
       );
     } catch (err: any) {
       showToast("error", err?.message || "Import failed.");
@@ -664,7 +684,9 @@ export default function AssetLibrarySidebar({
             <AssetExportDropdown
               totalCount={libraryImages.length}
               selectedCount={selectedIds.size}
+              favoritesCount={libraryImages.filter((img) => img.isFavorite || img.isPinned).length}
               onExportAll={handleExportAllAssets}
+              onExportFavorites={handleExportFavoriteAssets}
               onExportSelected={handleExportSelectedAssets}
               onImportClick={() => jsonFileInputRef.current?.click()}
               disabled={!isLoaded}
@@ -1329,6 +1351,7 @@ export default function AssetLibrarySidebar({
           setImportFile(null);
         }}
         file={importFile}
+        existingAssets={libraryImages}
         existingCount={libraryImages.length}
         onConfirmImport={handleConfirmImport}
       />

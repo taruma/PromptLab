@@ -8,6 +8,7 @@ export interface ProjectAsset {
   createdAt?: number;
   isFavorite?: boolean;
   isPinned?: boolean;
+  contentHash?: string;
 }
 
 export interface Project {

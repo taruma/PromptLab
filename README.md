@@ -48,7 +48,7 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 ### 💾 Workspace
 - **Multi-Project Support** — Create independent workspaces, each with their own prompts, presets, history, and asset library. Switch between them from the top bar.
 - **Session History Overhaul** — Full-screen history browser with collapsible filter drawer, multi-select media filters (IMG/VID/AUD/DOC with AND logic), contextual date grouping (Today, Yesterday, 7 Days, Older), view density toggle (Detailed vs Compact), universal search scopes, and fullscreen focus inspection.
-- **Asset Library** — A persistent image sidebar for uploading, browsing, searching, and reusing images across any workspace without re-uploading.
+- **Asset Library** — A persistent image sidebar for uploading, browsing, searching, pinning/favoriting, and reusing images across workspaces, featuring v1.1 deduplicated JSON backups, chunked streaming exports, and visual pre-import inspection with duplicate detection.
 - **Workspace Clone** — Create a new project by copying your current prompts, presets, and assets — perfect for exploring variations.
 
 ### 🔐 API Keys
