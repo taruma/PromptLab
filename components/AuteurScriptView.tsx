@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { parseAuteurScript, AuteurStagingBlock, AuteurMacroState } from "@/lib/auteur-parser";
 import { Clapperboard, ChevronDown, ChevronRight } from "lucide-react";
 
@@ -169,19 +169,19 @@ export default function AuteurScriptView({ content, className = "" }: AuteurScri
   const parsed = useMemo(() => parseAuteurScript(content), [content]);
 
   // Persistent collapsed staging blocks (default: all uncollapsed)
-  const [collapsedBlocks, setCollapsedBlocks] = useState<Record<string, boolean>>({});
-
-  // Load saved collapsed preference from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("prompt_generator_auteur_collapsed_staging");
-      if (saved) {
-        setCollapsedBlocks(JSON.parse(saved));
+  const [collapsedBlocks, setCollapsedBlocks] = useState<Record<string, boolean>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("prompt_generator_auteur_collapsed_staging");
+        if (saved) {
+          return JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error("Failed to load auteur collapsed blocks preference:", e);
       }
-    } catch (e) {
-      console.error("Failed to load auteur collapsed blocks preference:", e);
     }
-  }, []);
+    return {};
+  });
 
   // Toggle individual macro block collapse and persist
   const toggleBlockCollapse = (blockName: string) => {
