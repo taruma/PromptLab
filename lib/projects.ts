@@ -1,5 +1,6 @@
 import { openDB, STORE_PROJECTS, STORE_NAME, getStoredImage, saveStoredImage, deleteStoredImage } from "./indexeddb";
 import { saveHistoryToLocalStorage } from "./history-storage";
+import { computeContentHash } from "./content-hash";
 
 export interface ProjectAsset {
   id: string;
@@ -8,6 +9,7 @@ export interface ProjectAsset {
   createdAt?: number;
   isFavorite?: boolean;
   isPinned?: boolean;
+  contentHash?: string;
 }
 
 export interface Project {
@@ -23,12 +25,26 @@ export interface Project {
   assetLibrary: ProjectAsset[];
 }
 
+export interface ProjectExportOptions {
+  includeHistory?: boolean;
+  includeHistoryImages?: boolean;
+  includeAssets?: boolean;
+  includePresets?: boolean;
+}
+
 export interface ProjectExportData {
-  version: "1.0";
+  version: "1.0" | "1.1";
   type: "promptlab_project";
   exportedAt: string;
   project: Project;
-  images?: { id: string; base64: string }[];
+  images?: Record<string, string> | { id: string; base64: string }[];
+  imageCount?: number;
+}
+
+export interface ProjectImportParseResult {
+  success: boolean;
+  data?: ProjectExportData;
+  error?: string;
 }
 
 export const CURRENT_PROJECT_KEY = "promptlab_current_project_id";
@@ -322,49 +338,221 @@ export async function createProject(
 }
 
 /**
- * Export project as downloadable JSON file (including base64 images from IndexedDB)
+ * Reads and validates a JSON file containing project workspace backups with
+ * defensive format inspection and structure checks.
  */
-export async function exportProjectJSON(projectId: string): Promise<void> {
+export async function readAndValidateProjectJSON(
+  file: File
+): Promise<ProjectImportParseResult> {
+  try {
+    const text = await file.text();
+    let parsed: any;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return {
+        success: false,
+        error: "Invalid JSON format. Could not parse project JSON file.",
+      };
+    }
+
+    // Defensive check against mismatched PromptLab export types
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      if (parsed.type === "promptlab_history_export") {
+        return {
+          success: false,
+          error:
+            "This file is a PromptLab History export, not a Project workspace backup. Please import it via the History Explorer.",
+        };
+      }
+      if (parsed.type === "promptlab_asset_library") {
+        return {
+          success: false,
+          error:
+            "This file is an Asset Library backup, not a Project workspace backup. Please import it via the Asset Library sidebar.",
+        };
+      }
+      if (parsed.type === "promptlab_user_presets") {
+        return {
+          success: false,
+          error:
+            "This file is a PromptLab Presets export, not a Project workspace backup. Please import it via the Prompt Configuration editor.",
+        };
+      }
+    }
+
+    if (!parsed || parsed.type !== "promptlab_project" || !parsed.project) {
+      return {
+        success: false,
+        error: "File is not a valid PromptLab Project export file.",
+      };
+    }
+
+    return {
+      success: true,
+      data: parsed as ProjectExportData,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || "Failed to read project JSON file.",
+    };
+  }
+}
+
+/**
+ * Export project as downloadable JSON file (v1.1), consolidating both Asset Library
+ * and History reference images into a deduplicated content-hash image pool and streaming
+ * chunked Blob parts to prevent V8 memory allocation limits.
+ */
+export async function exportProjectJSON(
+  projectId: string,
+  options?: ProjectExportOptions
+): Promise<{ filename: string; imageCount: number }> {
   const project = await getProject(projectId);
   if (!project) throw new Error("Project not found");
 
-  // Fetch base64 data for all assetLibrary images
-  const images: { id: string; base64: string }[] = [];
-  if (project.assetLibrary && project.assetLibrary.length > 0) {
-    for (const asset of project.assetLibrary) {
+  const includeHistory = options?.includeHistory !== false;
+  const includeHistoryImages = includeHistory && options?.includeHistoryImages !== false;
+  const includeAssets = options?.includeAssets !== false;
+  const includePresets = options?.includePresets !== false;
+
+  // Deduplicated image pool: key (contentHash || id) -> base64
+  const uniqueImagePool = new Map<string, string>();
+  // Map of reference id -> poolKey
+  const refIdToPoolKey = new Map<string, string>();
+
+  // 1. Collect images from assetLibrary if enabled
+  const exportAssets = includeAssets && Array.isArray(project.assetLibrary) ? project.assetLibrary : [];
+  if (exportAssets.length > 0) {
+    for (const asset of exportAssets) {
       try {
         const b64 = await getStoredImage(asset.id);
         if (b64) {
-          images.push({ id: asset.id, base64: b64 });
+          const hash = asset.contentHash || (await computeContentHash(b64));
+          const poolKey = hash || asset.id;
+          if (!uniqueImagePool.has(poolKey)) {
+            uniqueImagePool.set(poolKey, b64);
+          }
+          refIdToPoolKey.set(asset.id, poolKey);
         }
       } catch (err) {
-        console.warn(`Failed to retrieve image ${asset.id} for export`, err);
+        console.warn(`Failed to retrieve asset image ${asset.id} for project export:`, err);
       }
     }
   }
 
-  const exportPayload: ProjectExportData = {
-    version: "1.0",
-    type: "promptlab_project",
-    exportedAt: new Date().toISOString(),
-    project,
-    images,
+  // 2. Collect images from history items (resolves history image loss bug) if enabled
+  let preparedHistory: any[] = [];
+  if (includeHistory && Array.isArray(project.history) && project.history.length > 0) {
+    preparedHistory = await Promise.all(
+      project.history.map(async (item: any) => {
+        if (!item.images || !Array.isArray(item.images) || item.images.length === 0) {
+          return item;
+        }
+
+        const preparedImages = await Promise.all(
+          item.images.map(async (img: any) => {
+            // If history images are disabled, preserve image metadata but omit base64 & pool entry
+            if (!includeHistoryImages) {
+              return {
+                ...img,
+                base64: "",
+              };
+            }
+
+            let b64 = img.base64 || "";
+            if (!b64 && img.id) {
+              try {
+                const fetchedB64 = await getStoredImage(img.id);
+                if (fetchedB64) {
+                  b64 = fetchedB64;
+                }
+              } catch (err) {
+                console.warn(`Failed to retrieve history image ${img.id} for project export:`, err);
+              }
+            }
+
+            const hash = img.contentHash || (b64 ? await computeContentHash(b64) : undefined);
+
+            if (b64) {
+              const poolKey = hash || img.id || `hist-pool-${Math.random().toString(36).substring(2, 8)}`;
+              if (!uniqueImagePool.has(poolKey)) {
+                uniqueImagePool.set(poolKey, b64);
+              }
+              if (img.id) {
+                refIdToPoolKey.set(img.id, poolKey);
+              }
+            }
+
+            return {
+              ...img,
+              base64: "", // Omit Base64 from individual items to prevent redundant duplicate copies
+              contentHash: hash,
+            };
+          })
+        );
+
+        return {
+          ...item,
+          images: preparedImages,
+        };
+      })
+    );
+  }
+
+  const exportProject: Project = {
+    ...project,
+    customPresets: includePresets && Array.isArray(project.customPresets) ? project.customPresets : [],
+    assetLibrary: exportAssets,
+    history: preparedHistory,
   };
 
-  const jsonString = JSON.stringify(exportPayload, null, 2);
-  const blob = new Blob([jsonString], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
+  let scopeTag = "backup";
+  if (!includeHistory) {
+    scopeTag = "template";
+  } else if (!includeHistoryImages) {
+    scopeTag = "compact";
+  }
 
-  const sanitizeName = project.name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "") || "main_workspace";
+  const sanitizeName =
+    project.name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "main_workspace";
   const now = new Date();
   const dateStr = now.toISOString().split("T")[0];
   const timeStr = now.toTimeString().split(" ")[0].replace(/:/g, "");
   const uniqueId = Math.random().toString(36).substring(2, 6);
-  const filename = `promptlab_${sanitizeName}_project_backup_${dateStr}_${timeStr}_${uniqueId}.json`;
+  const filename = `promptlab_${sanitizeName}_project_${scopeTag}_${dateStr}_${timeStr}_${uniqueId}.json`;
+
+  // Build JSON chunks directly into array parts for Blob construction
+  // to avoid V8 RangeError: Invalid string length on large projects
+  const chunks: string[] = [];
+
+  // 1. Header metadata
+  chunks.push(
+    `{"version":"1.1","type":"promptlab_project","exportedAt":${JSON.stringify(
+      now.toISOString()
+    )},"imageCount":${uniqueImagePool.size},`
+  );
+
+  // 2. Deduplicated images pool
+  chunks.push(`"images":{`);
+  let imgIndex = 0;
+  for (const [key, base64] of uniqueImagePool.entries()) {
+    if (imgIndex > 0) chunks.push(",");
+    chunks.push(`${JSON.stringify(key)}:${JSON.stringify(base64)}`);
+    imgIndex++;
+  }
+  chunks.push(`},`);
+
+  // 3. Project payload
+  chunks.push(`"project":${JSON.stringify(exportProject)}}`);
+
+  const blob = new Blob(chunks, { type: "application/json" });
+  const url = URL.createObjectURL(blob);
 
   const link = document.createElement("a");
   link.href = url;
@@ -373,31 +561,63 @@ export async function exportProjectJSON(projectId: string): Promise<void> {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+
+  return { filename, imageCount: uniqueImagePool.size };
 }
 
 /**
- * Import project from JSON file content
+ * Import project from JSON file content or pre-parsed ProjectExportData,
+ * with 100% backward compatibility for v1.0 array images and v1.1 image pools,
+ * pool hydration into IndexedDB, and event-loop batch yielding.
  */
-export async function importProjectJSON(jsonString: string): Promise<Project> {
+export async function importProjectJSON(
+  source: string | ProjectExportData,
+  options?: { customName?: string }
+): Promise<Project> {
   let parsed: any;
-  try {
-    parsed = JSON.parse(jsonString);
-  } catch (err) {
-    throw new Error("Invalid JSON file formatting.");
+  if (typeof source === "string") {
+    try {
+      parsed = JSON.parse(source);
+    } catch (err) {
+      throw new Error("Invalid JSON file formatting. Could not parse JSON.");
+    }
+  } else {
+    parsed = source;
   }
 
-  if (parsed.type !== "promptlab_project" || !parsed.project) {
+  // Defensive validation against wrong backup types
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    if (parsed.type === "promptlab_history_export") {
+      throw new Error(
+        "This file is a PromptLab History export, not a Project workspace backup. Please import it via the History Explorer."
+      );
+    }
+    if (parsed.type === "promptlab_asset_library") {
+      throw new Error(
+        "This file is an Asset Library backup, not a Project workspace backup. Please import it via the Asset Library sidebar."
+      );
+    }
+    if (parsed.type === "promptlab_user_presets") {
+      throw new Error(
+        "This file is a PromptLab Presets export, not a Project workspace backup. Please import it via the Prompt Configuration editor."
+      );
+    }
+  }
+
+  if (!parsed || parsed.type !== "promptlab_project" || !parsed.project) {
     throw new Error("File is not a valid PromptLab Project export file.");
   }
 
   const rawProject = parsed.project as Project;
   const existingProjects = await getAllProjects();
 
-  // Handle name collisions
-  let finalName = rawProject.name || "Imported Project";
-  let count = 1;
-  while (existingProjects.some((p) => p.name.toLowerCase() === finalName.toLowerCase())) {
-    finalName = `${rawProject.name || "Imported Project"} (${count++})`;
+  // Handle name collisions or custom requested name
+  let finalName = options?.customName?.trim() || rawProject.name || "Imported Project";
+  if (!options?.customName) {
+    let count = 1;
+    while (existingProjects.some((p) => p.name.toLowerCase() === finalName.toLowerCase())) {
+      finalName = `${rawProject.name || "Imported Project"} (${count++})`;
+    }
   }
 
   const newId = `proj_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -416,15 +636,113 @@ export async function importProjectJSON(jsonString: string): Promise<Project> {
     assetLibrary: Array.isArray(rawProject.assetLibrary) ? rawProject.assetLibrary : [],
   };
 
-  // Restore images into IndexedDB "images" store
-  if (Array.isArray(parsed.images)) {
-    for (const img of parsed.images) {
-      if (img.id && img.base64) {
-        try {
-          await saveStoredImage(img.id, img.base64);
-        } catch (err) {
-          console.warn(`Failed to restore image ${img.id} on import`, err);
+  const BATCH_SIZE = 10;
+
+  // Build unified image pool from v1.1 object, v1.0 array, or inline images
+  const normalizedPool: Record<string, string> = {};
+
+  if (parsed.images) {
+    if (Array.isArray(parsed.images)) {
+      // Legacy v1.0 format: array of { id, base64 }
+      for (const item of parsed.images) {
+        if (item && item.id && item.base64) {
+          normalizedPool[item.id] = item.base64;
         }
+      }
+    } else if (typeof parsed.images === "object") {
+      // v1.1 format: Record<string, string> keyed by contentHash or id
+      Object.assign(normalizedPool, parsed.images);
+    }
+  }
+
+  // Also collect any inline base64 from history items in legacy exports
+  if (Array.isArray(importedProject.history)) {
+    for (const item of importedProject.history) {
+      if (Array.isArray(item.images)) {
+        for (const img of item.images) {
+          if (img && img.id && img.base64 && !normalizedPool[img.id]) {
+            normalizedPool[img.id] = img.base64;
+            if (img.contentHash && !normalizedPool[img.contentHash]) {
+              normalizedPool[img.contentHash] = img.base64;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Also collect any inline base64 from asset library items in legacy exports
+  if (Array.isArray(importedProject.assetLibrary)) {
+    for (const asset of importedProject.assetLibrary) {
+      const inlineB64 = (asset as any).base64;
+      if (asset && asset.id && inlineB64 && !normalizedPool[asset.id]) {
+        normalizedPool[asset.id] = inlineB64;
+        if (asset.contentHash && !normalizedPool[asset.contentHash]) {
+          normalizedPool[asset.contentHash] = inlineB64;
+        }
+      }
+    }
+  }
+
+  // Pre-hydrate all pool entries into IndexedDB "images" store
+  const poolKeys = Object.keys(normalizedPool);
+  for (let i = 0; i < poolKeys.length; i++) {
+    const key = poolKeys[i];
+    const b64 = normalizedPool[key];
+    if (b64) {
+      try {
+        await saveStoredImage(key, b64, key.length === 64 ? key : undefined);
+      } catch (err) {
+        console.warn(`Failed to hydrate image pool entry ${key}:`, err);
+      }
+    }
+    if (i > 0 && i % BATCH_SIZE === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+
+  // Ensure all history item image references point to valid records in IndexedDB
+  // and strip inline base64 strings to prevent IndexedDB storage bloat
+  if (Array.isArray(importedProject.history)) {
+    for (const item of importedProject.history) {
+      if (Array.isArray(item.images)) {
+        for (const img of item.images) {
+          if (img && img.id) {
+            const b64 =
+              (img.contentHash && normalizedPool[img.contentHash]) ||
+              normalizedPool[img.id] ||
+              img.base64;
+            if (b64) {
+              try {
+                await saveStoredImage(img.id, b64, img.contentHash);
+              } catch (err) {
+                console.warn(`Failed to map history image ${img.id}:`, err);
+              }
+            }
+            // Clear inline base64 once safely stored in IndexedDB
+            img.base64 = "";
+          }
+        }
+      }
+    }
+  }
+
+  // Ensure all assetLibrary images point to valid records in IndexedDB
+  if (Array.isArray(importedProject.assetLibrary)) {
+    for (const asset of importedProject.assetLibrary) {
+      if (asset && asset.id) {
+        const b64 =
+          (asset.contentHash && normalizedPool[asset.contentHash]) ||
+          normalizedPool[asset.id] ||
+          (asset as any).base64;
+        if (b64) {
+          try {
+            await saveStoredImage(asset.id, b64, asset.contentHash);
+          } catch (err) {
+            console.warn(`Failed to map asset image ${asset.id}:`, err);
+          }
+        }
+        delete (asset as any).base64;
       }
     }
   }

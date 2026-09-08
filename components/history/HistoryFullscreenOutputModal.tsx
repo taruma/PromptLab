@@ -8,11 +8,15 @@ import {
   Braces, 
   Copy, 
   Check, 
-  CheckCircle2, 
-  AlertCircle 
+  CheckCircle2,
+  AlertCircle,
+  Clapperboard
 } from "lucide-react";
 import { useModalEscape } from "../../hooks/use-modal-stack";
 import { HistoryTokenUsage } from "../../types/history";
+import { isAuteurScript } from "@/lib/auteur-parser";
+import AuteurScriptView from "@/components/AuteurScriptView";
+import { extractCleanJson, highlightJsonLine } from "@/lib/output-render-helpers";
 
 export interface HistoryFullscreenOutputModalProps {
   isOpen: boolean;
@@ -22,106 +26,7 @@ export interface HistoryFullscreenOutputModalProps {
   slotId: string;
   model?: string;
   tokenUsage?: HistoryTokenUsage;
-  initialViewMode?: "formatted" | "raw" | "json";
-}
-
-function extractCleanJson(raw: string): { parsed: any | null; formatted: string; isValid: boolean } {
-  if (!raw || !raw.trim()) {
-    return { parsed: null, formatted: "", isValid: false };
-  }
-
-  let text = raw.trim();
-  if (text.startsWith("```")) {
-    text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  }
-
-  try {
-    const parsed = JSON.parse(text);
-    return {
-      parsed,
-      formatted: JSON.stringify(parsed, null, 2),
-      isValid: true,
-    };
-  } catch {
-    return {
-      parsed: null,
-      formatted: text,
-      isValid: false,
-    };
-  }
-}
-
-function highlightJsonLine(line: string, lineIndex: number): React.ReactNode[] {
-  const regex = /("(?:\\[\s\S]|[^"\\])*"(?:\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\],:])/g;
-
-  const result: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(line)) !== null) {
-    if (match.index > lastIndex) {
-      result.push(line.slice(lastIndex, match.index));
-    }
-
-    const token = match[0];
-    const key = `fs-tok-${lineIndex}-${match.index}`;
-
-    if (token.endsWith(":")) {
-      const colonIdx = token.lastIndexOf(":");
-      const keyText = token.slice(0, colonIdx);
-      const colonText = token.slice(colonIdx);
-      result.push(
-        <span key={key} className="text-[#1A1A1A] font-semibold">
-          {keyText}
-        </span>
-      );
-      result.push(
-        <span key={`${key}-col`} className="text-[#888884]">
-          {colonText}
-        </span>
-      );
-    } else if (token.startsWith('"')) {
-      result.push(
-        <span key={key} className="text-teal-800 font-normal">
-          {token}
-        </span>
-      );
-    } else if (token === "true" || token === "false") {
-      result.push(
-        <span key={key} className="text-indigo-800 font-medium">
-          {token}
-        </span>
-      );
-    } else if (token === "null") {
-      result.push(
-        <span key={key} className="text-stone-500 italic">
-          {token}
-        </span>
-      );
-    } else if (/^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(token)) {
-      result.push(
-        <span key={key} className="text-amber-800 font-medium">
-          {token}
-        </span>
-      );
-    } else if (/[{}[\],:]/.test(token)) {
-      result.push(
-        <span key={key} className="text-[#78716C]">
-          {token}
-        </span>
-      );
-    } else {
-      result.push(token);
-    }
-
-    lastIndex = regex.lastIndex;
-  }
-
-  if (lastIndex < line.length) {
-    result.push(line.slice(lastIndex));
-  }
-
-  return result;
+  initialViewMode?: "formatted" | "raw" | "json" | "auteur";
 }
 
 export const HistoryFullscreenOutputModal: React.FC<HistoryFullscreenOutputModalProps> = ({
@@ -136,8 +41,9 @@ export const HistoryFullscreenOutputModal: React.FC<HistoryFullscreenOutputModal
   useModalEscape(isOpen, onClose);
 
   const cleanJson = useMemo(() => extractCleanJson(output), [output]);
+  const isAuteurDetected = useMemo(() => isAuteurScript(output), [output]);
 
-  const [viewMode, setViewMode] = useState<"formatted" | "raw" | "json">(() => initialViewMode);
+  const [viewMode, setViewMode] = useState<"formatted" | "raw" | "json" | "auteur">(() => initialViewMode);
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
@@ -229,6 +135,24 @@ export const HistoryFullscreenOutputModal: React.FC<HistoryFullscreenOutputModal
               >
                 <Braces className="w-3 h-3" />
                 <span>JSON</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("auteur")}
+                className={`px-2 py-1 text-[9px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer ${
+                  viewMode === "auteur"
+                    ? "bg-[#1A1A1A] text-white"
+                    : isAuteurDetected
+                    ? "text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-300"
+                    : "text-[#888884] hover:text-[#1A1A1A]"
+                }`}
+                title={isAuteurDetected ? "Auteur Script detected - Directorial visual view" : "View as Auteur Script"}
+              >
+                <Clapperboard className="w-3 h-3" />
+                <span>AUTEUR</span>
+                {isAuteurDetected && viewMode !== "auteur" && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                )}
               </button>
             </div>
 
@@ -369,6 +293,8 @@ export const HistoryFullscreenOutputModal: React.FC<HistoryFullscreenOutputModal
               <pre className="font-mono text-xs leading-relaxed text-[#1A1A1A] whitespace-pre-wrap bg-[#FAF9F6] border border-[#D1D1CF] p-6 selection:bg-[#1A1A1A] selection:text-white">
                 {output}
               </pre>
+            ) : viewMode === "auteur" ? (
+              <AuteurScriptView content={output} />
             ) : (
               <div className="bg-[#FAF9F6] border border-[#D1D1CF] p-4 overflow-x-auto text-xs font-mono leading-relaxed select-text custom-scrollbar">
                 <div className="table w-full border-collapse">

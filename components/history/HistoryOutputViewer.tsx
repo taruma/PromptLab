@@ -13,10 +13,18 @@ import {
   ChevronRight, 
   Sparkles, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  Clapperboard
 } from "lucide-react";
 import { HistoryTokenUsage } from "../../types/history";
 import { HistoryFullscreenOutputModal } from "./HistoryFullscreenOutputModal";
+import { isAuteurScript } from "@/lib/auteur-parser";
+import AuteurScriptView from "@/components/AuteurScriptView";
+import {
+  extractCleanJson,
+  highlightJsonLine,
+  outputMarkdownComponents,
+} from "@/lib/output-render-helpers";
 
 export interface HistoryOutputViewerProps {
   output: string;
@@ -25,105 +33,6 @@ export interface HistoryOutputViewerProps {
   title: string;
   tokenUsage?: HistoryTokenUsage;
   model?: string;
-}
-
-function extractCleanJson(raw: string): { parsed: any | null; formatted: string; isValid: boolean } {
-  if (!raw || !raw.trim()) {
-    return { parsed: null, formatted: "", isValid: false };
-  }
-
-  let text = raw.trim();
-  if (text.startsWith("```")) {
-    text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  }
-
-  try {
-    const parsed = JSON.parse(text);
-    return {
-      parsed,
-      formatted: JSON.stringify(parsed, null, 2),
-      isValid: true,
-    };
-  } catch {
-    return {
-      parsed: null,
-      formatted: text,
-      isValid: false,
-    };
-  }
-}
-
-function highlightJsonLine(line: string, lineIndex: number): React.ReactNode[] {
-  const regex = /("(?:\\[\s\S]|[^"\\])*"(?:\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\],:])/g;
-
-  const result: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(line)) !== null) {
-    if (match.index > lastIndex) {
-      result.push(line.slice(lastIndex, match.index));
-    }
-
-    const token = match[0];
-    const key = `hov-tok-${lineIndex}-${match.index}`;
-
-    if (token.endsWith(":")) {
-      const colonIdx = token.lastIndexOf(":");
-      const keyText = token.slice(0, colonIdx);
-      const colonText = token.slice(colonIdx);
-      result.push(
-        <span key={key} className="text-[#1A1A1A] font-semibold">
-          {keyText}
-        </span>
-      );
-      result.push(
-        <span key={`${key}-col`} className="text-[#888884]">
-          {colonText}
-        </span>
-      );
-    } else if (token.startsWith('"')) {
-      result.push(
-        <span key={key} className="text-teal-800 font-normal">
-          {token}
-        </span>
-      );
-    } else if (token === "true" || token === "false") {
-      result.push(
-        <span key={key} className="text-indigo-800 font-medium">
-          {token}
-        </span>
-      );
-    } else if (token === "null") {
-      result.push(
-        <span key={key} className="text-stone-500 italic">
-          {token}
-        </span>
-      );
-    } else if (/^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(token)) {
-      result.push(
-        <span key={key} className="text-amber-800 font-medium">
-          {token}
-        </span>
-      );
-    } else if (/[{}[\],:]/.test(token)) {
-      result.push(
-        <span key={key} className="text-[#78716C]">
-          {token}
-        </span>
-      );
-    } else {
-      result.push(token);
-    }
-
-    lastIndex = regex.lastIndex;
-  }
-
-  if (lastIndex < line.length) {
-    result.push(line.slice(lastIndex));
-  }
-
-  return result;
 }
 
 const reasoningMarkdownComponents = {
@@ -182,7 +91,10 @@ export const HistoryOutputViewer: React.FC<HistoryOutputViewerProps> = ({
   tokenUsage,
   model,
 }) => {
-  const [viewMode, setViewMode] = useState<"formatted" | "raw" | "json">("raw");
+  const [viewMode, setViewMode] = useState<"formatted" | "raw" | "json" | "auteur">("raw");
+
+  // Fast memoized detection for Auteur Script
+  const isAuteurDetected = useMemo(() => isAuteurScript(output), [output]);
 
   // Only extract and format JSON lazily when JSON view mode is actively selected
   const cleanJson = useMemo(() => {
@@ -266,6 +178,24 @@ export const HistoryOutputViewer: React.FC<HistoryOutputViewerProps> = ({
             >
               <Braces className="w-2.5 h-2.5" />
               <span>JSON</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("auteur")}
+              className={`px-2 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer ${
+                viewMode === "auteur"
+                  ? "bg-[#1A1A1A] text-white"
+                  : isAuteurDetected
+                  ? "text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-300"
+                  : "text-[#888884] hover:text-[#1A1A1A]"
+              }`}
+              title={isAuteurDetected ? "Auteur Script detected - Directorial visual view" : "View as Auteur Script"}
+            >
+              <Clapperboard className="w-2.5 h-2.5" />
+              <span>AUTEUR</span>
+              {isAuteurDetected && viewMode !== "auteur" && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              )}
             </button>
           </div>
 
@@ -369,74 +299,7 @@ export const HistoryOutputViewer: React.FC<HistoryOutputViewerProps> = ({
         {output ? (
           viewMode === "formatted" ? (
             <div className="markdown-body font-serif text-xs leading-relaxed text-[#1A1A1A]">
-              <Markdown
-                components={{
-                  h1: ({ children }) => (
-                    <h1 className="text-sm font-black uppercase tracking-wider my-3 pb-1 border-b border-[#D1D1CF] font-sans text-[#1A1A1A]">
-                      {children}
-                    </h1>
-                  ),
-                  h2: ({ children }) => (
-                    <h2 className="text-xs font-bold uppercase tracking-wider my-2 font-sans text-[#1A1A1A]">
-                      {children}
-                    </h2>
-                  ),
-                  h3: ({ children }) => (
-                    <h3 className="text-[11px] font-bold uppercase tracking-wider my-1.5 font-sans text-[#1A1A1A]">
-                      {children}
-                    </h3>
-                  ),
-                  p: ({ children }) => (
-                    <p className="mb-2.5 leading-relaxed font-serif text-xs text-[#1A1A1A]">
-                      {children}
-                    </p>
-                  ),
-                  ul: ({ children }) => (
-                    <ul className="list-disc list-inside mb-2.5 space-y-1 font-serif text-xs pl-1">
-                      {children}
-                    </ul>
-                  ),
-                  ol: ({ children }) => (
-                    <ol className="list-decimal list-inside mb-2.5 space-y-1 font-serif text-xs pl-1">
-                      {children}
-                    </ol>
-                  ),
-                  li: ({ children }) => (
-                    <li className="leading-relaxed font-serif text-xs inline-block w-full">
-                      {children}
-                    </li>
-                  ),
-                  blockquote: ({ children }) => (
-                    <blockquote className="border-l-2 border-[#1A1A1A] pl-3 my-2.5 italic text-stone-700 bg-[#F4F4F2] py-1.5 pr-2 text-xs">
-                      {children}
-                    </blockquote>
-                  ),
-                  code: ({ className, children, ...props }: any) => {
-                    const match = /language-(\w+)/.exec(className || "");
-                    return match ? (
-                      <pre className="bg-[#F4F4F2] border border-[#D1D1CF] p-3 my-2.5 font-mono text-[11px] overflow-x-auto text-[#1A1A1A] whitespace-pre">
-                        <code>{children}</code>
-                      </pre>
-                    ) : (
-                      <code
-                        className="bg-[#F4F4F2] border border-[#D1D1CF] px-1 py-0.5 font-mono text-[10px] text-[#1A1A1A]"
-                        {...props}
-                      >
-                        {children}
-                      </code>
-                    );
-                  },
-                  hr: () => <hr className="my-3 border-[#D1D1CF]" />,
-                  strong: ({ children }) => (
-                    <strong className="font-bold text-[#1A1A1A] font-sans">
-                      {children}
-                    </strong>
-                  ),
-                  em: ({ children }) => (
-                    <em className="italic">{children}</em>
-                  ),
-                }}
-              >
+              <Markdown components={outputMarkdownComponents}>
                 {output}
               </Markdown>
             </div>
@@ -444,6 +307,8 @@ export const HistoryOutputViewer: React.FC<HistoryOutputViewerProps> = ({
             <pre className="font-mono text-xs leading-relaxed text-[#1A1A1A] whitespace-pre-wrap selection:bg-[#1A1A1A] selection:text-white">
               {output}
             </pre>
+          ) : viewMode === "auteur" ? (
+            <AuteurScriptView content={output} />
           ) : (
             <div className="bg-[#FAF9F6] border border-[#D1D1CF] p-3 overflow-x-auto text-xs font-mono leading-relaxed select-text custom-scrollbar">
               <div className="table w-full border-collapse">

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { AlertTriangle } from "lucide-react";
+import { useModalEscape } from "../hooks/use-modal-stack";
 
 export interface PresetItemBasic {
   id: string;
@@ -25,6 +26,8 @@ export default function PresetReplaceConfirmModal({
   onClose,
   onConfirm,
 }: PresetReplaceConfirmModalProps) {
+  useModalEscape(isOpen && targetPreset !== null, onClose);
+
   if (!isOpen || !targetPreset) return null;
 
   return (

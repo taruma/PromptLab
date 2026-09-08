@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Markdown from "react-markdown";
-import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight, Copy, Check, Braces, Lock, CheckCircle2, X } from "lucide-react";
+import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight, Copy, Check, Braces, Lock, CheckCircle2, X, Clapperboard } from "lucide-react";
+import { isAuteurScript } from "@/lib/auteur-parser";
+import AuteurScriptView from "@/components/AuteurScriptView";
 
 interface ReasoningSection {
   id: string;
@@ -87,6 +89,11 @@ const reasoningMarkdownComponents = {
 };
 
 import { calculateEstimatedCost } from "@/lib/pricing";
+import {
+  extractCleanJson,
+  highlightJsonLine,
+  outputMarkdownComponents,
+} from "@/lib/output-render-helpers";
 
 export interface TokenUsage {
   promptTokens?: number;
@@ -94,112 +101,6 @@ export interface TokenUsage {
   totalTokens?: number;
   cachedTokens?: number;
   thoughtTokens?: number;
-}
-
-function extractCleanJson(raw: string): { parsed: any | null; formatted: string; isValid: boolean } {
-  if (!raw || !raw.trim()) {
-    return { parsed: null, formatted: "", isValid: false };
-  }
-
-  let text = raw.trim();
-  if (text.startsWith("```")) {
-    text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  }
-
-  try {
-    const parsed = JSON.parse(text);
-    return {
-      parsed,
-      formatted: JSON.stringify(parsed, null, 2),
-      isValid: true,
-    };
-  } catch {
-    return {
-      parsed: null,
-      formatted: text,
-      isValid: false,
-    };
-  }
-}
-
-function highlightJsonLine(line: string, lineIndex: number): React.ReactNode[] {
-  // Matches:
-  // 1. Property key (string with colon): "key":
-  // 2. String literal: "..."
-  // 3. Booleans: true / false
-  // 4. Null: null
-  // 5. Numbers: integers, decimals, negatives, exponentials
-  // 6. Structural delimiters & punctuation: { } [ ] , :
-  const regex = /("(?:\\[\s\S]|[^"\\])*"(?:\s*:)?|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[{}[\],:])/g;
-
-  const result: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(line)) !== null) {
-    if (match.index > lastIndex) {
-      result.push(line.slice(lastIndex, match.index));
-    }
-
-    const token = match[0];
-    const key = `tok-${lineIndex}-${match.index}`;
-
-    if (token.endsWith(":")) {
-      const colonIdx = token.lastIndexOf(":");
-      const keyText = token.slice(0, colonIdx);
-      const colonText = token.slice(colonIdx);
-      result.push(
-        <span key={key} className="text-[#1A1A1A] font-semibold">
-          {keyText}
-        </span>
-      );
-      result.push(
-        <span key={`${key}-col`} className="text-[#888884]">
-          {colonText}
-        </span>
-      );
-    } else if (token.startsWith('"')) {
-      result.push(
-        <span key={key} className="text-teal-800 font-normal">
-          {token}
-        </span>
-      );
-    } else if (token === "true" || token === "false") {
-      result.push(
-        <span key={key} className="text-indigo-800 font-medium">
-          {token}
-        </span>
-      );
-    } else if (token === "null") {
-      result.push(
-        <span key={key} className="text-stone-500 italic">
-          {token}
-        </span>
-      );
-    } else if (/^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(token)) {
-      result.push(
-        <span key={key} className="text-amber-800 font-medium">
-          {token}
-        </span>
-      );
-    } else if (/[{}[\],:]/.test(token)) {
-      result.push(
-        <span key={key} className="text-[#78716C]">
-          {token}
-        </span>
-      );
-    } else {
-      result.push(token);
-    }
-
-    lastIndex = regex.lastIndex;
-  }
-
-  if (lastIndex < line.length) {
-    result.push(line.slice(lastIndex));
-  }
-
-  return result;
 }
 
 interface GenerationResultViewProps {
@@ -233,9 +134,12 @@ export default function GenerationResultView({
   selectedModel = "gemini-3.6-flash",
   isStructuredOutput = false,
 }: GenerationResultViewProps) {
-  const [userViewMode, setUserViewMode] = useState<"formatted" | "raw" | "json">("formatted");
+  const [userViewMode, setUserViewMode] = useState<"formatted" | "raw" | "json" | "auteur">("formatted");
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isReasoningCollapsed, setIsReasoningCollapsed] = useState<boolean>(false);
+
+  // Fast memoized Auteur Script detection (O(N) regex, < 0.05ms)
+  const isAuteurDetected = useMemo(() => isAuteurScript(generationResult), [generationResult]);
 
   const [isCostPopoverOpen, setIsCostPopoverOpen] = useState<boolean>(false);
   const costPopoverRef = useRef<HTMLDivElement>(null);
@@ -313,9 +217,9 @@ export default function GenerationResultView({
   useEffect(() => {
     try {
       const savedMode = localStorage.getItem("prompt_generator_output_view_mode");
-      if (savedMode === "formatted" || savedMode === "raw" || savedMode === "json") {
+      if (savedMode === "formatted" || savedMode === "raw" || savedMode === "json" || savedMode === "auteur") {
         setTimeout(() => {
-          setUserViewMode(savedMode as "formatted" | "raw" | "json");
+          setUserViewMode(savedMode as "formatted" | "raw" | "json" | "auteur");
         }, 0);
       }
     } catch (e) {
@@ -338,7 +242,7 @@ export default function GenerationResultView({
   }, []);
 
   // Save view mode preference to localStorage when changed
-  const handleToggleViewMode = (mode: "formatted" | "raw" | "json") => {
+  const handleToggleViewMode = (mode: "formatted" | "raw" | "json" | "auteur") => {
     if (isStructuredOutput) return;
     setUserViewMode(mode);
     try {
@@ -601,6 +505,33 @@ export default function GenerationResultView({
               )}
               <span>JSON</span>
             </button>
+            <button
+              type="button"
+              onClick={() => handleToggleViewMode("auteur")}
+              disabled={isStructuredOutput}
+              className={`px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1 ${
+                isStructuredOutput
+                  ? "opacity-35 cursor-not-allowed text-[#888884]"
+                  : viewMode === "auteur"
+                  ? "bg-[#1A1A1A] text-white cursor-pointer"
+                  : isAuteurDetected
+                  ? "text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 hover:text-emerald-900 cursor-pointer border border-emerald-300"
+                  : "text-[#888884] hover:text-[#1A1A1A] cursor-pointer"
+              }`}
+              title={
+                isStructuredOutput
+                  ? "Locked to JSON mode by Engine Settings"
+                  : isAuteurDetected
+                  ? "Auteur Script detected - Directorial visual view"
+                  : "View as Auteur Script"
+              }
+            >
+              <Clapperboard className="w-2.5 h-2.5" />
+              <span>Auteur</span>
+              {isAuteurDetected && viewMode !== "auteur" && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              )}
+            </button>
           </div>
 
           {generationResult && (
@@ -748,79 +679,7 @@ export default function GenerationResultView({
                   {generationResult ? (
                     viewMode === "formatted" ? (
                       <div className="markdown-body">
-                        <Markdown
-                          components={{
-                            h1: ({ children }) => (
-                              <h1 className="text-base font-black uppercase tracking-wider my-3 pb-1 border-b border-[#D1D1CF] font-sans text-[#1A1A1A]">
-                                {children}
-                              </h1>
-                            ),
-                            h2: ({ children }) => (
-                              <h2 className="text-sm font-bold uppercase tracking-wider my-2.5 font-sans text-[#1A1A1A]">
-                                {children}
-                              </h2>
-                            ),
-                            h3: ({ children }) => (
-                              <h3 className="text-xs font-bold uppercase tracking-wider my-2 font-sans text-[#1A1A1A]">
-                                {children}
-                              </h3>
-                            ),
-                            h4: ({ children }) => (
-                              <h4 className="text-[11px] font-bold uppercase tracking-wider my-1.5 font-sans text-[#1A1A1A]">
-                                {children}
-                              </h4>
-                            ),
-                            p: ({ children }) => (
-                              <p className="mb-3 leading-relaxed text-[#1A1A1A] font-serif text-sm">
-                                {children}
-                              </p>
-                            ),
-                            ul: ({ children }) => (
-                              <ul className="list-disc list-inside mb-3 space-y-1 text-[#1A1A1A] font-serif text-sm pl-1">
-                                {children}
-                              </ul>
-                            ),
-                            ol: ({ children }) => (
-                              <ol className="list-decimal list-inside mb-3 space-y-1 text-[#1A1A1A] font-serif text-sm pl-1">
-                                {children}
-                              </ol>
-                            ),
-                            li: ({ children }) => (
-                              <li className="leading-relaxed font-serif text-sm inline-block w-full">
-                                {children}
-                              </li>
-                            ),
-                            blockquote: ({ children }) => (
-                              <blockquote className="border-l-2 border-[#1A1A1A] pl-3 my-3 italic text-stone-700 font-serif bg-[#F4F4F2] py-2 pr-2 text-sm">
-                                {children}
-                              </blockquote>
-                            ),
-                            code: ({ className, children, ...props }: any) => {
-                              const match = /language-(\w+)/.exec(className || "");
-                              return match ? (
-                                <pre className="bg-[#F4F4F2] border border-[#D1D1CF] p-3 my-3 font-mono text-xs overflow-x-auto text-[#1A1A1A] whitespace-pre">
-                                  <code>{children}</code>
-                                </pre>
-                              ) : (
-                                <code
-                                  className="bg-[#F4F4F2] border border-[#D1D1CF] px-1.5 py-0.5 font-mono text-[11px] text-[#1A1A1A]"
-                                  {...props}
-                                >
-                                  {children}
-                                </code>
-                              );
-                            },
-                            hr: () => <hr className="my-3 border-[#D1D1CF]" />,
-                            strong: ({ children }) => (
-                              <strong className="font-bold text-[#1A1A1A] font-sans">
-                                {children}
-                              </strong>
-                            ),
-                            em: ({ children }) => (
-                              <em className="italic font-serif">{children}</em>
-                            ),
-                          }}
-                        >
+                        <Markdown components={outputMarkdownComponents}>
                           {generationResult}
                         </Markdown>
                       </div>
@@ -862,6 +721,8 @@ export default function GenerationResultView({
                           </div>
                         </div>
                       </div>
+                    ) : viewMode === "auteur" ? (
+                      <AuteurScriptView content={generationResult} />
                     ) : (
                       <pre className="text-[11px] md:text-xs font-mono leading-relaxed text-[#1A1A1A] whitespace-pre-wrap font-normal select-text">
                         {generationResult}
@@ -875,7 +736,7 @@ export default function GenerationResultView({
                 </div>
                 <div className="pt-3 border-t border-[#D1D1CF]/40 mt-3 flex items-center justify-between text-[8px] text-[#888884] font-mono uppercase tracking-wider">
                   <span>
-                    VIEW: {viewMode === "formatted" ? "FORMATTED MARKDOWN" : viewMode === "raw" ? "RAW MONOSPACE" : isStructuredOutput ? "STRUCTURED JSON (LOCKED)" : "JSON VIEW"}
+                    VIEW: {viewMode === "formatted" ? "FORMATTED MARKDOWN" : viewMode === "raw" ? "RAW MONOSPACE" : viewMode === "auteur" ? "AUTEUR DIRECTORIAL VIEW" : isStructuredOutput ? "STRUCTURED JSON (LOCKED)" : "JSON VIEW"}
                   </span>
                   <span className="flex items-center gap-1.5">
                     {isLoading && !isThinking && (

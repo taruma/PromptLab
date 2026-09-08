@@ -39,15 +39,16 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 - **Token Usage & Itemized Cost Tracking** — Inspect line-by-line token expenditures (prompt input, context cache savings, candidate output, and thought tokens) in an interactive popover with verified USD estimates.
 
 ### 📊 Output & Ergonomics
-- **Tri-Mode Rendering** — Toggle between richly formatted Markdown (headings, tables, code fences), traditional raw monospace text, and syntax-highlighted JSON with line numbers.
+- **Multi-Mode Output Rendering** — Toggle between richly formatted Markdown (headings, tables, code fences), traditional raw monospace text, syntax-highlighted JSON with line numbers and token coloring, and structured **Auteur Script** view with collapsible staging blocks and compact execution state cards.
+- **Output Renderer Split Workspace** — Open the dedicated split-screen modal (`Renderer`) from the header to test, format, and preview raw text or outputs side-by-side with live multi-mode rendering, line/character counters, and persistent local draft storage.
 - **Live Character & Word Counters** — See output metrics at a glance with live `{N} CHARS • {N} WORDS` badges.
 - **Keyboard Shortcuts** — Synthesize sequences instantly with `Ctrl+Enter` / `Cmd+Enter`, and navigate modal dialogs with a predictable LIFO `Escape` stack.
 - **Real-Time Streaming** — Watch generations appear word-by-word via Server-Sent Events.
 
 ### 💾 Workspace
-- **Multi-Project Support** — Create independent workspaces, each with their own prompts, presets, history, and asset library. Switch between them from the top bar.
+- **Multi-Project Workspaces & Backups** — Create independent workspaces, each with their own prompts, presets, history, and asset library. Switch between them from the top bar. Export full workspaces with v1.1 deduplicated image pools and chunked streaming, and inspect imported workspaces with real-time summary breakdown ribbons, collision resolution, and 100% backward compatibility.
 - **Session History Overhaul** — Full-screen history browser with collapsible filter drawer, multi-select media filters (IMG/VID/AUD/DOC with AND logic), contextual date grouping (Today, Yesterday, 7 Days, Older), view density toggle (Detailed vs Compact), universal search scopes, and fullscreen focus inspection.
-- **Asset Library** — A persistent image sidebar for uploading, browsing, searching, and reusing images across any workspace without re-uploading.
+- **Asset Library** — A persistent image sidebar for uploading, browsing, searching, pinning/favoriting, and reusing images across workspaces, featuring v1.1 deduplicated JSON backups, chunked streaming exports, and visual pre-import inspection with duplicate detection.
 - **Workspace Clone** — Create a new project by copying your current prompts, presets, and assets — perfect for exploring variations.
 
 ### 🔐 API Keys

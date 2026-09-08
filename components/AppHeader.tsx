@@ -1,6 +1,6 @@
 import React from "react";
 import Image from "next/image";
-import { FolderOpen, Sparkles, Settings, FolderKanban, RotateCcw } from "lucide-react";
+import { FolderOpen, Sparkles, Settings, FolderKanban, RotateCcw, Eye } from "lucide-react";
 import QuickPresetSelector, { PresetItem } from "./QuickPresetSelector";
 import QuickApiKeySelector from "./QuickApiKeySelector";
 import QuickModelSelector from "./QuickModelSelector";
@@ -14,6 +14,7 @@ interface AppHeaderProps {
   onClearSession: () => void;
   onOpenProjects?: () => void;
   onOpenKofiSupport?: () => void;
+  onOpenOutputRenderer?: () => void;
   currentProjectName?: string;
   presets?: PresetItem[];
   customPresets?: UserPreset[];
@@ -39,6 +40,7 @@ export default function AppHeader({
   onOpenPromptConfig,
   onClearSession,
   onOpenProjects,
+  onOpenOutputRenderer,
   currentProjectName = "Main Workspace",
   presets = [],
   customPresets = [],
@@ -132,6 +134,18 @@ export default function AppHeader({
       {/* Row 2 on Mobile / Right Section on Desktop */}
       <div className="flex items-center justify-between md:justify-end gap-1.5 sm:gap-2 w-full md:w-auto pt-1.5 md:pt-0 border-t md:border-t-0 border-[#D1D1CF]/60 shrink-0">
         <KofiButton variant="header" label="Support" className="flex-1 md:flex-none justify-center h-8.5" />
+
+        {onOpenOutputRenderer && (
+          <button
+            onClick={onOpenOutputRenderer}
+            className="flex-1 md:flex-none justify-center h-8.5 px-2 md:px-2.5 bg-cyan-50/80 hover:bg-cyan-100/90 border border-cyan-300/80 hover:border-cyan-400 text-cyan-950 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs rounded-none font-mono"
+            title="Open Output Renderer (Split-Screen Previewer)"
+            id="output-renderer-header-btn"
+          >
+            <Eye className="w-3.5 h-3.5 text-cyan-700 shrink-0" />
+            <span className="hidden md:inline">Renderer</span>
+          </button>
+        )}
 
         <button
           onClick={onOpenLibrary}
