@@ -1754,11 +1754,17 @@ export default function PromptGeneratorPage() {
     reader.onload = (event) => {
       try {
         const jsonText = event.target?.result as string;
-        openJsonPresetImport(jsonText, file.name);
+        const res = openJsonPresetImport(jsonText, file.name);
+        if (res && !res.success && res.error) {
+          setPresetStatusBanner({
+            message: res.error,
+            isError: true,
+          });
+        }
       } catch (err: any) {
         setPresetStatusBanner({
-          message: "Failed to read preset file: " + err.message,
-          isError: true
+          message: "Failed to read preset file: " + (err?.message || String(err)),
+          isError: true,
         });
       }
     };

@@ -22,17 +22,31 @@ export default function PresetExportDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Close dropdown on outside click or Escape key (capture phase per modal-overlay-architecture)
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown, true);
+    }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown, true);
     };
-  }, []);
+  }, [isOpen]);
 
   const handleSelect = (exportType: "all" | "favorites" | "selected") => {
     setIsOpen(false);
@@ -40,13 +54,14 @@ export default function PresetExportDropdown({
   };
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
+    <div className="relative inline-block text-left" ref={dropdownRef} id="preset-export-dropdown-wrapper">
       <button
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
         className="px-3 py-1.5 bg-[#1A1A1A] hover:bg-[#333333] text-white border border-[#1A1A1A] text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
         title="Export user presets to JSON"
+        id="export-presets-btn"
       >
         <Download className="w-3.5 h-3.5 shrink-0 text-white" />
         <span className="hidden sm:inline">Export Presets</span>
@@ -54,7 +69,10 @@ export default function PresetExportDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-56 bg-white border border-[#D1D1CF] shadow-xl z-50 flex flex-col p-1 text-[10px] font-mono uppercase font-bold">
+        <div 
+          className="absolute right-0 mt-1 w-56 bg-white border border-[#D1D1CF] shadow-xl z-[70] flex flex-col p-1 text-[10px] font-mono uppercase font-bold animate-fade-in"
+          id="preset-export-menu"
+        >
           <div className="px-2 py-1 text-[8px] text-[#888884] border-b border-[#D1D1CF]/50 mb-1 font-sans">
             EXPORT USER PRESETS
           </div>
