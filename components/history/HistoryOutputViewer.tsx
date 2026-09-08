@@ -13,10 +13,13 @@ import {
   ChevronRight, 
   Sparkles, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  Clapperboard
 } from "lucide-react";
 import { HistoryTokenUsage } from "../../types/history";
 import { HistoryFullscreenOutputModal } from "./HistoryFullscreenOutputModal";
+import { isAuteurScript } from "@/lib/auteur-parser";
+import AuteurScriptView from "@/components/AuteurScriptView";
 
 export interface HistoryOutputViewerProps {
   output: string;
@@ -182,7 +185,10 @@ export const HistoryOutputViewer: React.FC<HistoryOutputViewerProps> = ({
   tokenUsage,
   model,
 }) => {
-  const [viewMode, setViewMode] = useState<"formatted" | "raw" | "json">("raw");
+  const [viewMode, setViewMode] = useState<"formatted" | "raw" | "json" | "auteur">("raw");
+
+  // Fast memoized detection for Auteur Script
+  const isAuteurDetected = useMemo(() => isAuteurScript(output), [output]);
 
   // Only extract and format JSON lazily when JSON view mode is actively selected
   const cleanJson = useMemo(() => {
@@ -266,6 +272,24 @@ export const HistoryOutputViewer: React.FC<HistoryOutputViewerProps> = ({
             >
               <Braces className="w-2.5 h-2.5" />
               <span>JSON</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("auteur")}
+              className={`px-2 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer ${
+                viewMode === "auteur"
+                  ? "bg-[#1A1A1A] text-white"
+                  : isAuteurDetected
+                  ? "text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-300"
+                  : "text-[#888884] hover:text-[#1A1A1A]"
+              }`}
+              title={isAuteurDetected ? "Auteur Script detected - Directorial visual view" : "View as Auteur Script"}
+            >
+              <Clapperboard className="w-2.5 h-2.5" />
+              <span>AUTEUR</span>
+              {isAuteurDetected && viewMode !== "auteur" && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              )}
             </button>
           </div>
 
@@ -444,6 +468,8 @@ export const HistoryOutputViewer: React.FC<HistoryOutputViewerProps> = ({
             <pre className="font-mono text-xs leading-relaxed text-[#1A1A1A] whitespace-pre-wrap selection:bg-[#1A1A1A] selection:text-white">
               {output}
             </pre>
+          ) : viewMode === "auteur" ? (
+            <AuteurScriptView content={output} />
           ) : (
             <div className="bg-[#FAF9F6] border border-[#D1D1CF] p-3 overflow-x-auto text-xs font-mono leading-relaxed select-text custom-scrollbar">
               <div className="table w-full border-collapse">

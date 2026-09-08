@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Markdown from "react-markdown";
-import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight, Copy, Check, Braces, Lock, CheckCircle2, X } from "lucide-react";
+import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight, Copy, Check, Braces, Lock, CheckCircle2, X, Clapperboard } from "lucide-react";
+import { isAuteurScript } from "@/lib/auteur-parser";
+import AuteurScriptView from "@/components/AuteurScriptView";
 
 interface ReasoningSection {
   id: string;
@@ -233,9 +235,12 @@ export default function GenerationResultView({
   selectedModel = "gemini-3.6-flash",
   isStructuredOutput = false,
 }: GenerationResultViewProps) {
-  const [userViewMode, setUserViewMode] = useState<"formatted" | "raw" | "json">("formatted");
+  const [userViewMode, setUserViewMode] = useState<"formatted" | "raw" | "json" | "auteur">("formatted");
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isReasoningCollapsed, setIsReasoningCollapsed] = useState<boolean>(false);
+
+  // Fast memoized Auteur Script detection (O(N) regex, < 0.05ms)
+  const isAuteurDetected = useMemo(() => isAuteurScript(generationResult), [generationResult]);
 
   const [isCostPopoverOpen, setIsCostPopoverOpen] = useState<boolean>(false);
   const costPopoverRef = useRef<HTMLDivElement>(null);
@@ -313,9 +318,9 @@ export default function GenerationResultView({
   useEffect(() => {
     try {
       const savedMode = localStorage.getItem("prompt_generator_output_view_mode");
-      if (savedMode === "formatted" || savedMode === "raw" || savedMode === "json") {
+      if (savedMode === "formatted" || savedMode === "raw" || savedMode === "json" || savedMode === "auteur") {
         setTimeout(() => {
-          setUserViewMode(savedMode as "formatted" | "raw" | "json");
+          setUserViewMode(savedMode as "formatted" | "raw" | "json" | "auteur");
         }, 0);
       }
     } catch (e) {
@@ -338,7 +343,7 @@ export default function GenerationResultView({
   }, []);
 
   // Save view mode preference to localStorage when changed
-  const handleToggleViewMode = (mode: "formatted" | "raw" | "json") => {
+  const handleToggleViewMode = (mode: "formatted" | "raw" | "json" | "auteur") => {
     if (isStructuredOutput) return;
     setUserViewMode(mode);
     try {
@@ -601,6 +606,33 @@ export default function GenerationResultView({
               )}
               <span>JSON</span>
             </button>
+            <button
+              type="button"
+              onClick={() => handleToggleViewMode("auteur")}
+              disabled={isStructuredOutput}
+              className={`px-1.5 py-0.5 text-[8px] font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1 ${
+                isStructuredOutput
+                  ? "opacity-35 cursor-not-allowed text-[#888884]"
+                  : viewMode === "auteur"
+                  ? "bg-[#1A1A1A] text-white cursor-pointer"
+                  : isAuteurDetected
+                  ? "text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 hover:text-emerald-900 cursor-pointer border border-emerald-300"
+                  : "text-[#888884] hover:text-[#1A1A1A] cursor-pointer"
+              }`}
+              title={
+                isStructuredOutput
+                  ? "Locked to JSON mode by Engine Settings"
+                  : isAuteurDetected
+                  ? "Auteur Script detected - Directorial visual view"
+                  : "View as Auteur Script"
+              }
+            >
+              <Clapperboard className="w-2.5 h-2.5" />
+              <span>Auteur</span>
+              {isAuteurDetected && viewMode !== "auteur" && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              )}
+            </button>
           </div>
 
           {generationResult && (
@@ -862,6 +894,8 @@ export default function GenerationResultView({
                           </div>
                         </div>
                       </div>
+                    ) : viewMode === "auteur" ? (
+                      <AuteurScriptView content={generationResult} />
                     ) : (
                       <pre className="text-[11px] md:text-xs font-mono leading-relaxed text-[#1A1A1A] whitespace-pre-wrap font-normal select-text">
                         {generationResult}
@@ -875,7 +909,7 @@ export default function GenerationResultView({
                 </div>
                 <div className="pt-3 border-t border-[#D1D1CF]/40 mt-3 flex items-center justify-between text-[8px] text-[#888884] font-mono uppercase tracking-wider">
                   <span>
-                    VIEW: {viewMode === "formatted" ? "FORMATTED MARKDOWN" : viewMode === "raw" ? "RAW MONOSPACE" : isStructuredOutput ? "STRUCTURED JSON (LOCKED)" : "JSON VIEW"}
+                    VIEW: {viewMode === "formatted" ? "FORMATTED MARKDOWN" : viewMode === "raw" ? "RAW MONOSPACE" : viewMode === "auteur" ? "AUTEUR DIRECTORIAL VIEW" : isStructuredOutput ? "STRUCTURED JSON (LOCKED)" : "JSON VIEW"}
                   </span>
                   <span className="flex items-center gap-1.5">
                     {isLoading && !isThinking && (
