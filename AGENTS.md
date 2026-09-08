@@ -183,8 +183,12 @@ PromptLab is crafted in an **Analog Brutalist Retro Lab** aesthetic. Any new com
   - Design Elements:
     - Sharp corners only: `rounded-none` or subtle default radii. Avoid heavily pill-shaped buttons or rounded UI cards.
     - Symmetrical layouts with clear, stark borders (`border border-[#D1D1CF]`).
-    - Active states on hover should use transparent color overlays or bold border highlights rather than flashy gradient animations.
     - **UI Restraint & Minimal Controls**: Avoid adding unsolicited action buttons or toolbar clutter for features that already operate via standard keyboard shortcuts (e.g. `Ctrl+V` paste) or existing dropzones, unless explicitly requested by the user. Keep toolbars compact and intentional.
+    - **Anti-Fluff & Pure Technical Instrumentation**:
+      - Never include promotional taglines, descriptive fluff (e.g., *"zero-latency split preview"*, *"changes reflect live"*), or unsolicited sample buttons in modal headers or footers.
+      - All header/footer indicators must be strictly functional instrumentation (e.g., `EDITOR`, `PREVIEW`, `{N} LINES • {N} CHARS`, view toggles).
+      - Avoid nested "box-in-a-box" padding in split panes; prefer full-bleed, edge-to-edge borders (`border-r border-[#D1D1CF]`) with clean gutter-free textareas.
+      - Do not add duplicate or secondary bottom status footers when actions can reside cleanly in the pane header.
     - **Metadata Badge Ribbons & Status Pills Alignment**:
       - Always normalize all metadata badge pills (Model, Reasoning, Preset, Tokens, Cost) to a consistent height (`h-5` / 20px), `leading-none`, and matching font size (`text-[9px]` for both label and value) to ensure identical horizontal text baseline alignment across both `<div>` elements and `<button>` triggers.
       - Always nest metadata ribbons directly within the title's vertical flex column rather than placing them as an independent sibling block below the header flexbox row, preventing artificial vertical gaps caused by neighboring action button heights.
@@ -524,7 +528,7 @@ PromptLab provides a dedicated, full-bleed split-screen testing environment (`co
 2. **Draft Text Persistence (`localStorage`)**:
    - Active draft text is preserved in `localStorage` under `prompt_generator_output_renderer_draft`.
    - **Default = Empty**: Starts with an empty string for clean slate testing.
-   - **Strict Non-Destructive Invariant**: The draft is never automatically overwritten by new generation results or modal re-opens. User text remains intact until the user explicitly clicks "Workspace" (with an overwrite confirmation guard if existing draft text is present) or "Clear".
+   - **Strict Non-Destructive Invariant**: Scratchpads and secondary editors must NEVER automatically overwrite user text with workspace results or active outputs. User drafts remain isolated and preserved until the user explicitly triggers an opt-in action ("Workspace"), with confirmation if existing draft text would be replaced.
 3. **Modal Stacking & Ergonomic Invariants**:
    - Complies with Tier 2 (`z-50`) in the 5-Tier Z-Index Stacking Context Scale.
    - Registers with the universal LIFO Escape key stack via `useModalEscape(isOpen, onClose)`.
