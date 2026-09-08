@@ -2,7 +2,7 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
-## [Unreleased]
+## [v2.7.0] — September 8, 2026
 
 ### Added
 
@@ -38,7 +38,7 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
   - **Draft Text Persistence (`localStorage`)**: Persists editor text in `localStorage` (`prompt_generator_output_renderer_draft`). Starts empty by default, preserves user drafts across modal open/close cycles and browser refreshes, and never replaces drafts automatically unless explicitly requested by the user via the "Workspace" or "Clear" action buttons.
   - **Full-Height Lossless PNG Screenshot Export (`components/OutputRendererModal.tsx`, `lib/image-export.ts`)**: Integrated an uncompressed PNG export button (`Camera` icon) directly into the preview toolbar of the Output Renderer modal. Using `html-to-image` with 2x retina pixel ratio (`pixelRatio: 2`), it measures the full unconstrained `scrollHeight` of the rendered output—capturing entire long-form outputs (including extensive Auteur Script timelines with dozens of sub-states) without cropping, scrolling, or compression artifacts. Automatically triggers browser download using standardized filenames prefixed for quick identification: `screenshot_promptlab_{projectSlug}_{viewMode}_{YYYY-MM-DD}_{HHMMSS}_{uniqueId}.png`.
   - **Universal Multi-Mode Output View (`components/MultiModeOutputView.tsx`)**: Extracted a reusable 4-mode output viewer component implementing the segmented toggle (**MD** / Formatted Markdown, **Raw** Monospace, **JSON** with line numbers and token color coding, and **Auteur** Script view) with automatic format detection (`isAuteurScript`, `isJson`) and one-click copy feedback.
-  - **Codebase Deduplication & Shared Tokenizer (`lib/output-render-helpers.tsx`)**: Centralized JSON parsing (`extractCleanJson`), JSON syntax highlighting (`highlightJsonLine`), and standard brutalist Markdown typography mappings (`outputMarkdownComponents`), refactoring `GenerationResultView.tsx`, `HistoryOutputViewer.tsx`, and `HistoryFullscreenOutputModal.tsx` to eliminate over 250+ lines of duplicate code.
+  - **Codebase Deduplication & Shared Tokenizer (`lib/output-render-helpers.tsx`)**: Centralized JSON parsing (`extractCleanJson`), JSON syntax highlighting (`highlightJsonLine`), and standard brutalist Markdown typography mappings (`outputMarkdownComponents`), refactoring `GenerationResultView.tsx`, `HistoryOutputViewer.tsx`, and `HistoryFullscreenOutputModal.tsx` to eliminate over 450+ lines of duplicate code.
 
 - **Auteur Script Visual Rendering Pipeline (`components/AuteurScriptView.tsx`, `lib/auteur-parser.ts`).**
   - **Structured Procedural Output Visualizer (`components/AuteurScriptView.tsx`)**: Introduced a specialized, high-density retro lab renderer for prompt templates producing procedural scripts structured into macro-states (staging directives, continuity protocols, references) and sub-states (granular execution state-machines).
@@ -46,10 +46,11 @@ All notable changes to PromptLab, a playground for drafting and iterating on AI 
   - **Smart Zero-Overhead Auto-Detection (`isAuteurScript`)**: Added lightweight regex detection to identify Auteur Script formatted outputs instantly without parsing latency, dynamically surfacing the `AUTEUR` view toggle in the output panel footer.
   - **Persistent Collapsible Staging**: All non-execution macro-blocks are visible and uncollapsed by default for immediate auditing, with interactive collapse toggles persisted across sessions in `localStorage` (`prompt_generator_auteur_collapsed_staging`). The primary `[EXECUTION]` payload is permanently locked open.
   - **Compact Execution Cards & Calibrated Typography Scale**: Calibrated font scales to eliminate visual fatigue during deep reading (`text-[12.5px]`–`13px` with `leading-relaxed` for dialogue/actions, `text-[11px]`–`11.5px` for sub-state pills, and `text-[9px]`–`10px` for metadata instrumentation).
-  - **Tri-Surface Parity**: Integrated the Auteur Script view mode across all three output reader surfaces:
+  - **Quad-Surface Parity**: Integrated the Auteur Script view mode across all four output reader and editor surfaces:
     1. Main generation canvas (`components/GenerationResultView.tsx`)
     2. History detail viewer (`components/history/HistoryOutputViewer.tsx`)
     3. Distraction-free fullscreen modal (`components/history/HistoryFullscreenOutputModal.tsx`)
+    4. Output Renderer live drafting & preview workspace (`components/OutputRendererModal.tsx`)
 
 ## [v2.6.1] — September 6, 2026
 
