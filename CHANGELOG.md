@@ -2,6 +2,21 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
+## [Unreleased]
+
+### Added
+
+- **Auteur Script Visual Rendering Pipeline (`components/AuteurScriptView.tsx`, `lib/auteur-parser.ts`).**
+  - **Structured Procedural Output Visualizer (`components/AuteurScriptView.tsx`)**: Introduced a specialized, high-density retro lab renderer for prompt templates producing procedural scripts structured into macro-states (staging directives, continuity protocols, references) and sub-states (granular execution state-machines).
+  - **Schema-Tolerant Auteur Parser (`lib/auteur-parser.ts`)**: Implemented open-ended macro-block parsing using dynamic regex `\[([A-Z0-9 _%-]+)\]` to automatically recognize arbitrary sections (`[INTENT]`, `[LOGIC]`, `[CONTINUITY PROTOCOL]`, `[REFERENCES]`, `[EXECUTION]`) without rigid tag whitelisting. Parses sub-states (`STEP 1`, `STATE 1`, `1.`, etc.) into structured action, speech, and metadata channels.
+  - **Smart Zero-Overhead Auto-Detection (`isAuteurScript`)**: Added lightweight regex detection to identify Auteur Script formatted outputs instantly without parsing latency, dynamically surfacing the `AUTEUR` view toggle in the output panel footer.
+  - **Persistent Collapsible Staging**: All non-execution macro-blocks are visible and uncollapsed by default for immediate auditing, with interactive collapse toggles persisted across sessions in `localStorage` (`prompt_generator_auteur_collapsed_staging`). The primary `[EXECUTION]` payload is permanently locked open.
+  - **Compact Execution Cards & Calibrated Typography Scale**: Calibrated font scales to eliminate visual fatigue during deep reading (`text-[12.5px]`–`13px` with `leading-relaxed` for dialogue/actions, `text-[11px]`–`11.5px` for sub-state pills, and `text-[9px]`–`10px` for metadata instrumentation).
+  - **Tri-Surface Parity**: Integrated the Auteur Script view mode across all three output reader surfaces:
+    1. Main generation canvas (`components/GenerationResultView.tsx`)
+    2. History detail viewer (`components/history/HistoryOutputViewer.tsx`)
+    3. Distraction-free fullscreen modal (`components/history/HistoryFullscreenOutputModal.tsx`)
+
 ## [v2.6.1] — September 6, 2026
 
 ### Performance
