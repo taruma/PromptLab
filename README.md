@@ -39,7 +39,8 @@ PromptLab is a **first-draft playground** for prompt engineering. Write your sys
 - **Token Usage & Itemized Cost Tracking** — Inspect line-by-line token expenditures (prompt input, context cache savings, candidate output, and thought tokens) in an interactive popover with verified USD estimates.
 
 ### 📊 Output & Ergonomics
-- **Tri-Mode Rendering** — Toggle between richly formatted Markdown (headings, tables, code fences), traditional raw monospace text, and syntax-highlighted JSON with line numbers.
+- **Multi-Mode Output Rendering** — Toggle between richly formatted Markdown (headings, tables, code fences), traditional raw monospace text, syntax-highlighted JSON with line numbers and token coloring, and structured **Auteur Script** view with collapsible staging blocks and compact execution state cards.
+- **Output Renderer Split Workspace** — Open the dedicated split-screen modal (`Renderer`) from the header to test, format, and preview raw text or outputs side-by-side with live multi-mode rendering, line/character counters, and persistent local draft storage.
 - **Live Character & Word Counters** — See output metrics at a glance with live `{N} CHARS • {N} WORDS` badges.
 - **Keyboard Shortcuts** — Synthesize sequences instantly with `Ctrl+Enter` / `Cmd+Enter`, and navigate modal dialogs with a predictable LIFO `Escape` stack.
 - **Real-Time Streaming** — Watch generations appear word-by-word via Server-Sent Events.

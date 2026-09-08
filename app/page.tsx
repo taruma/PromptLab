@@ -55,6 +55,7 @@ import VisualAssetsSection, { type UploadedImage } from "../components/VisualAss
 import ParameterInputsSection from "../components/ParameterInputsSection";
 import FooterStatusBar from "../components/FooterStatusBar";
 import StorageUsageModal from "../components/StorageUsageModal";
+import OutputRendererModal from "../components/OutputRendererModal";
 import GenerationResultView from "../components/GenerationResultView";
 import { useUrlPresetImport } from "../hooks/use-url-preset-import";
 import { useClipboardImagePaste } from "../hooks/use-clipboard-image-paste";
@@ -147,6 +148,7 @@ export default function PromptGeneratorPage() {
   const [isVisualAssetsOpen, setIsVisualAssetsOpen] = useState<boolean>(true);
   const [storageWarningMessage, setStorageWarningMessage] = useState<string | null>(null);
   const [isStorageModalOpen, setIsStorageModalOpen] = useState<boolean>(false);
+  const [isOutputRendererOpen, setIsOutputRendererOpen] = useState<boolean>(false);
   const [pendingLoadItem, setPendingLoadItem] = useState<HistoryItem | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
@@ -1130,6 +1132,7 @@ export default function PromptGeneratorPage() {
     isYouTubeModalOpen ||
     isFilesApiModalOpen ||
     isStorageModalOpen ||
+    isOutputRendererOpen ||
     isProjectManagerOpen ||
     isPresetReplaceConfirmOpen ||
     pendingLoadItem ||
@@ -2263,6 +2266,7 @@ export default function PromptGeneratorPage() {
         onOpenPromptConfig={handleOpenPromptConfig}
         onClearSession={() => setIsClearConfirmOpen(true)}
         onOpenProjects={() => setIsProjectManagerOpen(true)}
+        onOpenOutputRenderer={() => setIsOutputRendererOpen(true)}
         currentProjectName={activeProject?.name || "Main Workspace"}
         presets={presets}
         customPresets={customPresets}
@@ -2660,6 +2664,16 @@ export default function PromptGeneratorPage() {
         onClose={() => setIsStorageModalOpen(false)}
         onClearHistory={() => setIsHistoryClearConfirmOpen(true)}
       />
+
+      {/* Output Renderer Modal */}
+      {isOutputRendererOpen && (
+        <OutputRendererModal
+          isOpen={isOutputRendererOpen}
+          onClose={() => setIsOutputRendererOpen(false)}
+          activeGenerationResult={generationResult}
+          projectName={activeProject?.name}
+        />
+      )}
     </div>
   );
 }
