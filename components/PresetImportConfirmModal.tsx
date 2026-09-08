@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Sparkles, RefreshCw, Layers, CheckCircle2, AlertCircle, Copy, RefreshCcw, ChevronDown, ChevronRight } from "lucide-react";
 import { type UrlPresetData } from "../hooks/use-url-preset-import";
+import { useModalEscape } from "../hooks/use-modal-stack";
 
 export interface PresetImportConfirmModalProps {
   isOpen: boolean;
@@ -35,6 +36,9 @@ export default function PresetImportConfirmModal({
   onDismissError,
   onDismissSuccess,
 }: PresetImportConfirmModalProps) {
+  // LIFO Escape key dismissal coordination (Tier 3 sub-modal)
+  useModalEscape(isOpen, onCancel);
+
   const importResult = urlPresetData?.importResult;
   const importedCount = importResult?.importedCount ?? 0;
   const replacedCount = importResult?.replacedCount ?? 0;
@@ -66,7 +70,7 @@ export default function PresetImportConfirmModal({
     <>
       {/* URL Preset Import Confirmation Modal */}
       {isOpen && urlPresetData && (
-        <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="url-import-confirm-modal">
+        <div className="fixed inset-0 bg-[#1a1a1a]/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in" id="url-import-confirm-modal">
           <div className="bg-white border border-[#D1D1CF] w-full max-w-lg flex flex-col justify-between shadow-2xl relative">
             
             {/* Modal Header */}
@@ -311,7 +315,7 @@ export default function PresetImportConfirmModal({
 
       {/* URL Preset Import Loading Indicator */}
       {urlImportPending && (
-        <div className="fixed inset-0 bg-[#1a1a1a]/20 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-[#1a1a1a]/20 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white border border-[#D1D1CF] p-6 shadow-xl flex items-center gap-3">
             <RefreshCw className="w-4 h-4 animate-spin text-[#888884]" />
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[#1A1A1A]">
@@ -323,14 +327,14 @@ export default function PresetImportConfirmModal({
 
       {/* URL Import Error Dialog */}
       {urlImportError && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-md bg-white border border-red-200 shadow-2xl p-4 flex flex-col gap-2 animate-fade-in" id="url-import-error-toast">
+        <div className="fixed bottom-6 right-6 z-[70] max-w-md bg-white border border-red-200 shadow-2xl p-4 flex flex-col gap-2 animate-fade-in" id="url-import-error-toast">
           <div className="flex items-center justify-between border-b border-red-100 pb-2">
             <span className="text-[10px] font-black uppercase tracking-wider text-red-600 flex items-center gap-1.5 font-sans">
               <AlertCircle className="w-3.5 h-3.5" /> Import Failed
             </span>
             <button 
               onClick={onDismissError}
-              className="text-stone-400 hover:text-[#1A1A1A] font-mono text-[9px] font-bold uppercase"
+              className="text-stone-400 hover:text-[#1A1A1A] font-mono text-[9px] font-bold uppercase cursor-pointer"
             >
               [Dismiss]
             </button>
@@ -346,14 +350,14 @@ export default function PresetImportConfirmModal({
 
       {/* URL Import Success Toast */}
       {urlImportSuccessMsg && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-md bg-white border border-emerald-200 shadow-2xl p-4 flex flex-col gap-1.5 animate-fade-in" id="url-import-success-toast">
+        <div className="fixed bottom-6 right-6 z-[70] max-w-md bg-white border border-emerald-200 shadow-2xl p-4 flex flex-col gap-1.5 animate-fade-in" id="url-import-success-toast">
           <div className="flex items-center justify-between border-b border-emerald-100 pb-1.5">
             <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 flex items-center gap-1.5 font-sans">
               [✓] Preset Applied
             </span>
             <button 
               onClick={onDismissSuccess}
-              className="text-stone-400 hover:text-[#1A1A1A] font-mono text-[9px] font-bold uppercase"
+              className="text-stone-400 hover:text-[#1A1A1A] font-mono text-[9px] font-bold uppercase cursor-pointer"
             >
               [Dismiss]
             </button>

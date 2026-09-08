@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import {
   Project,
+  ProjectExportData,
+  ProjectExportOptions,
   createProject,
   exportProjectJSON,
   importProjectJSON,
@@ -31,6 +33,8 @@ import {
   saveProject
 } from "../lib/projects";
 import { formatPresetDateShort } from "../lib/utils";
+import ProjectImportConfirmModal from "./ProjectImportConfirmModal";
+import ProjectExportModal from "./ProjectExportModal";
 
 interface ProjectManagerModalProps {
   isOpen: boolean;
@@ -89,6 +93,14 @@ export default function ProjectManagerModal({
   // Delete confirmation state
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
+  // Project Import Inspection Modal state
+  const [isImportConfirmOpen, setIsImportConfirmOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+
+  // Project Export Modal state
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportingProject, setExportingProject] = useState<Project | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle escape key for internal sub-states (delete confirm, switch confirm, create form, rename)
@@ -97,6 +109,7 @@ export default function ProjectManagerModal({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (isImportConfirmOpen || isExportModalOpen) return;
         if (pendingDeleteId) {
           e.stopPropagation();
           setPendingDeleteId(null);
@@ -117,7 +130,7 @@ export default function ProjectManagerModal({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, pendingDeleteId, pendingSwitchId, isCreating, editingId]);
+  }, [isOpen, isImportConfirmOpen, isExportModalOpen, pendingDeleteId, pendingSwitchId, isCreating, editingId]);
 
   if (!isOpen) return null;
 
@@ -202,12 +215,19 @@ export default function ProjectManagerModal({
     }
   };
 
-  const handleExport = async (projectId: string) => {
+  const handleOpenExportModal = (p: Project) => {
+    setExportingProject(p);
+    setIsExportModalOpen(true);
+  };
+
+  const handleConfirmProjectExport = async (options: ProjectExportOptions) => {
+    if (!exportingProject) return;
     try {
-      await exportProjectJSON(projectId);
-      showToast("success", "Project exported as JSON bundle");
+      const result = await exportProjectJSON(exportingProject.id, options);
+      showToast("success", `Project exported as ${result.filename} (${result.imageCount} images)`);
     } catch (err: any) {
       showToast("error", err?.message || "Failed to export project");
+      throw err;
     }
   };
 
@@ -217,18 +237,30 @@ export default function ProjectManagerModal({
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImportFile(file);
+    setIsImportConfirmOpen(true);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleConfirmProjectImport = async (
+    projectData: ProjectExportData,
+    options: { customName?: string; switchToProject?: boolean }
+  ) => {
     try {
-      const text = await file.text();
-      const imported = await importProjectJSON(text);
+      const imported = await importProjectJSON(projectData, {
+        customName: options.customName,
+      });
       await onProjectsUpdated();
       showToast("success", `Project "${imported.name}" imported successfully.`);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (options.switchToProject) {
+        await executeSwitch(imported.id);
+      }
     } catch (err: any) {
-      showToast("error", err?.message || "Invalid project JSON file");
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      showToast("error", err?.message || "Failed to import project");
+      throw err;
     }
   };
 
@@ -258,7 +290,8 @@ export default function ProjectManagerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
       <div className="bg-[#F4F4F2] border-2 border-[#1A1A1A] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden rounded-none">
         {/* Header Bar */}
         <div className="p-4 md:p-5 bg-white border-b border-[#D1D1CF] flex items-center justify-between shrink-0">
@@ -607,7 +640,7 @@ export default function ProjectManagerModal({
                         }`}>
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => handleExport(p.id)}
+                              onClick={() => handleOpenExportModal(p)}
                               className="p-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] bg-white text-[#1A1A1A] hover:bg-[#F4F4F2] transition-colors cursor-pointer"
                               title="Export project JSON bundle"
                             >
@@ -777,7 +810,7 @@ export default function ProjectManagerModal({
                         {/* Right Action Buttons */}
                         <div className="flex items-center gap-1.5 shrink-0 justify-end border-t md:border-t-0 pt-2 md:pt-0 border-[#D1D1CF]">
                           <button
-                            onClick={() => handleExport(p.id)}
+                            onClick={() => handleOpenExportModal(p)}
                             className="p-1.5 border border-[#D1D1CF] hover:border-[#1A1A1A] bg-white text-[#1A1A1A] hover:bg-[#F4F4F2] transition-colors cursor-pointer"
                             title="Export project JSON bundle"
                           >
@@ -897,5 +930,29 @@ export default function ProjectManagerModal({
         )}
       </div>
     </div>
+
+    {/* Project Workspace Pre-Import Inspection Modal (Tier 3 z-[60]) */}
+    <ProjectImportConfirmModal
+      isOpen={isImportConfirmOpen}
+      onClose={() => {
+        setIsImportConfirmOpen(false);
+        setImportFile(null);
+      }}
+      file={importFile}
+      existingProjects={projects}
+      onConfirmImport={handleConfirmProjectImport}
+    />
+
+    {/* Project Workspace Export Configuration Modal (Tier 3 z-[60]) */}
+    <ProjectExportModal
+      isOpen={isExportModalOpen}
+      onClose={() => {
+        setIsExportModalOpen(false);
+        setExportingProject(null);
+      }}
+      project={exportingProject}
+      onConfirmExport={handleConfirmProjectExport}
+    />
+  </>
   );
 }

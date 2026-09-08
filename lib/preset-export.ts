@@ -118,6 +118,133 @@ export interface ProcessedImportItem {
   skipReason?: "exact_match" | "content_match_different_id";
 }
 
+export interface PresetImportParseResult {
+  success: boolean;
+  data?: PresetExportPayload;
+  rawItems?: any[];
+  error?: string;
+}
+
+/**
+ * Read and validate a preset JSON file before importing.
+ * Includes defensive checks against foreign PromptLab package types.
+ */
+export async function readAndValidatePresetsJSON(
+  file: File
+): Promise<PresetImportParseResult> {
+  try {
+    const text = await file.text();
+    let parsed: any;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return {
+        success: false,
+        error: "Invalid JSON file format. Could not parse JSON.",
+      };
+    }
+
+    // Defensive check against foreign PromptLab backup types
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      if (parsed.type === "promptlab_history_export") {
+        return {
+          success: false,
+          error:
+            "This file is a PromptLab History export, not a Preset export. Please import it via the History Explorer.",
+        };
+      }
+      if (parsed.type === "promptlab_asset_library") {
+        return {
+          success: false,
+          error:
+            "This file is an Asset Library backup, not a Preset export. Please import it via the Asset Library sidebar.",
+        };
+      }
+      if (parsed.type === "promptlab_project") {
+        return {
+          success: false,
+          error:
+            "This file is a PromptLab Project workspace backup, not a Preset export. Please restore it via the Project Manager modal.",
+        };
+      }
+      if (
+        parsed.type &&
+        parsed.type !== "promptlab_presets_export" &&
+        parsed.type !== "promptlab_user_presets"
+      ) {
+        return {
+          success: false,
+          error: `Unrecognized PromptLab export type: "${parsed.type}".`,
+        };
+      }
+    }
+
+    let rawItems: any[] = [];
+    if (Array.isArray(parsed)) {
+      rawItems = parsed;
+    } else if (parsed && Array.isArray(parsed.presets)) {
+      rawItems = parsed.presets;
+    } else if (
+      parsed &&
+      (parsed.type === "promptlab_presets_export" || parsed.type === "promptlab_user_presets") &&
+      Array.isArray(parsed.items)
+    ) {
+      rawItems = parsed.items;
+    } else if (parsed && parsed.preset && typeof parsed.preset === "object") {
+      rawItems = [parsed.preset];
+    } else if (
+      parsed &&
+      typeof parsed === "object" &&
+      (parsed.systemPrompt !== undefined || parsed.promptTemplate !== undefined)
+    ) {
+      rawItems = [parsed];
+    } else if (parsed && Array.isArray(parsed.items)) {
+      // Heuristic guard: ensure these are not history items masquerading as presets
+      const looksLikeHistory = parsed.items.some(
+        (it: any) =>
+          it &&
+          (it.generationResult !== undefined ||
+            it.outputs !== undefined ||
+            it.specs !== undefined)
+      );
+      if (looksLikeHistory) {
+        return {
+          success: false,
+          error:
+            "This file appears to be a PromptLab History export, not a Preset export. Please import it via the History Explorer.",
+        };
+      }
+      rawItems = parsed.items;
+    } else {
+      return {
+        success: false,
+        error: "Invalid preset import format. No valid preset items found.",
+      };
+    }
+
+    if (rawItems.length === 0) {
+      return {
+        success: false,
+        error: "The imported file contains no preset records.",
+      };
+    }
+
+    return {
+      success: true,
+      data:
+        parsed && parsed.type === "promptlab_presets_export"
+          ? (parsed as PresetExportPayload)
+          : undefined,
+      rawItems,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      error: err?.message || "Failed to read preset JSON file.",
+    };
+  }
+}
+
 /**
  * Import user presets from JSON text with duplicate detection and configurable strategy.
  */
@@ -144,12 +271,42 @@ export function importPresetsFromJSON(
     throw new Error("Invalid JSON file format. Could not parse JSON.");
   }
 
+  // Defensive check against mismatched PromptLab export types
+  if (parsedData && typeof parsedData === "object" && !Array.isArray(parsedData)) {
+    if (parsedData.type === "promptlab_history_export") {
+      throw new Error(
+        "This file is a PromptLab History export, not a Preset export. Please import it via the History Explorer."
+      );
+    }
+    if (parsedData.type === "promptlab_asset_library") {
+      throw new Error(
+        "This file is an Asset Library backup, not a Preset export. Please import it via the Asset Library sidebar."
+      );
+    }
+    if (parsedData.type === "promptlab_project") {
+      throw new Error(
+        "This file is a PromptLab Project workspace backup, not a Preset export. Please restore it via the Project Manager modal."
+      );
+    }
+    if (
+      parsedData.type &&
+      parsedData.type !== "promptlab_presets_export" &&
+      parsedData.type !== "promptlab_user_presets"
+    ) {
+      throw new Error(`Unrecognized PromptLab export type: "${parsedData.type}".`);
+    }
+  }
+
   let rawItems: any[] = [];
   if (Array.isArray(parsedData)) {
     rawItems = parsedData;
   } else if (parsedData && Array.isArray(parsedData.presets)) {
     rawItems = parsedData.presets;
-  } else if (parsedData && Array.isArray(parsedData.items)) {
+  } else if (
+    parsedData &&
+    (parsedData.type === "promptlab_presets_export" || parsedData.type === "promptlab_user_presets") &&
+    Array.isArray(parsedData.items)
+  ) {
     rawItems = parsedData.items;
   } else if (parsedData && parsedData.preset && typeof parsedData.preset === "object") {
     rawItems = [parsedData.preset];
@@ -159,6 +316,21 @@ export function importPresetsFromJSON(
     (parsedData.systemPrompt !== undefined || parsedData.promptTemplate !== undefined)
   ) {
     rawItems = [parsedData];
+  } else if (parsedData && Array.isArray(parsedData.items)) {
+    // Heuristic guard: ensure these are not history items masquerading as presets
+    const looksLikeHistory = parsedData.items.some(
+      (it: any) =>
+        it &&
+        (it.generationResult !== undefined ||
+          it.outputs !== undefined ||
+          it.specs !== undefined)
+    );
+    if (looksLikeHistory) {
+      throw new Error(
+        "This file appears to be a PromptLab History export, not a Preset export. Please import it via the History Explorer."
+      );
+    }
+    rawItems = parsedData.items;
   } else {
     throw new Error("Invalid preset import format. No valid preset items found.");
   }

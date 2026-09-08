@@ -339,7 +339,10 @@ export function useUrlPresetImport({
     cleanUrlParam();
   };
 
-  const openJsonPresetImport = (jsonText: string, sourceName?: string) => {
+  const openJsonPresetImport = (
+    jsonText: string,
+    sourceName?: string
+  ): { success: boolean; error?: string } => {
     let currentPresets = customPresets;
     if (currentPresets.length === 0 && typeof window !== "undefined") {
       try {
@@ -356,9 +359,14 @@ export function useUrlPresetImport({
         { importStrategy }
       );
 
-      if (freshResult.importedCount === 0 && freshResult.replacedCount === 0 && freshResult.skippedCount === 0) {
-        setUrlImportError("No valid preset items found in the file or JSON text.");
-        return;
+      if (
+        freshResult.importedCount === 0 &&
+        freshResult.replacedCount === 0 &&
+        freshResult.skippedCount === 0
+      ) {
+        const errMsg = "No valid preset items found in the file or JSON text.";
+        setUrlImportError(errMsg);
+        return { success: false, error: errMsg };
       }
 
       let targetPreset: UserPreset | undefined = undefined;
@@ -406,8 +414,11 @@ export function useUrlPresetImport({
         targetPreset,
       });
       setIsUrlImportConfirmOpen(true);
+      return { success: true };
     } catch (err: any) {
-      setUrlImportError("Failed to parse preset file: " + err.message);
+      const errMsg = err?.message || "Failed to parse preset file.";
+      setUrlImportError(errMsg);
+      return { success: false, error: errMsg };
     }
   };
 

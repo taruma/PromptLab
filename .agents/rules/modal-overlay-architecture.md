@@ -70,8 +70,8 @@ Never use arbitrary magic numbers (`z-[99]`, `z-[100]`, `z-[999]`) for overlays.
 | :--- | :--- | :--- | :--- |
 | **Tier 1** | `z-10` | Canvas layout, status tags, floating badges | Asset status tags, card action overlays |
 | **Tier 2** | `z-50` | Primary fullscreen modals & side drawers | `HistoryViewerModal`, `PromptConfigModal`, `ProjectManagerModal`, `AssetLibrarySidebar`, `OutputRendererModal` |
-| **Tier 3** | `z-[60]` | Sub-modals, nested dialogs & confirmations | `VideoPlayerModal` (from history), `DeleteHistoryConfirmModal`, `LoadWorkspaceConfirmModal`, `PresetCompareModal` |
-| **Tier 4** | `z-[70]` | Floating popovers & action dropdown menus | `HistoryCostPopover`, Export JSON dropdown, Quick Selector menus |
+| **Tier 3** | `z-[60]` | Sub-modals, nested dialogs & confirmations | `VideoPlayerModal` (from history), `DeleteHistoryConfirmModal`, `LoadWorkspaceConfirmModal`, `PresetCompareModal`, `PresetImportConfirmModal`, `PresetReplaceConfirmModal`, `AssetImportModal`, `ProjectImportConfirmModal`, `ProjectExportModal` |
+| **Tier 4** | `z-[70]` | Floating popovers & action dropdown menus | `HistoryCostPopover`, Export JSON dropdowns (`AssetExportDropdown`, `PresetExportDropdown`), Quick Selector menus, toast notifications |
 | **Tier 5** | `z-[80]` | Portaled hover previews & floating tooltips | `HistoryImageCardWithHover` portal, help tooltips |
 
 ---

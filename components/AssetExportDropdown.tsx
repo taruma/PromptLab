@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Download, Upload, ChevronDown, CheckSquare, Layers, FolderDown } from "lucide-react";
+import { Download, Upload, ChevronDown, CheckSquare, Layers, FolderDown, Star } from "lucide-react";
 
 interface AssetExportDropdownProps {
   totalCount: number;
   selectedCount: number;
+  favoritesCount?: number;
   onExportAll: () => void;
+  onExportFavorites?: () => void;
   onExportSelected: () => void;
   onImportClick: () => void;
   disabled?: boolean;
@@ -15,7 +17,9 @@ interface AssetExportDropdownProps {
 export default function AssetExportDropdown({
   totalCount,
   selectedCount,
+  favoritesCount = 0,
   onExportAll,
+  onExportFavorites,
   onExportSelected,
   onImportClick,
   disabled = false,
@@ -23,17 +27,31 @@ export default function AssetExportDropdown({
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Close dropdown on outside click or Escape key (capture phase per modal-overlay-architecture)
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown, true);
+    }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown, true);
     };
-  }, []);
+  }, [isOpen]);
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef} id="asset-export-dropdown-wrapper">
@@ -52,7 +70,7 @@ export default function AssetExportDropdown({
 
       {isOpen && (
         <div 
-          className="absolute right-0 mt-1 w-56 bg-white border border-[#D1D1CF] shadow-xl z-50 flex flex-col p-1 text-[10px] font-mono uppercase font-bold"
+          className="absolute right-0 mt-1 w-56 bg-white border border-[#D1D1CF] shadow-xl z-50 flex flex-col p-1 text-[10px] font-mono uppercase font-bold animate-fade-in"
           id="asset-export-menu"
         >
           <div className="px-2 py-1 text-[8px] text-[#888884] border-b border-[#D1D1CF]/50 mb-1 font-sans">
@@ -79,6 +97,7 @@ export default function AssetExportDropdown({
 
           <div className="my-1 border-t border-[#D1D1CF]/50" />
 
+          {/* Export All */}
           <button
             type="button"
             onClick={() => {
@@ -98,6 +117,29 @@ export default function AssetExportDropdown({
             </span>
           </button>
 
+          {/* Export Favorites / Pinned */}
+          {onExportFavorites && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                onExportFavorites();
+              }}
+              disabled={favoritesCount === 0}
+              className="w-full text-left px-2.5 py-1.5 hover:bg-[#F4F4F2] text-[#1A1A1A] flex items-center justify-between transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              id="export-favorites-assets-option"
+            >
+              <div className="flex items-center gap-2">
+                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
+                <span>Export Favorites</span>
+              </div>
+              <span className="text-[8px] bg-[#EAEAE8] text-[#888884] px-1 py-0.5">
+                {favoritesCount}
+              </span>
+            </button>
+          )}
+
+          {/* Export Selected */}
           <button
             type="button"
             onClick={() => {
