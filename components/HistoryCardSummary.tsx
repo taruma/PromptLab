@@ -86,7 +86,7 @@ export default function HistoryCardSummary({ item, className = "" }: HistoryCard
           })()}
           {(item.estimatedCost || item.tokenUsage) && (() => {
             const costData = item.tokenUsage ? calculateEstimatedCost(item.model || "gemini-3.8-flash", item.tokenUsage) : null;
-            const displayCost = item.estimatedCost || costData?.formattedTotalCost;
+            const displayCost = costData?.formattedTotalCost || item.estimatedCost;
             if (!displayCost) return null;
             const b = costData?.breakdown;
             const tooltip = b

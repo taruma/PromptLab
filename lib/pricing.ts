@@ -234,6 +234,13 @@ export function calculateEstimatedCost(
 
   const promptTokens = usage.promptTokens ?? 0;
   const reportedCandidateTokens = usage.candidatesTokens ?? 0;
+  const cachedTokens = usage.cachedTokens ?? 0;
+
+  // Uncached prompt tokens: if promptTokens includes cachedTokens (standard), subtract cachedTokens.
+  // If promptTokens is less than cachedTokens, promptTokens already represents only the uncached delta.
+  const uncachedPromptTokens = promptTokens >= cachedTokens
+    ? promptTokens - cachedTokens
+    : promptTokens;
   
   // Explicit or derived thought tokens
   const derivedThoughtTokens = usage.thoughtTokens !== undefined
@@ -243,14 +250,11 @@ export function calculateEstimatedCost(
       : 0);
 
   // Total Output Tokens includes both candidate text tokens and internal thinking/reasoning tokens
-  const computedTotalOutputTokens = usage.totalTokens && usage.promptTokens !== undefined
-    ? Math.max(reportedCandidateTokens, usage.totalTokens - usage.promptTokens)
-    : (reportedCandidateTokens + derivedThoughtTokens);
-    
-  const outputTokens = computedTotalOutputTokens;
-  const cachedTokens = usage.cachedTokens ?? 0;
-  const uncachedPromptTokens = Math.max(0, promptTokens - cachedTokens);
-  const totalTokens = usage.totalTokens ?? (promptTokens + outputTokens);
+  const outputTokens = reportedCandidateTokens + derivedThoughtTokens;
+
+  // Total input tokens (uncached + cached)
+  const totalInputTokens = uncachedPromptTokens + cachedTokens;
+  const totalTokens = usage.totalTokens ?? (totalInputTokens + outputTokens);
 
   let inputPricePer1M = 0;
   let outputPricePer1M = 0;
@@ -258,7 +262,7 @@ export function calculateEstimatedCost(
 
   if (config.tiers && config.tiers.length > 0) {
     // Select tier based on total input prompt tokens length
-    const totalInput = promptTokens > 0 ? promptTokens : totalTokens;
+    const totalInput = totalInputTokens > 0 ? totalInputTokens : totalTokens;
     const applicableTier = config.tiers.find((tier) => totalInput <= tier.maxTokens) || config.tiers[config.tiers.length - 1];
     inputPricePer1M = applicableTier.inputPricePer1M;
     outputPricePer1M = applicableTier.outputPricePer1M;
@@ -278,7 +282,7 @@ export function calculateEstimatedCost(
   const cachedInputCostUSD = (cachedTokens / 1_000_000) * cachedBasePricePer1M;
   const candidateCostUSD = (reportedCandidateTokens / 1_000_000) * outputPricePer1M;
   const thoughtCostUSD = (derivedThoughtTokens / 1_000_000) * outputPricePer1M;
-  const outputCostUSD = (outputTokens / 1_000_000) * outputPricePer1M;
+  const outputCostUSD = candidateCostUSD + thoughtCostUSD;
 
   const totalCostUSD = uncachedInputCostUSD + cachedInputCostUSD + outputCostUSD;
 

@@ -53,7 +53,7 @@ export const HistoryCostPopover: React.FC<HistoryCostPopoverProps> = ({
   const costData = selectedItem.tokenUsage
     ? calculateEstimatedCost(historyModel, selectedItem.tokenUsage)
     : null;
-  const displayCost = selectedItem.estimatedCost || costData?.formattedTotalCost;
+  const displayCost = costData?.formattedTotalCost || selectedItem.estimatedCost;
   const b = costData?.breakdown;
 
   if (!displayCost) return null;
@@ -213,7 +213,7 @@ export const HistoryCostPopover: React.FC<HistoryCostPopoverProps> = ({
               </span>
             </div>
             <span className="font-black text-[11px] text-emerald-900 bg-emerald-50 border border-emerald-300 px-1.5 py-0.5 tabular-nums">
-              {displayCost}
+              {b.formattedTotalCost}
             </span>
           </div>
 

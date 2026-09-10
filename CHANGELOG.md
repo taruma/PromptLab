@@ -2,6 +2,16 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
+## [v2.7.1] — September 10, 2026
+
+### Fixed
+
+- **API Cost Estimation & Token Calculation Alignment (`lib/pricing.ts`, `components/history/HistoryCostPopover.tsx`, `components/HistoryCardSummary.tsx`).**
+  - **Accurate Output Token Costing**: Fixed a critical calculation bug where `computedTotalOutputTokens` evaluated to `Math.max(reportedCandidateTokens, usage.totalTokens - usage.promptTokens)`, causing multimodal document tokens or streaming token discrepancies in `totalTokens` to be billed at the higher Output Rate ($3.75/1M). Output tokens are now strictly computed as the sum of actual generated tokens (`reportedCandidateTokens + derivedThoughtTokens`), completely eliminating phantom output charges (which previously inflated estimated costs by 5× to 40×).
+  - **Context Cache Delta Calculation**: Fixed an issue where `uncachedPromptTokens` used `Math.max(0, promptTokens - cachedTokens)`. When the API reports `promptTokens` as only the uncached delta and `cachedTokens` is larger, subtraction produced negative values clamped to `0`. The formula now checks `promptTokens >= cachedTokens ? promptTokens - cachedTokens : promptTokens`, preserving the prompt input token count and cost accurately.
+  - **Strict Line Item & Total Balancing**: Guaranteed that `totalCostUSD` strictly matches `uncachedInputCostUSD + cachedInputCostUSD + candidateCostUSD + thoughtCostUSD`, ensuring all displayed line items in the interactive Cost Breakdown popover (`GenerationResultView.tsx`, `HistoryCostPopover.tsx`) sum precisely to the Grand Total.
+  - **History Cost Display Self-Healing**: Updated `HistoryCostPopover.tsx` and `HistoryCardSummary.tsx` to prioritize recomputed `costData.formattedTotalCost` over stored `item.estimatedCost` when `tokenUsage` is available, correcting the display of historical records previously saved with inflated costs.
+
 ## [v2.7.0] — September 8, 2026
 
 ### Added
