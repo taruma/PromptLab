@@ -26,6 +26,93 @@ function getActiveApiKey(customApiKey?: string): { apiKey?: string; error?: stri
   return { apiKey };
 }
 
+function formatGeminiErrorMessage(rawError: any): string {
+  let message = typeof rawError === "string" ? rawError : rawError?.message || String(rawError || "An unknown error occurred.");
+
+  // Unwrap nested JSON error strings if present
+  for (let i = 0; i < 3; i++) {
+    if (typeof message === "string" && (message.trim().startsWith("{") || message.trim().startsWith("["))) {
+      try {
+        const parsed = JSON.parse(message);
+        if (parsed?.error?.message) {
+          message = parsed.error.message;
+        } else if (parsed?.message) {
+          message = parsed.message;
+        } else if (parsed?.error && typeof parsed.error === "string") {
+          message = parsed.error;
+        } else {
+          break;
+        }
+      } catch {
+        break;
+      }
+    }
+  }
+
+  if (message.includes("Failed to convert server response to JSON")) {
+    return "Gemini Files API Error: Google's backend encountered an internal serialization error (500: Failed to convert server response to JSON). This typically occurs when an aborted or corrupt file entry exists in the account.";
+  }
+
+  if (
+    message.includes("You do not have permission to access the File") ||
+    message.includes("PERMISSION_DENIED") ||
+    (message.includes("403") && message.includes("File"))
+  ) {
+    const fileMatch = message.match(/File\s+([a-zA-Z0-9_-]+)/);
+    const fileId = fileMatch ? fileMatch[1] : "";
+    return `Gemini Files API Error: Access denied to uploaded file resource ${fileId ? `'${fileId}'` : ""}. Files API assets expire after 48 hours and are linked to the specific API key used during upload.`;
+  }
+
+  if (message.includes("API_KEY_INVALID") || message.includes("API key not valid")) {
+    return "Gemini API Error: Invalid API key provided. Please check your custom API key in 'Engine Controls' or verify configuration.";
+  }
+
+  return message;
+}
+
+async function safelyListFiles(ai: GoogleGenAI): Promise<any[]> {
+  // Strategy 1: Attempt standard batch fetch (fastest when account files metadata is healthy)
+  try {
+    const listResult = await ai.files.list({ config: { pageSize: 100 } });
+    const fileList: any[] = [];
+    if (Array.isArray((listResult as any).files)) {
+      fileList.push(...(listResult as any).files);
+    } else if (typeof (listResult as any)[Symbol.asyncIterator] === "function") {
+      for await (const file of listResult as any) {
+        fileList.push(file);
+      }
+    } else if (Array.isArray(listResult)) {
+      fileList.push(...listResult);
+    }
+    return fileList;
+  } catch (batchError: any) {
+    console.warn("Standard files.list batch failed, attempting progressive item-by-item fallback:", batchError?.message);
+  }
+
+  // Strategy 2: Progressive fallback with pageSize: 1.
+  // If an aborted or corrupted file entry exists on Google's backend, batch serialization crashes
+  // with 500 "Failed to convert server response to JSON". Iterating item-by-item allows us to
+  // harvest all valid active files that precede the corrupted entry.
+  try {
+    const pager = await ai.files.list({ config: { pageSize: 1 } });
+    const collectedFiles: any[] = [];
+    try {
+      for await (const file of pager as any) {
+        collectedFiles.push(file);
+      }
+    } catch (streamError: any) {
+      console.warn("Files API progressive listing stopped at unreadable item. Recovered valid files:", collectedFiles.length);
+    }
+    if (collectedFiles.length > 0) {
+      return collectedFiles;
+    }
+    throw new Error("Unable to retrieve any files from Gemini Files API.");
+  } catch (fallbackError: any) {
+    console.error("Progressive files listing fallback failed:", fallbackError);
+    throw fallbackError;
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -45,17 +132,7 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    const listResult = await ai.files.list({ config: { pageSize: 100 } });
-    const fileList: any[] = [];
-    if (Array.isArray((listResult as any).files)) {
-      fileList.push(...(listResult as any).files);
-    } else if (typeof (listResult as any)[Symbol.asyncIterator] === "function") {
-      for await (const file of listResult as any) {
-        fileList.push(file);
-      }
-    } else if (Array.isArray(listResult)) {
-      fileList.push(...listResult);
-    }
+    const fileList = await safelyListFiles(ai);
 
     const mappedFiles = fileList.map((f: any) => ({
       name: f.name,
@@ -72,7 +149,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ files: mappedFiles });
   } catch (error: any) {
     console.error("Files API List Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to list files from Gemini Files API." }, { status: 500 });
+    return NextResponse.json({ error: formatGeminiErrorMessage(error) || "Failed to list files from Gemini Files API." }, { status: 500 });
   }
 }
 
@@ -170,17 +247,7 @@ export async function POST(req: NextRequest) {
         }
       });
 
-      const listResult = await ai.files.list({ config: { pageSize: 100 } });
-      const fileList: any[] = [];
-      if (Array.isArray((listResult as any).files)) {
-        fileList.push(...(listResult as any).files);
-      } else if (typeof (listResult as any)[Symbol.asyncIterator] === "function") {
-        for await (const file of listResult as any) {
-          fileList.push(file);
-        }
-      } else if (Array.isArray(listResult)) {
-        fileList.push(...listResult);
-      }
+      const fileList = await safelyListFiles(ai);
 
       const mappedFiles = fileList.map((f: any) => ({
         name: f.name,
@@ -428,6 +495,6 @@ export async function POST(req: NextRequest) {
     if (tempFilePath) {
       await fs.unlink(tempFilePath).catch(() => {});
     }
-    return NextResponse.json({ error: error.message || "Failed to upload file to Gemini Files API." }, { status: 500 });
+    return NextResponse.json({ error: formatGeminiErrorMessage(error) || "Failed to process Gemini Files API request." }, { status: 500 });
   }
 }

@@ -2,6 +2,15 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
+## [v2.7.2] — September 15, 2026
+
+### Fixed & Hardened
+
+- **Gemini Files API Listing Resilience & Progressive Fallback (`app/api/upload-file/route.ts`).**
+  - **Progressive Item-by-Item Listing Fallback (`safelyListFiles`)**: Fixed an issue where querying `ai.files.list({ config: { pageSize: 100 } })` failed catastrophically with `500 Failed to convert server response to JSON` if any aborted, corrupted, or unfinalized file entry existed in the user's account on Google's servers. The backend route now catches batch listing failures and automatically falls back to progressive item-by-item retrieval (`pageSize: 1`), harvesting all valid active files preceding the corrupted entry instead of failing the entire file browser.
+  - **Structured Error Message Unwrapping (`formatGeminiErrorMessage`)**: Fixed raw, unformatted JSON error strings (e.g. `{"error":{"code":500,"message":"..."}}`) being passed to the client and rendered in UI error boxes. The server now unwraps nested JSON error payloads from `@google/genai` and formats them into actionable, human-readable messages with contextual guidance for server disruptions, expired resources, and API key permissions.
+  - **Direct Upload CORS Verification Recovery**: Hardened the post-upload verification step (`action: "list"`) in `components/AddFilesApiModal.tsx`. When browser-direct resumable uploads to Google Cloud encounter browser CORS restrictions on custom domains, the verification pipeline reliably recovers the newly created file via the progressive fallback, completing the attachment and prompting workflow smoothly.
+
 ## [v2.7.1] — September 10, 2026
 
 ### Fixed
