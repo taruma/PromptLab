@@ -26,6 +26,7 @@ export type AuteurExecutionBeat = AuteurMacroState;
 
 export interface AuteurParsedScript {
   title?: string;
+  executionBlockName?: string;
   stagingBlocks: AuteurStagingBlock[];
   macroStates: AuteurMacroState[];
   // Backwards-compatible alias
@@ -60,8 +61,8 @@ const STOP_WORDS = new Set([
 export function isAuteurScript(text: string): boolean {
   if (!text || text.length < 30) return false;
 
-  // Check for execution/timeline phase boundary
-  const hasExecution = /(?:^|\n)\s*\[(?:EXECUTION|TIMELINE)\]/i.test(text);
+  // Check for execution/timeline/action phase boundary
+  const hasExecution = /(?:^|\n)\s*\[(?:EXECUTION|TIMELINE|ACTION)\]/i.test(text);
   if (!hasExecution) return false;
 
   // Check for any staging/macro block header prior to execution, or camera coordinate
@@ -187,6 +188,7 @@ export function parseAuteurScript(rawText: string): AuteurParsedScript {
   const macroStates: AuteurMacroState[] = [];
 
   let inExecution = false;
+  let executionBlockName = "EXECUTION";
   let currentBlock: AuteurStagingBlock | null = null;
 
   for (const line of lines) {
@@ -197,8 +199,9 @@ export function parseAuteurScript(rawText: string): AuteurParsedScript {
       const blockHeaderMatch = trimmed.match(/^\[([A-Z0-9 _%-]+)\]$/i);
       if (blockHeaderMatch) {
         const blockName = blockHeaderMatch[1].trim().toUpperCase();
-        if (blockName === "EXECUTION" || blockName === "TIMELINE") {
+        if (blockName === "EXECUTION" || blockName === "TIMELINE" || blockName === "ACTION") {
           inExecution = true;
+          executionBlockName = blockName;
           currentBlock = null;
         } else {
           currentBlock = {
@@ -243,6 +246,7 @@ export function parseAuteurScript(rawText: string): AuteurParsedScript {
 
   return {
     title,
+    executionBlockName,
     stagingBlocks,
     macroStates,
     executionBeats: macroStates,

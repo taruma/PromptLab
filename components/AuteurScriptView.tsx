@@ -313,7 +313,7 @@ export default function AuteurScriptView({ content, className = "" }: AuteurScri
           <div className="flex items-center justify-between border-b border-[#D1D1CF] pb-1.5">
             <span className="text-[10px] md:text-[11px] font-mono font-bold uppercase tracking-wider text-[#666] flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 bg-emerald-600 inline-block animate-pulse" />
-              PHASE 2: EXECUTION (S₁ → Sₙ) // ROLLING CAMERA TIMELINE
+              PHASE 2: {parsed.executionBlockName || "EXECUTION"} (S₁ → Sₙ) // ROLLING CAMERA TIMELINE
             </span>
             <span className="text-[9px] md:text-[10px] font-mono text-emerald-800 bg-emerald-50 border border-emerald-300 px-2 py-0.5 uppercase tracking-wider font-bold">
               {macroStates.length} {macroStates.length === 1 ? "MACRO-STATE" : "MACRO-STATES"}

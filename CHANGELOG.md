@@ -2,6 +2,15 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
+## [v2.7.3] — October 9, 2026
+
+### Enhanced
+
+- **Auteur Script Visualizer Support for `[ACTION]` Macro-Blocks (`lib/auteur-parser.ts`, `components/AuteurScriptView.tsx`).**
+  - **Dynamic Execution Boundary Detection (`isAuteurScript`)**: Expanded the zero-overhead auto-detection regex to recognize `[ACTION]` as a valid kinetic timeline phase boundary alongside `[EXECUTION]` and `[TIMELINE]`.
+  - **Schema-Tolerant Kinetic Phase Parsing (`parseAuteurScript`)**: Updated the parser state machine to treat `[ACTION]` as entering the execution phase, capturing the block identifier dynamically (`executionBlockName`) and rendering each line into structured macro-state and waterfall sub-state cards (`→`).
+  - **Adaptive Phase 2 Header (`components/AuteurScriptView.tsx`)**: Replaced the static header label with dynamic interpolation (`PHASE 2: {parsed.executionBlockName || "EXECUTION"} (S₁ → Sₙ)`), preserving visual parity regardless of whether the template emits `[EXECUTION]` or `[ACTION]`.
+
 ## [v2.7.2] — September 15, 2026
 
 ### Fixed & Hardened
