@@ -46,7 +46,7 @@ export interface ModelPricingConfig {
 export const MODEL_ALIASES: Record<string, string> = {
   "gemini-flash-latest": "gemini-3.8-flash",
   "gemini-flash-lite-latest": "gemini-3.5-flash-lite",
-  "gemini-pro-latest": "gemini-3.1-pro-preview",
+  "gemini-pro-latest": "gemini-4-argon",
 };
 
 /**
@@ -54,18 +54,18 @@ export const MODEL_ALIASES: Record<string, string> = {
  * Rates in USD per 1,000,000 tokens
  */
 export const MODEL_PRICING_TABLE: Record<string, ModelPricingConfig> = {
-  "gemini-3.8-flash": {
-    name: "Gemini 3.8 Flash",
+  "gemini-4-argon": {
+    name: "Gemini 4 Argon",
     rate: {
-      // Introductory promotional pricing through Dec 31, 2026 (standard rates $1.50 in / $7.50 out starting Jan 1, 2027)
-      inputPricePer1M: 0.75,
-      outputPricePer1M: 3.75,
-      contextCacheBasePricePer1M: 0.075,
+      // Introductory promotional pricing through Nov 30, 2026 (standard rates $4.00 in / $20.00 out starting Dec 1, 2026)
+      inputPricePer1M: 2.00,
+      outputPricePer1M: 10.00,
+      contextCacheBasePricePer1M: 0.10,
       contextCacheStoragePricePerHourPer1M: 0.50,
     },
   },
-  "gemini-3.7-flash": {
-    name: "Gemini 3.7 Flash",
+  "gemini-3.8-flash": {
+    name: "Gemini 3.8 Flash",
     rate: {
       // Introductory promotional pricing through Dec 31, 2026 (standard rates $1.50 in / $7.50 out starting Jan 1, 2027)
       inputPricePer1M: 0.75,
@@ -82,15 +82,6 @@ export const MODEL_PRICING_TABLE: Record<string, ModelPricingConfig> = {
       outputPricePer1M: 3.75,
       contextCacheBasePricePer1M: 0.075,
       contextCacheStoragePricePerHourPer1M: 0.50,
-    },
-  },
-  "gemini-3.5-flash": {
-    name: "Gemini 3.5 Flash",
-    rate: {
-      inputPricePer1M: 1.50,
-      outputPricePer1M: 9.00,
-      contextCacheBasePricePer1M: 0.15,
-      contextCacheStoragePricePerHourPer1M: 1.00,
     },
   },
   "gemini-3.5-flash-lite": {
@@ -129,6 +120,26 @@ export const MODEL_PRICING_TABLE: Record<string, ModelPricingConfig> = {
       contextCacheStoragePricePerHourPer1M: 1.00,
       audioInputPricePer1M: 0.50,
       audioContextCacheBasePricePer1M: 0.05,
+    },
+  },
+
+  // --- Historical Rates (Retained strictly for past history record inspection & audits) ---
+  "gemini-3.7-flash": {
+    name: "Gemini 3.7 Flash",
+    rate: {
+      inputPricePer1M: 0.75,
+      outputPricePer1M: 3.75,
+      contextCacheBasePricePer1M: 0.075,
+      contextCacheStoragePricePerHourPer1M: 0.50,
+    },
+  },
+  "gemini-3.5-flash": {
+    name: "Gemini 3.5 Flash",
+    rate: {
+      inputPricePer1M: 1.50,
+      outputPricePer1M: 9.00,
+      contextCacheBasePricePer1M: 0.15,
+      contextCacheStoragePricePerHourPer1M: 1.00,
     },
   },
   "gemini-3-flash-preview": {
@@ -226,7 +237,7 @@ export function calculateEstimatedCost(
   options?: { isAudio?: boolean }
 ): EstimatedCostResult | null {
   const canonicalId = getCanonicalModelId(modelId);
-  const config = MODEL_PRICING_TABLE[canonicalId];
+  const config = MODEL_PRICING_TABLE[canonicalId] || MODEL_PRICING_TABLE["gemini-3.8-flash"];
 
   if (!config) {
     return null;

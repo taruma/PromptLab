@@ -2,6 +2,27 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
+## [v2.7.4] — October 14, 2026
+
+### Added
+
+- **Gemini 4 Argon Frontier Model Integration (`lib/pricing.ts`, `components/EngineControlsModal.tsx`, `components/QuickModelSelector.tsx`, `lib/video-utils.ts`).**
+  - **Frontier Reasoning Architecture (`gemini-4-argon`)**: Added native support for Google DeepMind's newly released Gemini 4 Argon frontier reasoning model, featuring a unified 1M input context window, 1M output tokens, and multi-step reasoning capabilities.
+  - **Promotional Pricing Table Integration**: Added `gemini-4-argon` to `MODEL_PRICING_TABLE` in `lib/pricing.ts` reflecting Google's active promotional introductory discount through November 30, 2026 ($2.00 / 1M input, $10.00 / 1M output including thoughts, $0.10 / 1M cached base rate, $0.50 / 1M / hr storage; standard rates $4.00 in / $20.00 out starting Dec 1, 2026).
+  - **Engine Controls Catalog**: Promoted `gemini-4-argon` directly into the featured top models (`LATEST_MODELS`) with `isNew: true`, `isPaid: true`, `Oct 2026` cutoff, and official `Oct 13, 2026` release date matching Google AI Studio. Added promotional discount badges (`✦ Discounted through Dec 31, 2026`) for Gemini Flash models (`gemini-flash-latest`, `gemini-3.8-flash`, `gemini-3.6-flash`). Completely removed the synthetic `gemini-pro-latest` option and pruned deprecated `gemini-3.1-pro-preview`.
+  - **Quick Model Selector**: Updated the Quick Model Selector dropdown with a dedicated **Argon** button (`4 Latest`) for rapid one-click switching directly to `gemini-4-argon`, mapped brief label to `4 Argon`, and enforced thinking level constraints (disabling `MINIMAL` reasoning for Argon models).
+  - **Server-Side Alias Resolution**: Added automatic canonical alias resolution (`getCanonicalModelId`) in `app/api/generate/route.ts` so any legacy references to `gemini-pro-latest` safely resolve directly to `gemini-4-argon` before invoking the `@google/genai` SDK.
+  - **Agentic Video Understanding**: Integrated `gemini-4-argon` into `isAgenticVideoSupported` in `lib/video-utils.ts`.
+
+### Changed & Streamlined
+
+- **Engine Model Catalog Clean-up & Pruning (`components/EngineControlsModal.tsx`, `components/QuickModelSelector.tsx`, `lib/pricing.ts`).**
+  - **Pro Tier Deprecation & Sunset**: Removed `gemini-pro-latest` and deprecated `gemini-3.1-pro-preview` from active UI selectors as Google transitions to elemental codenames, establishing Gemini 4 Argon as the direct frontier engine.
+  - **Flash Models Pruning**: Pruned obsolete Flash models, retaining strictly **Gemini 3.8 Flash** (`gemini-3.8-flash`) and **Gemini 3.6 Flash** (`gemini-3.6-flash`). Removed `gemini-3.7-flash`, `gemini-3.5-flash`, and `gemini-3-flash-preview` from `SPECIFIC_MODELS` and `QuickModelSelector.tsx`.
+  - **Badge Restraint**: Removed `NEW` badges from Gemini 3.8 Flash (`gemini-3.8-flash`, `gemini-flash-latest`) and Gemini 3.5 Flash Lite (`gemini-3.5-flash-lite`), dedicating the `NEW` indicator exclusively to Gemini 4 Argon.
+  - **Cost Estimation Fallback Resilience**: Added automatic fallback to `gemini-3.8-flash` in `calculateEstimatedCost` (`lib/pricing.ts`), ensuring historical generation records citing pruned models calculate costs without returning null.
+  - **Route & Component Defaults**: Aligned fallback model identifiers across `app/api/generate/route.ts`, `components/HistoryCardSummary.tsx`, and `components/GenerationResultView.tsx` to `gemini-3.8-flash`.
+
 ## [v2.7.3] — October 9, 2026
 
 ### Enhanced

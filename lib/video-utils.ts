@@ -20,16 +20,16 @@ export interface UploadedVideo {
 
 /**
  * Checks if a Gemini model supports Agentic Video Understanding.
- * Gemini 3.8 Flash, 3.7 Flash, 3.6 Flash, and 3.5 Flash-Lite support AGENTIC mode.
+ * Gemini 3.8 Flash, 3.6 Flash, 3.5 Flash-Lite, and Gemini 4 Argon support AGENTIC mode.
  */
 export function isAgenticVideoSupported(model?: string): boolean {
   if (!model) return false;
   const m = model.toLowerCase();
   return (
     m.includes("gemini-3.8-flash") ||
-    m.includes("gemini-3.7-flash") ||
     m.includes("gemini-3.6-flash") ||
     m.includes("gemini-3.5-flash-lite") ||
+    m.includes("gemini-4-argon") ||
     m === "gemini-flash-latest" ||
     m === "gemini-flash-lite-latest"
   );

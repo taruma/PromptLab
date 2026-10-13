@@ -27,19 +27,22 @@ interface ModelOption {
   id: string;
   name: string;
   isNew?: boolean;
+  isPaid?: boolean;
   subtitle: string;
   cutoff: string;
   release: string;
+  promoNotice?: string;
 }
 
 const LATEST_MODELS: ModelOption[] = [
   {
     id: "gemini-flash-latest",
     name: "Gemini Flash Latest",
-    isNew: true,
+    isNew: false,
     subtitle: "✦ gemini-3.8-flash",
     cutoff: "Mar 2026",
     release: "Sep 2, 2026",
+    promoNotice: "Discounted through Dec 31, 2026",
   },
   {
     id: "gemini-flash-lite-latest",
@@ -50,12 +53,14 @@ const LATEST_MODELS: ModelOption[] = [
     release: "Jul 21, 2026",
   },
   {
-    id: "gemini-pro-latest",
-    name: "Gemini Pro Latest",
-    isNew: false,
-    subtitle: "✦ gemini-3.1-pro-preview",
-    cutoff: "Jan 2025",
-    release: "Feb 12, 2026",
+    id: "gemini-4-argon",
+    name: "Gemini 4 Argon",
+    isNew: true,
+    isPaid: true,
+    subtitle: "gemini-4-argon",
+    cutoff: "Oct 2026",
+    release: "Oct 13, 2026",
+    promoNotice: "Discounted through Nov 30, 2026",
   },
 ];
 
@@ -63,18 +68,11 @@ const SPECIFIC_MODELS: ModelOption[] = [
   {
     id: "gemini-3.8-flash",
     name: "Gemini 3.8 Flash",
-    isNew: true,
+    isNew: false,
     subtitle: "gemini-3.8-flash",
     cutoff: "Mar 2026",
     release: "Sep 2, 2026",
-  },
-  {
-    id: "gemini-3.7-flash",
-    name: "Gemini 3.7 Flash",
-    isNew: false,
-    subtitle: "gemini-3.7-flash",
-    cutoff: "Mar 2026",
-    release: "Aug 13, 2026",
+    promoNotice: "Discounted through Dec 31, 2026",
   },
   {
     id: "gemini-3.6-flash",
@@ -83,30 +81,15 @@ const SPECIFIC_MODELS: ModelOption[] = [
     subtitle: "gemini-3.6-flash",
     cutoff: "Mar 2026",
     release: "Jul 21, 2026",
+    promoNotice: "Discounted through Dec 31, 2026",
   },
   {
     id: "gemini-3.5-flash-lite",
     name: "Gemini 3.5 Flash Lite",
-    isNew: true,
+    isNew: false,
     subtitle: "gemini-3.5-flash-lite",
     cutoff: "Mar 2026",
     release: "Jul 21, 2026",
-  },
-  {
-    id: "gemini-3.5-flash",
-    name: "Gemini 3.5 Flash",
-    isNew: false,
-    subtitle: "gemini-3.5-flash",
-    cutoff: "Jan 2025",
-    release: "May 20, 2026",
-  },
-  {
-    id: "gemini-3.1-pro-preview",
-    name: "Gemini 3.1 Pro Preview",
-    isNew: false,
-    subtitle: "gemini-3.1-pro-preview",
-    cutoff: "Jan 2025",
-    release: "Feb 12, 2026",
   },
   {
     id: "gemini-3.1-flash-lite",
@@ -115,14 +98,6 @@ const SPECIFIC_MODELS: ModelOption[] = [
     subtitle: "gemini-3.1-flash-lite",
     cutoff: "Jan 2025",
     release: "May 7, 2026",
-  },
-  {
-    id: "gemini-3-flash-preview",
-    name: "Gemini 3 Flash Preview",
-    isNew: false,
-    subtitle: "gemini-3-flash-preview",
-    cutoff: "Jan 2025",
-    release: "Dec 17, 2025",
   },
 ];
 
@@ -257,7 +232,7 @@ export default function EngineControlsModal({
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-[#F4F4F2]/30">
           
           {/* Alert Warning for Paid Models */}
-          {tempModel.includes("pro") && !tempCustomApiKey && (
+          {(tempModel.includes("pro") || tempModel.includes("argon")) && !tempCustomApiKey && (
             <div className="bg-amber-50 border border-amber-200 p-3.5 text-[10px] leading-relaxed flex items-start gap-2.5">
               <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
               <div className="flex flex-col gap-1 text-amber-800">
@@ -485,7 +460,7 @@ export default function EngineControlsModal({
                       type="button"
                       onClick={() => {
                         setTempModel(model.id);
-                        if (model.id.includes("pro") && tempThinkingLevel === "MINIMAL") {
+                        if ((model.id.includes("pro") || model.id.includes("argon")) && tempThinkingLevel === "MINIMAL") {
                           setTempThinkingLevel("HIGH");
                         }
                       }}
@@ -496,10 +471,15 @@ export default function EngineControlsModal({
                       }`}
                     >
                       {/* Row 1: Title & Badge */}
-                      <div className="flex items-center gap-2 w-full">
+                      <div className="flex items-center gap-1.5 w-full">
                         {model.isNew && (
                           <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-emerald-500 text-white leading-tight shrink-0">
                             NEW
+                          </span>
+                        )}
+                        {model.isPaid && (
+                          <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-blue-600 text-white leading-tight shrink-0">
+                            PAID
                           </span>
                         )}
                         <span className="font-black uppercase tracking-wider font-mono text-xs">
@@ -524,6 +504,15 @@ export default function EngineControlsModal({
                           </span>
                         </div>
                       </div>
+
+                      {/* Optional Promotional Notice */}
+                      {model.promoNotice && (
+                        <div className={`text-[8.5px] font-mono flex items-center gap-1 ${
+                          isSelected ? "text-amber-300" : "text-amber-700"
+                        }`}>
+                          <span className="font-semibold">✦ {model.promoNotice}</span>
+                        </div>
+                      )}
 
                       {/* Row 3: Pricing Rates */}
                       {(() => {
@@ -579,7 +568,7 @@ export default function EngineControlsModal({
                           type="button"
                           onClick={() => {
                             setTempModel(model.id);
-                            if (model.id.includes("pro") && tempThinkingLevel === "MINIMAL") {
+                            if ((model.id.includes("pro") || model.id.includes("argon")) && tempThinkingLevel === "MINIMAL") {
                               setTempThinkingLevel("HIGH");
                             }
                           }}
@@ -590,10 +579,15 @@ export default function EngineControlsModal({
                           }`}
                         >
                           {/* Row 1: Title & Badge */}
-                          <div className="flex items-center gap-2 w-full">
+                          <div className="flex items-center gap-1.5 w-full">
                             {model.isNew && (
                               <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-emerald-500 text-white leading-tight shrink-0">
                                 NEW
+                              </span>
+                            )}
+                            {model.isPaid && (
+                              <span className="px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-blue-600 text-white leading-tight shrink-0">
+                                PAID
                               </span>
                             )}
                             <span className="font-black uppercase tracking-wider font-mono text-xs">
@@ -618,6 +612,15 @@ export default function EngineControlsModal({
                               </span>
                             </div>
                           </div>
+
+                          {/* Optional Promotional Notice */}
+                          {model.promoNotice && (
+                            <div className={`text-[8.5px] font-mono flex items-center gap-1 ${
+                              isSelected ? "text-amber-300" : "text-amber-700"
+                            }`}>
+                              <span className="font-semibold">✦ {model.promoNotice}</span>
+                            </div>
+                          )}
 
                           {/* Row 3: Pricing Rates */}
                           {(() => {
@@ -660,7 +663,7 @@ export default function EngineControlsModal({
                 <div className="grid grid-cols-4 gap-1.5 mt-1">
                   {["HIGH", "MEDIUM", "LOW", "MINIMAL"].map((lvl) => {
                     const isSelected = tempThinkingLevel === lvl;
-                    const isDisabled = lvl === "MINIMAL" && tempModel.includes("pro");
+                    const isDisabled = lvl === "MINIMAL" && (tempModel.includes("pro") || tempModel.includes("argon"));
                     return (
                       <button
                         key={lvl}
