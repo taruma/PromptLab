@@ -60,22 +60,18 @@ export default function QuickModelSelector({
         return "Flash Lite Latest";
       case "gemini-pro-latest":
         return "Pro Latest";
+      case "gemini-4-argon":
+        return "4 Argon";
       case "gemini-3.8-flash":
         return "3.8 Flash";
-      case "gemini-3.7-flash":
-        return "3.7 Flash";
       case "gemini-3.6-flash":
         return "3.6 Flash";
       case "gemini-3.5-flash-lite":
         return "3.5 Flash Lite";
-      case "gemini-3.5-flash":
-        return "3.5 Flash";
       case "gemini-3.1-pro-preview":
         return "3.1 Pro";
       case "gemini-3.1-flash-lite":
         return "3.1 Flash Lite";
-      case "gemini-3-flash-preview":
-        return "3 Flash";
       default:
         return model.replace("gemini-", "");
     }
@@ -88,8 +84,8 @@ export default function QuickModelSelector({
       localStorage.setItem("prompt_generator_selected_model", modelId);
     }
 
-    // Pro models do not support MINIMAL thinking level
-    if (modelId.includes("pro") && thinkingLevel === "MINIMAL") {
+    // Pro / Argon models do not support MINIMAL thinking level
+    if ((modelId.includes("pro") || modelId.includes("argon")) && thinkingLevel === "MINIMAL") {
       setThinkingLevel("HIGH");
       if (typeof window !== "undefined") {
         localStorage.setItem("prompt_generator_thinking_level", "HIGH");
@@ -116,13 +112,13 @@ export default function QuickModelSelector({
     }
   };
 
-  // Check if current selected model is one of the 3 latest options
+  // Check if current selected model is one of the latest options
   const isLatestSelected =
     selectedModel === "gemini-flash-latest" ||
     selectedModel === "gemini-flash-lite-latest" ||
-    selectedModel === "gemini-pro-latest";
+    selectedModel === "gemini-4-argon";
 
-  const isProModel = selectedModel.includes("pro");
+  const isProModel = selectedModel.includes("pro") || selectedModel.includes("argon");
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef} id="quick-model-selector">
@@ -211,7 +207,7 @@ export default function QuickModelSelector({
                 {[
                   { id: "gemini-flash-latest", label: "Flash", badge: "3.8" },
                   { id: "gemini-flash-lite-latest", label: "Flash Lite", badge: "3.5" },
-                  { id: "gemini-pro-latest", label: "Pro", badge: "3.1" },
+                  { id: "gemini-4-argon", label: "Argon", badge: "4" },
                 ].map((item) => {
                   const isSelected = selectedModel === item.id;
                   return (
@@ -258,7 +254,7 @@ export default function QuickModelSelector({
                       type="button"
                       disabled={isDisabled}
                       onClick={() => !isDisabled && handleSelectThinkingLevel(lvl)}
-                      title={isDisabled ? "MINIMAL thinking level is not supported for Pro models" : `Set thinking level to ${lvl}`}
+                      title={isDisabled ? "MINIMAL thinking level is not supported for Argon / Pro models" : `Set thinking level to ${lvl}`}
                       className={`py-1.5 text-[9px] font-bold tracking-wider uppercase border text-center transition-all rounded-none ${
                         isDisabled
                           ? "bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed"

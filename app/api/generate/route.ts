@@ -1,5 +1,6 @@
 import { GoogleGenAI, ThinkingLevel, MediaProcessing } from "@google/genai";
 import { isAgenticVideoSupported } from "@/lib/video-utils";
+import { getCanonicalModelId } from "@/lib/pricing";
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
@@ -433,8 +434,9 @@ export async function POST(req: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          const resolvedModel = getCanonicalModelId(model || "gemini-3.8-flash");
           const responseStream = await activeAi.models.generateContentStream({
-            model: model || "gemini-3.5-flash",
+            model: resolvedModel,
             contents: { parts },
             config,
           });

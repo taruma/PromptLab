@@ -131,7 +131,7 @@ export default function GenerationResultView({
   copied,
   handleCopyOutput,
   tokenUsage,
-  selectedModel = "gemini-3.6-flash",
+  selectedModel = "gemini-3.8-flash",
   isStructuredOutput = false,
 }: GenerationResultViewProps) {
   const [userViewMode, setUserViewMode] = useState<"formatted" | "raw" | "json" | "auteur">("formatted");
