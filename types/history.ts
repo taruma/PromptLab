@@ -81,7 +81,7 @@ export interface HistoryFilterState {
   searchScope: HistorySearchScope;
   presetFilter: string; // "all" | presetLabel | "custom"
   modelFilter: string;  // "all" | modelName
-  thinkingFilter: string; // "all" | "HIGH" | "MEDIUM" | "LOW" | "MINIMAL" | "OFF"
+  thinkingFilter: string; // "all" | "XHIGH" | "HIGH" | "MEDIUM" | "LOW" | "MINIMAL" | "OFF"
   mediaFilters: HistoryMediaType[]; // multi-select with AND logic
 }
 

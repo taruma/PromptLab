@@ -4,6 +4,7 @@ import React from "react";
 import { HistoryItem } from "../types/history";
 import { Calendar, Cpu, Bookmark, Image as ImageIcon, Video as VideoIcon, Music, FileText } from "lucide-react";
 import { calculateEstimatedCost } from "@/lib/pricing";
+import { DEFAULT_MODEL_ID } from "@/lib/models";
 
 interface HistoryCardSummaryProps {
   item: HistoryItem;
@@ -26,7 +27,7 @@ export default function HistoryCardSummary({ item, className = "" }: HistoryCard
   const audioCount = rawVideos.filter(v => Boolean(v.mimeType?.startsWith("audio/"))).length;
   const docCount = rawVideos.filter(v => Boolean(v.mimeType?.startsWith("text/") || v.mimeType === "application/pdf" || (v.mimeType && !v.mimeType.startsWith("video/") && !v.mimeType.startsWith("image/") && !v.mimeType.startsWith("audio/")))).length;
 
-  const modelName = item.model || "gemini-3.8-flash";
+  const modelName = item.model || DEFAULT_MODEL_ID;
   const presetName = item.presetLabel;
 
   return (
@@ -85,7 +86,7 @@ export default function HistoryCardSummary({ item, className = "" }: HistoryCard
             );
           })()}
           {(item.estimatedCost || item.tokenUsage) && (() => {
-            const costData = item.tokenUsage ? calculateEstimatedCost(item.model || "gemini-3.8-flash", item.tokenUsage) : null;
+            const costData = item.tokenUsage ? calculateEstimatedCost(item.model || DEFAULT_MODEL_ID, item.tokenUsage) : null;
             const displayCost = costData?.formattedTotalCost || item.estimatedCost;
             if (!displayCost) return null;
             const b = costData?.breakdown;

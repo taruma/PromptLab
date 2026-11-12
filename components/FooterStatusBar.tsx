@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { HardDrive } from "lucide-react";
 import { getStorageEstimate, StorageInfo } from "../lib/storage-utils";
+import { supportsTemperature } from "../lib/models";
 import pkg from "../package.json";
 
 interface FooterStatusBarProps {
@@ -53,7 +54,7 @@ export default function FooterStatusBar({
       <div className="flex flex-wrap items-center gap-x-4 md:gap-x-6 gap-y-1 uppercase">
         <span>Engine: {selectedModel.toUpperCase()}</span>
         <span>Reasoning: {thinkingLevel}</span>
-        <span>Temp: {temperature.toFixed(1)}</span>
+        <span>Temp: {supportsTemperature(selectedModel) ? temperature.toFixed(1) : "AUTO"}</span>
         <span>Key: {activeApiKeyLabel.toUpperCase()}</span>
         {isStructuredOutput && (
           <span className="flex items-center gap-1 text-emerald-400 font-bold bg-emerald-950/70 border border-emerald-500/50 px-1.5 py-0.5">

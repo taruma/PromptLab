@@ -1,8 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Sparkles, Info, EyeOff, Eye, RefreshCw, Trash2, KeyRound, ChevronDown, ChevronUp, Calendar, Database, Braces, CheckCircle2, AlertCircle } from "lucide-react";
+import { Sparkles, Info, EyeOff, Eye, RefreshCw, Trash2, KeyRound, ChevronDown, ChevronUp, Calendar, Database, Braces, CheckCircle2, AlertCircle, Lock } from "lucide-react";
 import { getModelPricingSummary } from "@/lib/pricing";
+import {
+  ALL_THINKING_LEVELS,
+  DEFAULT_MODEL_ID,
+  DEFAULT_THINKING_LEVEL,
+  getCanonicalModelId,
+  isPaidModel,
+  isThinkingLevelSupported,
+  normalizeThinkingLevel,
+  supportsTemperature,
+} from "@/lib/models";
 
 interface EngineControlsModalProps {
   isOpen: boolean;
@@ -36,13 +46,13 @@ interface ModelOption {
 
 const LATEST_MODELS: ModelOption[] = [
   {
-    id: "gemini-flash-latest",
-    name: "Gemini Flash Latest",
-    isNew: false,
-    subtitle: "✦ gemini-3.8-flash",
+    id: "gemini-4-hydrogen",
+    name: "Gemini 4 Hydrogen",
+    isNew: true,
+    isPaid: false,
+    subtitle: "gemini-4-hydrogen",
     cutoff: "Mar 2026",
-    release: "Sep 2, 2026",
-    promoNotice: "Discounted through Dec 31, 2026",
+    release: "Nov 12, 2026",
   },
   {
     id: "gemini-flash-lite-latest",
@@ -53,18 +63,28 @@ const LATEST_MODELS: ModelOption[] = [
     release: "Jul 21, 2026",
   },
   {
+    id: "gemini-4-carbon",
+    name: "Gemini 4 Carbon",
+    isNew: true,
+    isPaid: true,
+    subtitle: "gemini-4-carbon",
+    cutoff: "Mar 2026",
+    release: "Nov 10, 2026",
+    promoNotice: "Discounted through Nov 30, 2026",
+  },
+];
+
+const SPECIFIC_MODELS: ModelOption[] = [
+  {
     id: "gemini-4-argon",
     name: "Gemini 4 Argon",
-    isNew: true,
+    isNew: false,
     isPaid: true,
     subtitle: "gemini-4-argon",
     cutoff: "Oct 2026",
     release: "Oct 13, 2026",
     promoNotice: "Discounted through Nov 30, 2026",
   },
-];
-
-const SPECIFIC_MODELS: ModelOption[] = [
   {
     id: "gemini-3.8-flash",
     name: "Gemini 3.8 Flash",
@@ -144,7 +164,7 @@ export default function EngineControlsModal({
     setPrevIsOpen(isOpen);
     if (isOpen) {
       setTempModel(selectedModel);
-      setTempThinkingLevel(thinkingLevel);
+      setTempThinkingLevel(normalizeThinkingLevel(selectedModel, thinkingLevel));
       setTempTemperature(temperature);
       setTempMaxTokens(maxTokens);
       setTempCustomApiKey(customApiKey);
@@ -152,7 +172,12 @@ export default function EngineControlsModal({
       setTempResponseSchema(responseSchema);
       setIsVaultCollapsed(true);
       setIsAdvancedCollapsed(true);
-      const isSpecificActive = SPECIFIC_MODELS.some((m) => m.id === selectedModel);
+      const isFeaturedOnOpen = LATEST_MODELS.some((m) => m.id === selectedModel);
+      const isSpecificActive =
+        !isFeaturedOnOpen &&
+        SPECIFIC_MODELS.some(
+          (m) => m.id === selectedModel || m.id === getCanonicalModelId(selectedModel)
+        );
       setIsSpecificModelsCollapsed(!isSpecificActive);
 
       // Load keys vault from localStorage
@@ -198,8 +223,8 @@ export default function EngineControlsModal({
   };
 
   const handleResetEngineDefaults = () => {
-    setTempModel("gemini-3.8-flash");
-    setTempThinkingLevel("MEDIUM");
+    setTempModel(DEFAULT_MODEL_ID);
+    setTempThinkingLevel(DEFAULT_THINKING_LEVEL);
     setTempTemperature(1.0);
     setTempMaxTokens("");
     setTempCustomApiKey("");
@@ -232,7 +257,7 @@ export default function EngineControlsModal({
         <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-[#F4F4F2]/30">
           
           {/* Alert Warning for Paid Models */}
-          {(tempModel.includes("pro") || tempModel.includes("argon")) && !tempCustomApiKey && (
+          {isPaidModel(tempModel) && !tempCustomApiKey && (
             <div className="bg-amber-50 border border-amber-200 p-3.5 text-[10px] leading-relaxed flex items-start gap-2.5">
               <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
               <div className="flex flex-col gap-1 text-amber-800">
@@ -460,9 +485,7 @@ export default function EngineControlsModal({
                       type="button"
                       onClick={() => {
                         setTempModel(model.id);
-                        if ((model.id.includes("pro") || model.id.includes("argon")) && tempThinkingLevel === "MINIMAL") {
-                          setTempThinkingLevel("HIGH");
-                        }
+                        setTempThinkingLevel((prev) => normalizeThinkingLevel(model.id, prev));
                       }}
                       className={`w-full text-left py-2.5 px-3.5 border transition-all cursor-pointer rounded-none flex flex-col gap-1.5 ${
                         isSelected
@@ -561,16 +584,17 @@ export default function EngineControlsModal({
                 {!isSpecificModelsCollapsed && (
                   <div className="flex flex-col gap-2 pt-1">
                     {SPECIFIC_MODELS.map((model) => {
-                      const isSelected = tempModel === model.id;
+                      const isFeaturedSelected = LATEST_MODELS.some((m) => m.id === tempModel);
+                      const isSelected =
+                        tempModel === model.id ||
+                        (!isFeaturedSelected && getCanonicalModelId(tempModel) === model.id);
                       return (
                         <button
                           key={model.id}
                           type="button"
                           onClick={() => {
                             setTempModel(model.id);
-                            if ((model.id.includes("pro") || model.id.includes("argon")) && tempThinkingLevel === "MINIMAL") {
-                              setTempThinkingLevel("HIGH");
-                            }
+                            setTempThinkingLevel((prev) => normalizeThinkingLevel(model.id, prev));
                           }}
                           className={`w-full text-left py-2.5 px-3.5 border transition-all cursor-pointer rounded-none flex flex-col gap-1.5 ${
                             isSelected
@@ -658,18 +682,23 @@ export default function EngineControlsModal({
                   Reasoning Effort (Thinking Level)
                 </h4>
                 <p className="text-[10px] text-[#888884] leading-normal">
-                  Controls the model&apos;s internal reasoning depth before outputting results. High reasoning enhances logic but may add latency.
+                  Controls the model&apos;s internal reasoning depth before outputting results. <code className="font-mono text-[#1A1A1A]">XHIGH</code> is exclusive to Gemini 4 Hydrogen; <code className="font-mono text-[#1A1A1A]">MINIMAL</code> is unavailable on Gemini 4 &amp; Pro.
                 </p>
-                <div className="grid grid-cols-4 gap-1.5 mt-1">
-                  {["HIGH", "MEDIUM", "LOW", "MINIMAL"].map((lvl) => {
+                <div className="grid grid-cols-5 gap-1.5 mt-1">
+                  {ALL_THINKING_LEVELS.map((lvl) => {
                     const isSelected = tempThinkingLevel === lvl;
-                    const isDisabled = lvl === "MINIMAL" && (tempModel.includes("pro") || tempModel.includes("argon"));
+                    const isDisabled = !isThinkingLevelSupported(tempModel, lvl);
+                    const disabledTitle =
+                      lvl === "XHIGH"
+                        ? "XHIGH reasoning is exclusively supported on Gemini 4 Hydrogen"
+                        : "MINIMAL thinking level is not supported on Gemini 4 / Pro models";
                     return (
                       <button
                         key={lvl}
                         type="button"
                         disabled={isDisabled}
                         onClick={() => !isDisabled && setTempThinkingLevel(lvl)}
+                        title={isDisabled ? disabledTitle : `Set thinking level to ${lvl}`}
                         className={`py-2 text-[9px] font-bold tracking-wider uppercase border text-center transition-all ${
                           isDisabled
                             ? "bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed"
@@ -678,7 +707,7 @@ export default function EngineControlsModal({
                               : "bg-white text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A] cursor-pointer"
                         }`}
                       >
-                        {lvl}
+                        {lvl === "MINIMAL" ? "MIN" : lvl}
                       </button>
                     );
                   })}
@@ -714,32 +743,52 @@ export default function EngineControlsModal({
                     <hr className="border-[#D1D1CF]" />
 
                     {/* Temperature Slider */}
-                    <div className="flex flex-col gap-2.5">
-                      <div className="flex justify-between items-baseline">
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#1A1A1A]">
-                          Temperature (Creativity)
-                        </h4>
-                        <span className="text-xs font-mono font-bold bg-[#EAEAE8] border border-[#D1D1CF] px-2 py-0.5">
-                          {tempTemperature.toFixed(2)}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-[#888884] leading-normal">
-                        Higher values mean more random, highly creative results. Lower values restrict the output to be deterministic and literal.
-                      </p>
-                      <div className="flex items-center gap-3 mt-1.5">
-                        <span className="text-[9px] font-mono uppercase text-[#888884]">Stark</span>
-                        <input
-                          type="range"
-                          min="0.0"
-                          max="2.0"
-                          step="0.1"
-                          value={tempTemperature}
-                          onChange={(e) => setTempTemperature(Number(e.target.value))}
-                          className="flex-1 accent-[#1A1A1A] cursor-pointer h-1.5 bg-[#D1D1CF] rounded-none outline-none"
-                        />
-                        <span className="text-[9px] font-mono uppercase text-[#888884]">Wild</span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const tempSupported = supportsTemperature(tempModel);
+                      return (
+                        <div className="flex flex-col gap-2.5">
+                          <div className="flex justify-between items-baseline gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-[#1A1A1A]">
+                                Temperature (Creativity)
+                              </h4>
+                              {!tempSupported && (
+                                <span className="inline-flex items-center gap-1 text-[8px] font-mono font-bold uppercase tracking-wider bg-stone-100 text-stone-600 border border-[#D1D1CF] px-1.5 py-0.5">
+                                  <Lock className="w-2.5 h-2.5" />
+                                  Locked by Gemini 4
+                                </span>
+                              )}
+                            </div>
+                            <span className={`text-xs font-mono font-bold border border-[#D1D1CF] px-2 py-0.5 ${
+                              tempSupported ? "bg-[#EAEAE8] text-[#1A1A1A]" : "bg-stone-100 text-[#888884]"
+                            }`}>
+                              {tempSupported ? tempTemperature.toFixed(2) : "AUTO"}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-[#888884] leading-normal">
+                            {tempSupported
+                              ? "Higher values mean more random, highly creative results. Lower values restrict the output to be deterministic and literal."
+                              : "Gemini 4 models deprecate manual sampling parameters and automatically optimize temperature server-side."}
+                          </p>
+                          <div className={`flex items-center gap-3 mt-1.5 ${!tempSupported ? "opacity-40" : ""}`}>
+                            <span className="text-[9px] font-mono uppercase text-[#888884]">Stark</span>
+                            <input
+                              type="range"
+                              min="0.0"
+                              max="2.0"
+                              step="0.1"
+                              disabled={!tempSupported}
+                              value={tempSupported ? tempTemperature : 1.0}
+                              onChange={(e) => tempSupported && setTempTemperature(Number(e.target.value))}
+                              className={`flex-1 accent-[#1A1A1A] h-1.5 bg-[#D1D1CF] rounded-none outline-none ${
+                                tempSupported ? "cursor-pointer" : "cursor-not-allowed"
+                              }`}
+                            />
+                            <span className="text-[9px] font-mono uppercase text-[#888884]">Wild</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     <hr className="border-[#D1D1CF]" />
 

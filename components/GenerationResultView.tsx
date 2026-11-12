@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Markdown from "react-markdown";
 import { FileText, Code, RefreshCw, Settings, ChevronDown, ChevronRight, Copy, Check, Braces, Lock, CheckCircle2, X, Clapperboard } from "lucide-react";
 import { isAuteurScript } from "@/lib/auteur-parser";
+import { DEFAULT_MODEL_ID } from "@/lib/models";
 import AuteurScriptView from "@/components/AuteurScriptView";
 
 interface ReasoningSection {
@@ -131,7 +132,7 @@ export default function GenerationResultView({
   copied,
   handleCopyOutput,
   tokenUsage,
-  selectedModel = "gemini-3.8-flash",
+  selectedModel = DEFAULT_MODEL_ID,
   isStructuredOutput = false,
 }: GenerationResultViewProps) {
   const [userViewMode, setUserViewMode] = useState<"formatted" | "raw" | "json" | "auteur">("formatted");

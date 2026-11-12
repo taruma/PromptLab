@@ -15,6 +15,7 @@ import {
   X 
 } from "lucide-react";
 import { HistoryItem } from "../../types/history";
+import { DEFAULT_MODEL_ID } from "../../lib/models";
 import YouTubeIcon from "../YouTubeIcon";
 import { HistoryImageCardWithHover } from "./HistoryImageCardWithHover";
 import { HistoryCostPopover } from "./HistoryCostPopover";
@@ -199,7 +200,7 @@ export const HistoryDetailPanel: React.FC<HistoryDetailPanelProps> = ({
                 {/* Model Badge (Indigo/Blue) */}
                 <div className="inline-flex items-center h-5 px-2 bg-blue-50 text-blue-900 border border-blue-200 text-[9px] font-mono font-bold uppercase tracking-wider leading-none">
                   <span className="text-[9px] text-blue-600 font-semibold mr-1.5">MODEL:</span>
-                  <span className="font-extrabold text-blue-950">{(selectedItem.model || "gemini-3.8-flash").replace(/^gemini-/i, "")}</span>
+                  <span className="font-extrabold text-blue-950">{(selectedItem.model || DEFAULT_MODEL_ID).replace(/^gemini-/i, "")}</span>
                 </div>
 
                 {/* Reasoning Badge (Amber) */}

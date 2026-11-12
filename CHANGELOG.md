@@ -2,6 +2,21 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
+## [v2.7.5] — November 12, 2026
+
+### Added
+
+- **Gemini 4 Hydrogen & Carbon Integration (`lib/models.ts`, `lib/pricing.ts`, `components/EngineControlsModal.tsx`, `components/QuickModelSelector.tsx`, `app/api/generate/route.ts`).**
+  - **Centralized Model Capability Registry (`lib/models.ts`)**: Introduced a single source of truth governing canonical model IDs, alias resolution, paid-tier classification, Agentic Video Understanding support, thinking-level compatibility (`XHIGH`, `HIGH`, `MEDIUM`, `LOW`, `MINIMAL`), and sampling parameter support (`supportsTemperature`).
+  - **Gemini 4 Hydrogen (`gemini-4-hydrogen`)**: Integrated as the new default workspace engine (`HIGH` default reasoning, free-tier eligible, `$1.50` / 1M input, `$7.50` / 1M output, `$0.075` / 1M cached read) with exclusive support for `ThinkingLevel.XHIGH` via `@google/genai` SDK upgraded to `>= 3.3.0`.
+  - **Gemini 4 Carbon (`gemini-4-carbon`)**: Integrated as the paid flagship reasoning engine (`MEDIUM` default reasoning, introductory promotional pricing `$2.00` / 1M input and `$10.00` / 1M output through Nov 30, 2026; `$4.00` / `$20.00` starting Dec 1, 2026) with `PAID` badges and custom key advisory alerts.
+
+### Changed & Hardened
+
+- **Featured & Quick-Switch Lineup (`components/QuickModelSelector.tsx`, `components/EngineControlsModal.tsx`)**: Updated the 3-slot Quick Model Selector and Featured Engine list to feature **Hydrogen**, **Flash Lite**, and **Carbon**, moving **Gemini 4 Argon** and **Gemini 3.8 Flash** into the collapsible Specific Model Versions catalog.
+- **Gemini 4 Parameter Governance (`app/api/generate/route.ts`, `components/EngineControlsModal.tsx`, `components/FooterStatusBar.tsx`)**: Automatically omits deprecated `temperature` parameters on server-side Gemini 4 requests, locks the Engine Settings Temperature slider (`AUTO`) for Gemini 4 models, and clamps unsupported thinking levels (`MINIMAL` on all Gemini 4 models; `XHIGH` on non-Hydrogen models) both client-side and server-side.
+- **Workspace & Component Defaults (`app/page.tsx`, `lib/video-utils.ts`, `components/GenerationResultView.tsx`, `components/HistoryCardSummary.tsx`, `components/history/HistoryDetailPanel.tsx`, `components/history/HistoryCostPopover.tsx`, `components/history/HistoryListSidebar.tsx`, `types/history.ts`)**: Aligned fallback/default model identifiers to `DEFAULT_MODEL_ID` (`gemini-4-hydrogen`), delegated `isAgenticVideoSupported` to `lib/models.ts`, and added `XHIGH` to the History Reasoning filter dropdown.
+
 ## [v2.7.4] — October 14, 2026
 
 ### Added

@@ -2,6 +2,12 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Sparkles, Settings, Braces } from "lucide-react";
+import {
+  ALL_THINKING_LEVELS,
+  getBriefModelLabel,
+  isThinkingLevelSupported,
+  normalizeThinkingLevel,
+} from "@/lib/models";
 
 interface QuickModelSelectorProps {
   selectedModel: string;
@@ -51,50 +57,25 @@ export default function QuickModelSelector({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
-  // Get brief model label for status bar and button title
-  const getBriefModelLabel = (model: string) => {
-    switch (model) {
-      case "gemini-flash-latest":
-        return "Flash Latest";
-      case "gemini-flash-lite-latest":
-        return "Flash Lite Latest";
-      case "gemini-pro-latest":
-        return "Pro Latest";
-      case "gemini-4-argon":
-        return "4 Argon";
-      case "gemini-3.8-flash":
-        return "3.8 Flash";
-      case "gemini-3.6-flash":
-        return "3.6 Flash";
-      case "gemini-3.5-flash-lite":
-        return "3.5 Flash Lite";
-      case "gemini-3.1-pro-preview":
-        return "3.1 Pro";
-      case "gemini-3.1-flash-lite":
-        return "3.1 Flash Lite";
-      default:
-        return model.replace("gemini-", "");
-    }
-  };
-
-  // Model selection handler (points to latest)
+  // Model selection handler with automatic thinking-level capability normalization
   const handleSelectModel = (modelId: string) => {
     setSelectedModel(modelId);
     if (typeof window !== "undefined") {
       localStorage.setItem("prompt_generator_selected_model", modelId);
     }
 
-    // Pro / Argon models do not support MINIMAL thinking level
-    if ((modelId.includes("pro") || modelId.includes("argon")) && thinkingLevel === "MINIMAL") {
-      setThinkingLevel("HIGH");
+    const normalized = normalizeThinkingLevel(modelId, thinkingLevel);
+    if (normalized !== thinkingLevel) {
+      setThinkingLevel(normalized);
       if (typeof window !== "undefined") {
-        localStorage.setItem("prompt_generator_thinking_level", "HIGH");
+        localStorage.setItem("prompt_generator_thinking_level", normalized);
       }
     }
   };
 
   // Thinking level selection handler
   const handleSelectThinkingLevel = (level: string) => {
+    if (!isThinkingLevelSupported(selectedModel, level)) return;
     setThinkingLevel(level);
     if (typeof window !== "undefined") {
       localStorage.setItem("prompt_generator_thinking_level", level);
@@ -112,13 +93,11 @@ export default function QuickModelSelector({
     }
   };
 
-  // Check if current selected model is one of the latest options
+  // Check if current selected model is one of the featured quick-switch options
   const isLatestSelected =
-    selectedModel === "gemini-flash-latest" ||
+    selectedModel === "gemini-4-hydrogen" ||
     selectedModel === "gemini-flash-lite-latest" ||
-    selectedModel === "gemini-4-argon";
-
-  const isProModel = selectedModel.includes("pro") || selectedModel.includes("argon");
+    selectedModel === "gemini-4-carbon";
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef} id="quick-model-selector">
@@ -205,9 +184,9 @@ export default function QuickModelSelector({
 
               <div className="grid grid-cols-3 gap-1.5">
                 {[
-                  { id: "gemini-flash-latest", label: "Flash", badge: "3.8" },
-                  { id: "gemini-flash-lite-latest", label: "Flash Lite", badge: "3.5" },
-                  { id: "gemini-4-argon", label: "Argon", badge: "4" },
+                  { id: "gemini-4-hydrogen", label: "Hydrogen", badge: "4 Latest" },
+                  { id: "gemini-flash-lite-latest", label: "Flash Lite", badge: "3.5 Latest" },
+                  { id: "gemini-4-carbon", label: "Carbon", badge: "4 Paid" },
                 ].map((item) => {
                   const isSelected = selectedModel === item.id;
                   return (
@@ -229,7 +208,7 @@ export default function QuickModelSelector({
                           isSelected ? "text-stone-300" : "text-[#888884]"
                         }`}
                       >
-                        {item.badge} Latest
+                        {item.badge}
                       </span>
                     </button>
                   );
@@ -237,16 +216,20 @@ export default function QuickModelSelector({
               </div>
             </div>
 
-            {/* ROW 3: Thinking Level Selection (HIGH, MEDIUM, LOW, MINIMAL) */}
+            {/* ROW 3: Thinking Level Selection (XHIGH, HIGH, MEDIUM, LOW, MINIMAL) */}
             <div className="flex flex-col gap-1.5">
               <span className="text-[8.5px] font-bold uppercase tracking-wider text-[#888884] font-mono">
                 Thinking Level
               </span>
 
-              <div className="grid grid-cols-4 gap-1.5">
-                {["HIGH", "MEDIUM", "LOW", "MINIMAL"].map((lvl) => {
+              <div className="grid grid-cols-5 gap-1">
+                {ALL_THINKING_LEVELS.map((lvl) => {
                   const isSelected = thinkingLevel === lvl;
-                  const isDisabled = lvl === "MINIMAL" && isProModel;
+                  const isDisabled = !isThinkingLevelSupported(selectedModel, lvl);
+                  const disabledTitle =
+                    lvl === "XHIGH"
+                      ? "XHIGH reasoning is exclusively supported on Gemini 4 Hydrogen"
+                      : "MINIMAL thinking level is not supported on Gemini 4 / Pro models";
 
                   return (
                     <button
@@ -254,8 +237,8 @@ export default function QuickModelSelector({
                       type="button"
                       disabled={isDisabled}
                       onClick={() => !isDisabled && handleSelectThinkingLevel(lvl)}
-                      title={isDisabled ? "MINIMAL thinking level is not supported for Argon / Pro models" : `Set thinking level to ${lvl}`}
-                      className={`py-1.5 text-[9px] font-bold tracking-wider uppercase border text-center transition-all rounded-none ${
+                      title={isDisabled ? disabledTitle : `Set thinking level to ${lvl}`}
+                      className={`py-1.5 text-[8.5px] font-bold tracking-wider uppercase border text-center transition-all rounded-none ${
                         isDisabled
                           ? "bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed"
                           : isSelected

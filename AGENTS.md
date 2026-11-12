@@ -6,7 +6,7 @@ Welcome to **PromptLab**. This document outlines the project architecture, desig
 
 ## 1. Core Purpose & Concept
 
-PromptLab is an elegant, single-page creative workspace designed to compile rich, structured prompt templates with customizable dynamic placeholders and multi-modal reference files (reference images mapped to `@imageX`, videos to `@videoX`, audio to `@audioX`, and documents to `@docX` casting annotations). The compiled instructions are processed server-side via the modern `@google/genai` SDK using the **Gemini 3.8 Flash** model.
+PromptLab is an elegant, single-page creative workspace designed to compile rich, structured prompt templates with customizable dynamic placeholders and multi-modal reference files (reference images mapped to `@imageX`, videos to `@videoX`, audio to `@audioX`, and documents to `@docX` casting annotations). The compiled instructions are processed server-side via the modern `@google/genai` SDK using **Gemini 4 Hydrogen** (`gemini-4-hydrogen`) as the default engine alongside **Gemini 4 Carbon**, **Gemini 4 Argon**, and Gemini 3.x models.
 
 Key differentiators:
 - **Zero Database / Hybrid Persistence**: Uses static filesystem templates for fallback config defaults, client-side `localStorage` for active session configurations, and local presets for quick workspace instantiation. Project data, configurations, generation history, and image blobs are persisted in **IndexedDB** (`promptlab_db` v3) with `contentHash` indexing and transparent payload deduplication to avoid browser storage quota limits (`LocalStorage` legacy keys are automatically migrated and purged).
@@ -23,7 +23,7 @@ Key differentiators:
 - **Animation Support**: The `motion` package is in the dependency tree but is not currently utilized in any UI components.
 - **Icons**: `lucide-react` for simple, expressive visual indicators.
 - **Markdown Rendering**: `react-markdown` for client-side rendering of generation output with formatted/raw toggle view.
-- **AI Integration**: `@google/genai` TypeScript SDK (^2.20.0, server-side only via App Router API paths).
+- **AI Integration**: `@google/genai` TypeScript SDK (>= 3.3.0, server-side only via App Router API paths).
 - **Analytics**: `@vercel/analytics` integrated in the root layout for Vercel deployment observability.
 - **Utility Libraries**: `clsx` + `tailwind-merge` (via `lib/utils.ts` `cn()` helper), `class-variance-authority`, `@hookform/resolvers`.
 - **Client-Side Storage**: **IndexedDB** (`promptlab_db` v3 → `images` store with `contentHash` index & `projects` object store) for image blob and project data persistence with transparent deduplication, avoiding browser localStorage quota constraints.
@@ -115,6 +115,7 @@ Key differentiators:
 │   ├── output-render-helpers.tsx    # Shared output rendering helpers: JSON extraction & line syntax highlighting, brutalist Markdown component mappings, and view mode types
 │   ├── image-export.ts              # Full-height DOM-to-PNG export utility using html-to-image with 2x retina sharpness and standardized screenshot naming
 │   ├── indexeddb.ts                 # IndexedDB helper module with content-hash deduplication (v3 schema), cross-project image reference protection, master promotion on deletion, and background deduplication migration
+│   ├── models.ts                    # Central model registry, alias resolution, thinking-level & sampling capability governance
 │   ├── asset-library-export.ts     # Asset library JSON import/export utilities (v1.1 pool, streaming Blob serialization, contentHash deduplication)
 │   ├── history-export.ts           # History JSON import/export utilities
 │   ├── history-grouping.ts          # History sorting, date bucketing (Today/Yesterday/7d/Older), AND-logic media filtering, preset/model metadata extractors
@@ -229,44 +230,36 @@ The workspace reads dynamic template specifications from the currently configure
 - Keep all generations routed securely through the proxy handler `/app/api/generate/route.ts`. The client passes its active custom prompts (`systemPrompt` and `promptTemplate`) as POST arguments.
 
 ### Rule C: Engine Controls & Hyperparameters
-- **Default Models & Parameters**: The system defaults to **Gemini 3.8 Flash**, **MEDIUM** reasoning effort, and a temperature of **1.0** (with empty max tokens).
+- **Default Models & Parameters**: The system defaults to **Gemini 4 Hydrogen** (`gemini-4-hydrogen`), **HIGH** reasoning effort, and server-managed sampling (with temperature **1.0** for Gemini 3.x models and empty max tokens).
 - **Quick Model & Thinking Switcher**: Alongside the Quick API Key Switcher in `AppHeader.tsx`, a compact icon button (`QuickModelSelector.tsx`) provides instant access to model, thinking level, and structured output controls:
   - **1st Row**: Brief active status indicator showing active model name, thinking level, and `JSON` status badge when structured output is enabled.
-  - **2nd Row**: Model selection pointing to primary engine targets (`gemini-flash-latest`, `gemini-flash-lite-latest`, `gemini-4-argon`). If a specific model version is active instead of a primary option, none of the 3 quick model options are selected and a "Specific Version Active" badge is displayed.
-  - **3rd Row**: Thinking effort selection with 4 buttons (`HIGH`, `MEDIUM`, `LOW`, `MIN` for `MINIMAL`). Gemini 4 Argon automatically disables `MINIMAL` thinking level.
+  - **2nd Row**: Model selection pointing to featured engine targets (`gemini-4-hydrogen`, `gemini-flash-lite-latest`, `gemini-4-carbon`). If a specific model version is active instead of a primary option, none of the 3 quick model options are selected and a "Specific Version Active" badge is displayed.
+  - **3rd Row**: Thinking effort selection with 5 capability-gated buttons (`XHIGH`, `HIGH`, `MEDIUM`, `LOW`, `MIN` for `MINIMAL`). `XHIGH` is exclusive to **Gemini 4 Hydrogen**, and `MINIMAL` is disabled on all Gemini 4 (`hydrogen`, `carbon`, `argon`) and Pro models. Switching models automatically normalizes unsupported levels via `normalizeThinkingLevel()` in `lib/models.ts`.
   - **4th Row**: **Structured Output (JSON) Toggle**: Rapid one-click toggle to enable or disable structured JSON responses with an active indicator badge.
   - **Trigger Button Indicator**: Displays a green status indicator dot when structured JSON output is active.
   - **Header Settings Button**: A top-right "Engine" button opens the full `EngineControlsModal` for advanced model selection, temperature tuning, max tokens, custom JSON schema configuration, and custom API key vault configuration.
-- **Reasoning Effort Selection**: The interface supports 4 levels of internal model thinking/reasoning effort: `MINIMAL`, `LOW`, `MEDIUM`, and `HIGH`. Note that Gemini 4 Argon does not support `MINIMAL` thinking effort.
-- **Parameters Customization**: Users can configure model overrides (e.g., swapping to `gemini-4-argon`, `gemini-3.6-flash`, `gemini-3.5-flash-lite`, or `gemini-3.1-flash-lite`), fine-tuning temperature (0.0 to 2.0), or imposing a maximum output token threshold.
-- **Pricing Rate Display**: Each model selection card in the `EngineControlsModal` displays per-model input and output pricing rates (`IN: $X.XX / 1M` / `OUT: $X.XX / 1M`) in its footer, sourced from `getModelPricingSummary()` in `lib/pricing.ts`. Google's introductory promotional rates are configured for Gemini 3.8 Flash and Gemini 3.6 Flash ($0.75 / 1M input and $3.75 / 1M output through December 31, 2026), and for Gemini 4 Argon ($2.00 / 1M input and $10.00 / 1M output through November 30, 2026).
-- **Defaults Reset**: An interactive **Reset Defaults** action is available within the modal footer to restore the system's baseline configuration instantly (resetting to Gemini 3.8 Flash).
-- **Metadata Visibility**: The active Engine, Reasoning Level, and Temperature parameters are constantly reported in the workspace footer next to the system status indicator.
+- **Reasoning Effort Selection**: The interface supports up to 5 levels of internal model thinking/reasoning effort (`MINIMAL`, `LOW`, `MEDIUM`, `HIGH`, and Hydrogen-exclusive `XHIGH`), governed centrally by `lib/models.ts`.
+- **Parameters Customization & Gemini 4 Temperature Lock**: Users can configure model overrides (e.g., swapping to `gemini-4-argon`, `gemini-3.8-flash`, `gemini-3.6-flash`, `gemini-3.5-flash-lite`, or `gemini-3.1-flash-lite`), adjust temperature (0.0 to 2.0 on Gemini 3.x models; locked to `AUTO` and omitted on the backend for Gemini 4 models), or impose a maximum output token threshold.
+- **Pricing Rate Display**: Each model selection card in the `EngineControlsModal` displays per-model input and output pricing rates (`IN: $X.XX / 1M` / `OUT: $X.XX / 1M`) in its footer, sourced from `getModelPricingSummary()` in `lib/pricing.ts`. Hydrogen is configured at `$1.50` / 1M input and `$7.50` / 1M output; introductory promotional rates are configured for Gemini 4 Carbon and Gemini 4 Argon ($2.00 / 1M input and $10.00 / 1M output through November 30, 2026), and for Gemini 3.8 Flash and Gemini 3.6 Flash ($0.75 / 1M input and $3.75 / 1M output through December 31, 2026).
+- **Defaults Reset**: An interactive **Reset Defaults** action is available within the modal footer to restore the system's baseline configuration instantly (resetting to **Gemini 4 Hydrogen** and `HIGH` thinking).
+- **Metadata Visibility**: The active Engine, Reasoning Level, and Temperature parameters (`AUTO` on Gemini 4, numeric on Gemini 3.x) are constantly reported in the workspace footer next to the system status indicator.
 - **Static Pricing Architecture**: Neither Google AI Studio nor the `@google/genai` SDK exposes a runtime pricing API. Pricing is maintained as an offline, zero-latency lookup table in `lib/pricing.ts` (`MODEL_PRICING_TABLE`). When Google publishes promotional introductory pricing (e.g., rates through a specific deadline), rates in `lib/pricing.ts` are set to the active promotional rates with inline comments documenting standard transition dates.
 
 #### Model Addition & Version Upgrade Checklist
 When adding a new Gemini model or updating the default baseline, synchronize all of the following touchpoints:
 
-1. **Central Pricing & Aliases (`lib/pricing.ts`)**:
+1. **Central Capability Registry & Aliases (`lib/models.ts`)**:
+   - Add model entry to `MODEL_CAPABILITY_REGISTRY` (`isPaid`, `supportsTemperature`, `supportsAgenticVideo`, `supportedThinkingLevels`, `defaultThinkingLevel`, `briefLabel`).
+   - Update `MODEL_ALIASES` and `DEFAULT_MODEL_ID` / `DEFAULT_THINKING_LEVEL` if updating an alias or workspace baseline.
+2. **Central Pricing (`lib/pricing.ts`)**:
    - Add model config to `MODEL_PRICING_TABLE` with current input/output rates, context cache base, and storage rates.
-   - Update `MODEL_ALIASES` (e.g., `gemini-flash-latest`) if the new model becomes the canonical alias target.
-2. **Workspace Default (`app/page.tsx`)**:
-   - Update `selectedModel` initial state hook default value.
-3. **Server Generation Fallback (`app/api/generate/route.ts`)**:
-   - Update `model = "gemini-..."` default parameter in POST handler.
-4. **Engine Controls Modal (`components/EngineControlsModal.tsx`)**:
-   - Add entry to `SPECIFIC_MODELS` with `id`, `name`, `subtitle`, `cutoff`, `release`, and `isNew: true`.
-   - Update `LATEST_MODELS` subtitle and release metadata if updating an alias.
-   - Update `handleResetEngineDefaults` to restore to the new baseline.
-5. **Quick Model Selector (`components/QuickModelSelector.tsx`)**:
-   - Add brief model label mapping in `getBriefModelLabel()` (e.g., `"3.8 Flash"`).
-   - Update quick-switch button version badge in Row 2 if updating a latest alias.
-6. **Agentic Video Support (`lib/video-utils.ts` & `components/VideoAssetCard.tsx`)**:
-   - Add model ID substring to `isAgenticVideoSupported()` if the model supports agentic timeline exploration.
-   - Update video card tooltips in `VideoAssetCard.tsx` accordingly.
-7. **History Cost Fallbacks (`components/HistoryCardSummary.tsx` & `components/HistoryViewerModal.tsx`)**:
-   - Update fallback model parameter in `calculateEstimatedCost(item.model || "...", item.tokenUsage)`.
-8. **Versioning & Documentation**:
+3. **Engine Controls Modal (`components/EngineControlsModal.tsx`)**:
+   - Add entry to `LATEST_MODELS` or `SPECIFIC_MODELS` with `id`, `name`, `subtitle`, `cutoff`, `release`, `isNew`, and `isPaid`.
+4. **Quick Model Selector (`components/QuickModelSelector.tsx`)**:
+   - Update the 3 featured quick-switch buttons and `isLatestSelected` if changing the top-level quick picks.
+5. **History Reasoning Filter (`components/history/HistoryListSidebar.tsx`, `types/history.ts`)**:
+   - Ensure any newly introduced thinking levels are exposed in the History filter dropdown.
+6. **Versioning & Documentation**:
    - Bump version in `package.json` and `package-lock.json`.
    - Add entry to `CHANGELOG.md`. If the version is still in active development or pre-release (e.g. `-dev` tag), format the section header strictly as `## [vX.Y.Z-dev] — Unreleased` without a release date. Only attach calendar release dates to finalized, shipped releases.
    - Create `docs/RELEASE_NOTES_vX.X.X.md` when finalizing a release.
@@ -276,7 +269,7 @@ When adding a new Gemini model or updating the default baseline, synchronize all
 
 - **Image References**: Visual reference images can be uploaded directly by the user, processed through the Canvas compression pipeline (Rule H), and stored as Base64 in IndexedDB. Uploaded images are mapped in sequence order to `@imageN` label annotations (e.g. `@image1` as "Character Name", `@image2` as "Setting Background").
 - **Video References & YouTube URLs**: MP4 video files can be uploaded alongside images or added via YouTube URLs ("ADD YOUTUBE URL" modal). MP4 uploads are validated via `lib/video-utils.ts` (`validateAndProcessVideo`) and encoded as Base64. YouTube links are validated via regex (`isYouTubeUrl`) and the video ID is extracted with `extractYouTubeVideoId`. Thumbnails are fetched with `getYouTubeThumbnailUrl`. YouTube URLs are passed as `fileData` (`fileUri: youtubeUrl`, with explicit `mimeType: "video/mp4"`) to the Gemini API. Both local videos and YouTube URLs map to `@videoN` label annotations (e.g. `@video1` as "Reference Clip").
-- **Agentic Video Understanding**: PromptLab natively supports Google's **Agentic Video Understanding** (`mediaProcessing: "AGENTIC"`) for Gemini 3.8 Flash, Gemini 3.6 Flash, Gemini 3.5 Flash-Lite, and Gemini 4 Argon models. Users can toggle individual video assets between `STATIC` (standard 1 FPS fixed-rate frame sampling, default) and `AGENTIC` (dynamic timeline navigation using model-driven tool calls) directly from the `VideoAssetCard`. YouTube video references passed as `fileData` include explicit `mimeType: "video/mp4"`. When an unsupported model is active, the video card preserves the user's `AGENTIC` selection in memory, displays a dashed amber `Paused` status badge, and automatically executes as `STATIC` fallback on the backend until switching back to a supported model.
+- **Agentic Video Understanding**: PromptLab natively supports Google's **Agentic Video Understanding** (`mediaProcessing: "AGENTIC"`) for Gemini 4 (`gemini-4-hydrogen`, `gemini-4-carbon`, `gemini-4-argon`), Gemini 3.8 Flash, Gemini 3.6 Flash, and Gemini 3.5 Flash-Lite models (governed via `lib/models.ts`). Users can toggle individual video assets between `STATIC` (standard 1 FPS fixed-rate frame sampling, default) and `AGENTIC` (dynamic timeline navigation using model-driven tool calls) directly from the `VideoAssetCard`. YouTube video references passed as `fileData` include explicit `mimeType: "video/mp4"`. When an unsupported model is active, the video card preserves the user's `AGENTIC` selection in memory, displays a dashed amber `Paused` status badge, and automatically executes as `STATIC` fallback on the backend until switching back to a supported model.
 - **Audio & Document References**: Files API audio assets (`audio/*` MIME types) map to `@audioN` casting tags, while document assets (`text/*`, PDF, and other non-image/video/audio formats) map to `@docN`. The workspace file picker in `VisualAssetsSection.tsx` accepts `image/*,video/*,audio/*,application/pdf,text/*`, and MIME-type-based counters assign the correct per-type tag to each `VideoAssetCard` via its `tag` prop.
 - **Gemini Files API Upload Paths**: Two upload paths are available for large multi-modal media (images, videos, audio, PDF, and text/code documents up to 2 GB per file) via the "FILES API UPLOAD" modal (`AddFilesApiModal.tsx`):
   - **Direct Resumable Upload** (`handleDirectResumableUpload`): Requests a resumable upload session header (`X-Goog-Upload-URL`) from the backend endpoint `/app/api/upload-file/route.ts` (`action: "resumable_session"`), then streams binary file bytes directly from the browser to Google Cloud via `XMLHttpRequest` with real-time percentage progress tracking, bypassing Vercel's 4.5 MB request body limit and execution timeouts. If browser CORS policies block reading the completion response, a background verification step (`action: "list"`) confirms file creation without raising error popups. Falls back to the chunked proxy pipeline if direct upload is blocked.
@@ -293,7 +286,7 @@ When adding a new Gemini model or updating the default baseline, synchronize all
 ### Rule E: Real-time Streaming & Reasoning Traces (SSE Architecture)
 - **Streaming Output**: The workspace utilizes high-performance text streaming via Server-Sent Events (SSE). The server-side proxy `/app/api/generate/route.ts` streams chunks using the modern `generateContentStream` method.
 - **Client-Side Buffer Reassembly**: The client in `/app/page.tsx` implements custom chunk buffer parsing to split incoming line streams securely, gracefully resolving any fragmented or unterminated JSON data packets before parsing.
-- **Universal Thought Inclusion**: The server-side handler now sends `includeThoughts: true` to **all** models (the previous model-name gate restricting `thinkingConfig` to Gemini 3-series only has been removed), enabling reasoning/thought output for any model that supports it. The `thinkingLevel` mapping is applied when provided, with `MINIMAL` level excluded for `pro-preview` models.
+- **Universal Thought Inclusion**: The server-side handler sends `includeThoughts: true` to all models and maps `thinkingLevel` (`XHIGH`, `HIGH`, `MEDIUM`, `LOW`, `MINIMAL`) after server-side capability normalization via `normalizeThinkingLevel()` in `lib/models.ts` (excluding `MINIMAL` on Gemini 4 & Pro models, restricting `XHIGH` to Gemini 4 Hydrogen, and omitting deprecated `temperature` on Gemini 4 models).
 - **Thinking Process Visualization**: The `GenerationResultView` component renders a dedicated **Engine Reasoning Trace** collapsible panel with:
   - A header bar featuring a pulsing amber dot (`animate-pulse`) and `PROCESSING` badge during active thinking, transitioning to a green dot + `COMPLETED` badge when finished
   - A **slideshow card** mode during active streaming that displays the latest parsed reasoning block with a `@keyframes slideFadeIn` CSS animation (`.animate-slide-fade-in` class in `globals.css`)
@@ -390,7 +383,7 @@ When adding a new Gemini model or updating the default baseline, synchronize all
   - **Full Metadata Preservation & Backward Compatibility**: Automatically detects and ingests legacy `v1.0` embedded files, flat array imports, and `v1.1` pooled exports. Preserves `thinkingResult`, `tokenUsage`, and `estimatedCost` across imports, and non-destructively passes through any future properties. Displays detailed status feedback reporting both imported and skipped counts.
 - **Clear History with Confirmation**: A "Clear All History" action (accessible via the full-screen `HistoryViewerModal`) triggers a confirmation modal warning that the operation deletes all saved history items and permanently purges their associated images from IndexedDB. This is irreversible. The inline sidebar `HistorySection` no longer exposes a direct "Clear All" button — the `setIsHistoryClearConfirmOpen` prop is optional.
 - **Universal Search & Integrated Side Scope Selector**: The `HistoryViewerModal` search field defaults to "All Content (Universal)", checking Title, Idea, dynamic parameter keys & values (`item.variables`), Output, Media labels, and Compiled Prompt using `matchesSearchQuery()` from `lib/search-utils.ts`. An attached scope selector directly on the search input box provides immediate switching via a compact icon button opening a rich `w-72` popover menu targeting: "All Content (Universal)", "Slot Name / Title", "Main Objective (Idea)", "Generated Output", "Media Reference Labels", "Dynamic Parameters", and "Compiled Prompt Specs". The search input includes a clear-search `X` button and captures Escape to clear.
-- **Collapsible Filter & Sort Drawer**: A single compact `[SORT & FILTER ▾]` toggle button in the sidebar header expands a panel housing: Sort By (Date Newest/Oldest, Cost Highest/Lowest, Title A-Z), Preset Filter (dynamic presets with counts + "Custom (No Preset)"), Model Filter, Reasoning Level Filter (HIGH, MEDIUM, LOW, MINIMAL, OFF), and Multi-Select Media Filter chips (`IMG`, `VID`, `AUD`, `DOC`) with strict AND matching. An active filter count badge and a one-click `reset` link appear on the trigger button.
+- **Collapsible Filter & Sort Drawer**: A single compact `[SORT & FILTER ▾]` toggle button in the sidebar header expands a panel housing: Sort By (Date Newest/Oldest, Cost Highest/Lowest, Title A-Z), Preset Filter (dynamic presets with counts + "Custom (No Preset)"), Model Filter, Reasoning Level Filter (XHIGH, HIGH, MEDIUM, LOW, MINIMAL, OFF), and Multi-Select Media Filter chips (`IMG`, `VID`, `AUD`, `DOC`) with strict AND matching. An active filter count badge and a one-click `reset` link appear on the trigger button.
 - **Smart Contextual Date Grouping**: When sorting by Date (newest or oldest), history items are grouped under sticky, collapsible section headers (`TODAY`, `YESTERDAY`, `PREVIOUS 7 DAYS`, `OLDER`) with item counts and smooth toggle chevrons. When sorting by Cost or Name, the list automatically displays as a continuous flat ranked list with `#N` rank badges.
 - **Cost Badges on Cost Sort**: History cards surface an emerald cost badge (`$0.0012`) and formatted token count on Row 3 exclusively when the user sorts by Cost, avoiding visual clutter during regular browsing.
 - **Keyboard Arrow Navigation & Inspected Slot Retention**: Pressing `ArrowUp` or `ArrowDown` steps through the filtered history items, auto-scrolling into view (bypassed when focused inside inputs or selects). When filter changes exclude the currently inspected slot, the detail panel retains that slot's view to preserve user context.

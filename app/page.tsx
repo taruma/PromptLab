@@ -61,6 +61,7 @@ import { useUrlPresetImport } from "../hooks/use-url-preset-import";
 import { useClipboardImagePaste } from "../hooks/use-clipboard-image-paste";
 import { useGenerateShortcut } from "../hooks/use-generate-shortcut";
 import { calculateEstimatedCost } from "../lib/pricing";
+import { DEFAULT_MODEL_ID, DEFAULT_THINKING_LEVEL, normalizeThinkingLevel } from "../lib/models";
 import {
   exportPresetsToJSON,
   importPresetsFromJSON,
@@ -292,8 +293,8 @@ export default function PromptGeneratorPage() {
   const [comparePreset, setComparePreset] = useState<PresetConfig | null>(null);
   
   // Engine Controls states
-  const [selectedModel, setSelectedModel] = useState<string>("gemini-3.8-flash");
-  const [thinkingLevel, setThinkingLevel] = useState<string>("MEDIUM");
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL_ID);
+  const [thinkingLevel, setThinkingLevel] = useState<string>(DEFAULT_THINKING_LEVEL);
   const [temperature, setTemperature] = useState<number>(1.0);
   const [maxTokens, setMaxTokens] = useState<string>("");
   const [isStructuredOutput, setIsStructuredOutput] = useState<boolean>(false);
@@ -610,11 +611,18 @@ export default function PromptGeneratorPage() {
         if (savedVisualAssetsOpen !== null) {
           setIsVisualAssetsOpen(savedVisualAssetsOpen === "true");
         }
+        const effectiveModel = savedModel || DEFAULT_MODEL_ID;
         if (savedModel) {
           setSelectedModel(savedModel);
         }
         if (savedThinking) {
-          setThinkingLevel(savedThinking);
+          const normalizedSavedThinking = normalizeThinkingLevel(effectiveModel, savedThinking);
+          setThinkingLevel(normalizedSavedThinking);
+          if (normalizedSavedThinking !== savedThinking) {
+            try {
+              localStorage.setItem("prompt_generator_thinking_level", normalizedSavedThinking);
+            } catch (e) {}
+          }
         }
         if (savedTemp) {
           const numTemp = Number(savedTemp);

@@ -1,6 +1,12 @@
 import { GoogleGenAI, ThinkingLevel, MediaProcessing } from "@google/genai";
 import { isAgenticVideoSupported } from "@/lib/video-utils";
-import { getCanonicalModelId } from "@/lib/pricing";
+import {
+  DEFAULT_MODEL_ID,
+  DEFAULT_THINKING_LEVEL,
+  getCanonicalModelId,
+  normalizeThinkingLevel,
+  supportsTemperature,
+} from "@/lib/models";
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
@@ -75,8 +81,8 @@ export async function POST(req: NextRequest) {
       videos = [],
       systemPrompt, 
       promptTemplate,
-      model = "gemini-3.8-flash",
-      thinkingLevel = "MEDIUM",
+      model = DEFAULT_MODEL_ID,
+      thinkingLevel = DEFAULT_THINKING_LEVEL,
       temperature = 1.0,
       maxTokens,
       customApiKey,
@@ -389,20 +395,26 @@ export async function POST(req: NextRequest) {
       text: `Please process this concept request. Here is the compiled specifications:\n\n${filledTemplate}`,
     });
 
-    // Call Gemini with the systemInstruction and custom parameters
+    const resolvedModel = getCanonicalModelId(model || DEFAULT_MODEL_ID);
+
+    // Call Gemini with the systemInstruction and model-compatible parameters
     const config: any = {
       systemInstruction: systemPrompt,
-      temperature: temperature !== undefined ? Number(temperature) : 1.0,
     };
 
-    // Apply thinkingLevel configuration for Gemini models supporting thinking features
-    let mappedThinkingLevel: ThinkingLevel | undefined;
-    if (thinkingLevel === "HIGH") mappedThinkingLevel = ThinkingLevel.HIGH;
-    else if (thinkingLevel === "MEDIUM") mappedThinkingLevel = ThinkingLevel.MEDIUM;
-    else if (thinkingLevel === "LOW") mappedThinkingLevel = ThinkingLevel.LOW;
-    else if (thinkingLevel === "MINIMAL" && !model.includes("pro-preview")) {
-      mappedThinkingLevel = ThinkingLevel.MINIMAL;
+    // Gemini 4 models deprecate sampling parameters (temperature, topP, topK, candidateCount)
+    if (supportsTemperature(resolvedModel)) {
+      config.temperature = temperature !== undefined ? Number(temperature) : 1.0;
     }
+
+    // Normalize and apply thinkingLevel configuration per model capabilities
+    const normalizedLevel = normalizeThinkingLevel(resolvedModel, thinkingLevel);
+    let mappedThinkingLevel: ThinkingLevel | undefined;
+    if (normalizedLevel === "XHIGH") mappedThinkingLevel = ThinkingLevel.XHIGH;
+    else if (normalizedLevel === "HIGH") mappedThinkingLevel = ThinkingLevel.HIGH;
+    else if (normalizedLevel === "MEDIUM") mappedThinkingLevel = ThinkingLevel.MEDIUM;
+    else if (normalizedLevel === "LOW") mappedThinkingLevel = ThinkingLevel.LOW;
+    else if (normalizedLevel === "MINIMAL") mappedThinkingLevel = ThinkingLevel.MINIMAL;
 
     config.thinkingConfig = {
       includeThoughts: true,
@@ -434,7 +446,6 @@ export async function POST(req: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          const resolvedModel = getCanonicalModelId(model || "gemini-3.8-flash");
           const responseStream = await activeAi.models.generateContentStream({
             model: resolvedModel,
             contents: { parts },

@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { HistoryItem } from "../../types/history";
 import { calculateEstimatedCost } from "../../lib/pricing";
+import { DEFAULT_MODEL_ID } from "../../lib/models";
 
 export interface HistoryCostPopoverProps {
   selectedItem: HistoryItem;
@@ -49,7 +50,7 @@ export const HistoryCostPopover: React.FC<HistoryCostPopoverProps> = ({
     };
   }, [isOpen, onClose]);
 
-  const historyModel = selectedItem.model || "gemini-3.8-flash";
+  const historyModel = selectedItem.model || DEFAULT_MODEL_ID;
   const costData = selectedItem.tokenUsage
     ? calculateEstimatedCost(historyModel, selectedItem.tokenUsage)
     : null;

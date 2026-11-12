@@ -901,6 +901,7 @@ export const HistoryListSidebar: React.FC<HistoryListSidebarProps> = ({
                     className="w-full bg-white border border-[#D1D1CF] text-[9px] uppercase tracking-wider font-bold py-1 px-1.5 outline-none focus:border-[#1A1A1A] text-[#1A1A1A] cursor-pointer rounded-none h-7"
                   >
                     <option value="all">All Levels</option>
+                    <option value="XHIGH">XHigh</option>
                     <option value="HIGH">High</option>
                     <option value="MEDIUM">Medium</option>
                     <option value="LOW">Low</option>

@@ -5,6 +5,10 @@
  * This file is designed for easy maintenance when pricing structures or model rates change.
  */
 
+import { MODEL_ALIASES, getCanonicalModelId, DEFAULT_MODEL_ID } from "./models";
+
+export { MODEL_ALIASES, getCanonicalModelId };
+
 export interface PricingTierRate {
   /** Maximum token count threshold for this tier (Infinity for top tier) */
   maxTokens: number;
@@ -41,19 +45,29 @@ export interface ModelPricingConfig {
 }
 
 /**
- * Model Alias mapping table (maps alias ID to canonical model ID)
- */
-export const MODEL_ALIASES: Record<string, string> = {
-  "gemini-flash-latest": "gemini-3.8-flash",
-  "gemini-flash-lite-latest": "gemini-3.5-flash-lite",
-  "gemini-pro-latest": "gemini-4-argon",
-};
-
-/**
  * Central Model Pricing Table
  * Rates in USD per 1,000,000 tokens
  */
 export const MODEL_PRICING_TABLE: Record<string, ModelPricingConfig> = {
+  "gemini-4-hydrogen": {
+    name: "Gemini 4 Hydrogen",
+    rate: {
+      inputPricePer1M: 1.50,
+      outputPricePer1M: 7.50,
+      contextCacheBasePricePer1M: 0.075,
+      contextCacheStoragePricePerHourPer1M: 0.50,
+    },
+  },
+  "gemini-4-carbon": {
+    name: "Gemini 4 Carbon",
+    rate: {
+      // Introductory promotional pricing through Nov 30, 2026 (standard rates $4.00 in / $20.00 out / $0.20 cached starting Dec 1, 2026)
+      inputPricePer1M: 2.00,
+      outputPricePer1M: 10.00,
+      contextCacheBasePricePer1M: 0.10,
+      contextCacheStoragePricePerHourPer1M: 0.50,
+    },
+  },
   "gemini-4-argon": {
     name: "Gemini 4 Argon",
     rate: {
@@ -214,30 +228,13 @@ export function formatCostUSD(cost: number): string {
   return `$${cost.toFixed(6)}`;
 }
 
-/**
- * Resolves a model ID or alias to its canonical model pricing ID
- */
-export function getCanonicalModelId(modelId: string): string {
-  const cleanId = modelId.replace(/^models\//, "");
-  return MODEL_ALIASES[cleanId] || cleanId;
-}
-
-/**
- * Calculates estimated cost for a given token usage breakdown and model ID
- *
- * Formula:
- * - Uncached Input Cost = (Prompt Tokens - Cached Tokens) / 1,000,000 * Input Rate
- * - Cached Input Base Cost = Cached Tokens / 1,000,000 * Cached Rate
- * - Output Cost = Output Tokens (Candidates Tokens + Thought Tokens) / 1,000,000 * Output Rate
- * - Total Cost = Uncached Input Cost + Cached Input Base Cost + Output Cost
- */
 export function calculateEstimatedCost(
   modelId: string,
   usage: TokenUsageStats,
   options?: { isAudio?: boolean }
 ): EstimatedCostResult | null {
   const canonicalId = getCanonicalModelId(modelId);
-  const config = MODEL_PRICING_TABLE[canonicalId] || MODEL_PRICING_TABLE["gemini-3.8-flash"];
+  const config = MODEL_PRICING_TABLE[canonicalId] || MODEL_PRICING_TABLE[DEFAULT_MODEL_ID];
 
   if (!config) {
     return null;
