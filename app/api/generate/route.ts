@@ -287,6 +287,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Add the visual reference videos to the request parts
+    let hasAgenticVideo = false;
     for (let i = 0; i < videoList.length; i++) {
       const vid = videoList[i];
       if ((vid.isFilesApi || vid.fileUri) && vid.fileUri) {
@@ -316,6 +317,7 @@ export async function POST(req: NextRequest) {
           if (fileObj && (fileObj.state === "ACTIVE" || !fileObj.state)) {
             fileDataValid = true;
             const useAgentic = vid.processingMode === "AGENTIC" && isAgenticVideoSupported(model);
+            if (useAgentic) hasAgenticVideo = true;
             parts.push({
               fileData: {
                 fileUri: vid.fileUri,
@@ -338,6 +340,7 @@ export async function POST(req: NextRequest) {
               cleanData = cleanData.substring(commaIndex + 1);
             }
             const useAgentic = vid.processingMode === "AGENTIC" && isAgenticVideoSupported(model);
+            if (useAgentic) hasAgenticVideo = true;
             parts.push({
               inlineData: {
                 mimeType: vid.mimeType || "video/mp4",
@@ -365,6 +368,7 @@ export async function POST(req: NextRequest) {
         }
       } else if (vid.youtubeUrl) {
         const useAgentic = vid.processingMode === "AGENTIC" && isAgenticVideoSupported(model);
+        if (useAgentic) hasAgenticVideo = true;
         parts.push({
           fileData: {
             fileUri: vid.youtubeUrl,
@@ -380,6 +384,7 @@ export async function POST(req: NextRequest) {
         }
 
         const useAgentic = vid.processingMode === "AGENTIC" && isAgenticVideoSupported(model);
+        if (useAgentic) hasAgenticVideo = true;
         parts.push({
           inlineData: {
             mimeType: vid.mimeType || "video/mp4",
@@ -401,6 +406,11 @@ export async function POST(req: NextRequest) {
     const config: any = {
       systemInstruction: systemPrompt,
     };
+
+    // Agentic video processing (MediaProcessing.AGENTIC) requires the v1beta API endpoint
+    if (hasAgenticVideo) {
+      config.httpOptions = { apiVersion: "v1beta" };
+    }
 
     // Gemini 4 models deprecate sampling parameters (temperature, topP, topK, candidateCount)
     if (supportsTemperature(resolvedModel)) {
