@@ -2,6 +2,16 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
+## [Unreleased]
+
+### Changed
+
+- **Header UI/UX Overhaul (`components/AppHeader.tsx`, `components/QuickModelSelector.tsx`, `components/QuickApiKeySelector.tsx`, `components/QuickPresetSelector.tsx`, `components/KofiButton.tsx`).**
+  - **Slimmer Structured Toolbar (`components/AppHeader.tsx`)**: Tightened the desktop header bar from `h-20` (`80px`) to `h-14` (`56px`) with uniform `h-8` (`32px`) controls and vertical hairline dividers separating **Brand**, **Context** (Workspace + Preset), **Runtime** (Model + API Key), and **Utility Tools**. Replaced the duplicate folder icon on the Workspace button with a single `FolderKanban` icon + `ChevronDown`, and differentiated tool silhouettes using `SlidersHorizontal` for **Engine** and `FileCode2` for **Prompts**.
+  - **Monochrome Surfaces with Subtle Colored Icons**: Replaced competing pastel button fills across header controls with crisp white/`#F4F4F2` monochrome surfaces and `#D1D1CF` → `#1A1A1A` borders, retaining subtle per-tool icon colors, compact semantic status tags (`BYOK`, `ENV`, `USER`, `SYS`, `[EDIT]`), and rose hover feedback on destructive **Clear**.
+  - **Readable Quick Model Switcher (`components/QuickModelSelector.tsx`)**: Upgraded the icon-only quick model trigger to display the active model's brief label, reasoning effort badge (`XHIGH`/`HIGH`/`MEDIUM`/`LOW`/`MIN`), and structured JSON indicator dot directly in the header, and aligned the dropdown panel to the left edge.
+  - **Hybrid Right-Side Toolbar & Icon-Only Ko-fi (`components/AppHeader.tsx`, `components/KofiButton.tsx`)**: Streamlined secondary/quick utilities (**Renderer**, **Assets**, **Clear**, and **Ko-fi**) into compact `32×32` monochrome icon-only buttons with tooltips and `aria-label`s while keeping primary configuration modals (**Engine** and **Prompts**) labeled from `lg:` (`1024px+`) upward.
+
 ## [v2.7.7] — November 18, 2026
 
 ### Added

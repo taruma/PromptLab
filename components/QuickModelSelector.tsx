@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, Settings, Braces } from "lucide-react";
+import { Sparkles, Settings, Braces, ChevronDown } from "lucide-react";
 import {
   ALL_THINKING_LEVELS,
   getBriefModelLabel,
@@ -104,29 +104,43 @@ export default function QuickModelSelector({
     canonicalSelectedModel === "gemini-4-carbon" ||
     canonicalSelectedModel === "gemini-3.5-flash-lite";
 
+  const briefModel = getBriefModelLabel(selectedModel);
+  const compactThinking = thinkingLevel === "MINIMAL" ? "MIN" : thinkingLevel;
+
   return (
     <div className="relative inline-block text-left" ref={dropdownRef} id="quick-model-selector">
-      {/* Trigger Button - Icon only on the side of vault key */}
+      {/* Trigger Button - Shows active model + reasoning level on monochrome surface */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative h-8.5 w-8.5 bg-white hover:bg-[#F4F4F2] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[#1A1A1A] transition-all cursor-pointer flex items-center justify-center rounded-none font-mono shadow-2xs"
-        title={`Quick Model & Engine Switcher (${getBriefModelLabel(selectedModel)} • ${thinkingLevel}${isStructuredOutput ? " • JSON" : ""})`}
+        className="h-8 px-2.5 bg-white hover:bg-[#F4F4F2] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[#1A1A1A] transition-colors cursor-pointer flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider rounded-none shrink-0"
+        title={`Quick Model & Engine Switcher (${briefModel} • ${thinkingLevel}${isStructuredOutput ? " • JSON" : ""})`}
         id="quick-model-btn"
       >
         <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+        <span className="max-w-[95px] xl:max-w-[120px] truncate font-black text-[#1A1A1A]">
+          {briefModel}
+        </span>
+        <span className="text-[8px] font-mono font-bold px-1 py-px bg-[#EAEAE8] text-[#555552] shrink-0">
+          {compactThinking}
+        </span>
         {isStructuredOutput && (
           <span
-            className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-500 rounded-full ring-1 ring-white"
+            className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0"
             title="Structured JSON output enabled"
           />
         )}
+        <ChevronDown
+          className={`w-3 h-3 text-[#888884] transition-transform duration-200 shrink-0 ${
+            isOpen ? "rotate-180 text-[#1A1A1A]" : ""
+          }`}
+        />
       </button>
 
       {/* Quick Switch Panel */}
       {isOpen && (
         <div
-          className="absolute right-0 mt-1.5 w-72 sm:w-80 bg-white border border-[#D1D1CF] shadow-2xl z-50 flex flex-col rounded-none animate-in fade-in slide-in-from-top-1 duration-150"
+          className="absolute left-0 mt-1.5 w-72 sm:w-80 bg-white border border-[#D1D1CF] shadow-2xl z-50 flex flex-col rounded-none animate-in fade-in slide-in-from-top-1 duration-150"
           id="quick-model-dropdown"
         >
           {/* Panel Header Section with Settings Button */}

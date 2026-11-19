@@ -298,19 +298,21 @@ export default function QuickPresetSelector({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="h-8.5 px-3 bg-white hover:bg-[#F4F4F2] border border-[#D1D1CF] hover:border-[#1A1A1A] transition-all cursor-pointer flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#1A1A1A] shadow-2xs rounded-none"
+        className="h-8 px-2.5 bg-white hover:bg-[#F4F4F2] border border-[#D1D1CF] hover:border-[#1A1A1A] transition-colors cursor-pointer flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#1A1A1A] rounded-none"
         title="Quick switch preset"
         id="quick-preset-trigger-btn"
       >
-        <Bookmark className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-        <span className="max-w-[130px] md:max-w-[200px] truncate font-black text-[#1A1A1A]">
+        <Bookmark className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+        <span className="max-w-[110px] lg:max-w-[140px] xl:max-w-[175px] truncate font-black text-[#1A1A1A]">
           {displayLabel}
         </span>
 
         {matchingPreset && !isModified && (
           <span
-            className={`text-[8px] font-mono font-bold px-1 py-0.2 shrink-0 ${
-              isSystem ? "bg-[#EAEAE8] text-[#1A1A1A]" : "bg-emerald-100 text-emerald-800"
+            className={`text-[8px] font-mono font-bold px-1 py-px shrink-0 ${
+              isSystem
+                ? "bg-[#EAEAE8] text-[#555552]"
+                : "bg-[#F4F4F2] text-emerald-700 border border-emerald-600/30"
             }`}
           >
             {isSystem ? "SYS" : "USER"}
@@ -318,13 +320,13 @@ export default function QuickPresetSelector({
         )}
 
         {isModified && (
-          <span className="text-[8px] bg-amber-100 text-amber-800 font-mono font-bold px-1 py-0.2 shrink-0 animate-pulse">
+          <span className="text-[8px] bg-amber-50 text-amber-700 border border-amber-500/40 font-mono font-bold px-1 py-px shrink-0 animate-pulse">
             [EDIT]
           </span>
         )}
 
         <ChevronDown
-          className={`w-3.5 h-3.5 text-[#888884] transition-transform duration-200 shrink-0 ${
+          className={`w-3 h-3 text-[#888884] transition-transform duration-200 shrink-0 ${
             isOpen ? "rotate-180 text-[#1A1A1A]" : ""
           }`}
         />

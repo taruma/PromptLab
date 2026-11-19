@@ -167,11 +167,7 @@ export default function QuickApiKeySelector({
       <button
         type="button"
         onClick={handleToggleOpen}
-        className={`h-8.5 px-2.5 sm:px-3 border transition-all cursor-pointer flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider rounded-none font-mono shadow-2xs ${
-          customApiKey
-            ? "bg-emerald-50 hover:bg-emerald-100/90 border-emerald-300 hover:border-emerald-500 text-emerald-950"
-            : "bg-white hover:bg-[#F4F4F2] border-[#D1D1CF] hover:border-[#1A1A1A] text-[#1A1A1A]"
-        }`}
+        className="h-8 px-2.5 bg-white hover:bg-[#F4F4F2] border border-[#D1D1CF] hover:border-[#1A1A1A] text-[#1A1A1A] transition-colors cursor-pointer flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider rounded-none"
         title="Quick API Key Switcher"
         id="quick-api-key-btn"
       >
@@ -180,19 +176,23 @@ export default function QuickApiKeySelector({
             customApiKey ? "text-emerald-600" : "text-[#888884]"
           }`}
         />
-        <div className="flex items-center gap-1.5 max-w-[130px] sm:max-w-[170px] truncate">
-          <span className="truncate font-black">{getActiveKeyLabel()}</span>
-          {customApiKey ? (
-            <span className="text-[8px] bg-emerald-200/80 text-emerald-900 border border-emerald-400 font-mono font-bold px-1 py-0.2 shrink-0">
-              BYOK
-            </span>
-          ) : (
-            <span className="text-[8px] bg-stone-100 text-stone-500 border border-stone-300 font-mono font-bold px-1 py-0.2 shrink-0">
-              ENV
-            </span>
-          )}
-        </div>
-        <ChevronDown className="w-3.5 h-3.5 text-[#888884] shrink-0 ml-0.5" />
+        <span className="max-w-[85px] xl:max-w-[120px] truncate font-black text-[#1A1A1A]">
+          {getActiveKeyLabel()}
+        </span>
+        {customApiKey ? (
+          <span className="text-[8px] bg-[#F4F4F2] text-emerald-700 border border-emerald-600/30 font-mono font-bold px-1 py-px shrink-0">
+            BYOK
+          </span>
+        ) : (
+          <span className="text-[8px] bg-[#EAEAE8] text-[#666662] font-mono font-bold px-1 py-px shrink-0">
+            ENV
+          </span>
+        )}
+        <ChevronDown
+          className={`w-3 h-3 text-[#888884] transition-transform duration-200 shrink-0 ${
+            isOpen ? "rotate-180 text-[#1A1A1A]" : ""
+          }`}
+        />
       </button>
 
       {/* Dropdown Menu */}
