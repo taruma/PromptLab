@@ -5,6 +5,7 @@ import { Sparkles, Settings, Braces } from "lucide-react";
 import {
   ALL_THINKING_LEVELS,
   getBriefModelLabel,
+  getCanonicalModelId,
   isThinkingLevelSupported,
   normalizeThinkingLevel,
 } from "@/lib/models";
@@ -93,11 +94,15 @@ export default function QuickModelSelector({
     }
   };
 
+  // Resolve canonical ID so legacy -latest sessions still match cleanly
+  const canonicalSelectedModel = getCanonicalModelId(selectedModel);
+
   // Check if current selected model is one of the featured quick-switch options
-  const isLatestSelected =
-    selectedModel === "gemini-4-hydrogen" ||
-    selectedModel === "gemini-flash-lite-latest" ||
-    selectedModel === "gemini-4-carbon";
+  const isFeaturedSelected =
+    canonicalSelectedModel === "gemini-4-hydrogen" ||
+    canonicalSelectedModel === "gemini-4-neon" ||
+    canonicalSelectedModel === "gemini-4-carbon" ||
+    canonicalSelectedModel === "gemini-3.5-flash-lite";
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef} id="quick-model-selector">
@@ -169,13 +174,13 @@ export default function QuickModelSelector({
               </div>
             </div>
 
-            {/* ROW 2: Model Selection (Points to latest only - Flash, Flash Lite, Pro) */}
+            {/* ROW 2: Model Selection (Gemini 4 Trio + compact Flash Lite bar) */}
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[8.5px] font-bold uppercase tracking-wider text-[#888884] font-mono">
-                  Model (Latest)
+                  Model (Featured)
                 </span>
-                {!isLatestSelected && (
+                {!isFeaturedSelected && (
                   <span className="text-[8px] font-mono text-amber-700 bg-amber-50 border border-amber-200 px-1 font-semibold">
                     Specific Version Active
                   </span>
@@ -184,11 +189,11 @@ export default function QuickModelSelector({
 
               <div className="grid grid-cols-3 gap-1.5">
                 {[
-                  { id: "gemini-4-hydrogen", label: "Hydrogen", badge: "4 Latest" },
-                  { id: "gemini-flash-lite-latest", label: "Flash Lite", badge: "3.5 Latest" },
+                  { id: "gemini-4-hydrogen", label: "Hydrogen", badge: "4 Free" },
+                  { id: "gemini-4-neon", label: "Neon", badge: "4 Paid" },
                   { id: "gemini-4-carbon", label: "Carbon", badge: "4 Paid" },
                 ].map((item) => {
-                  const isSelected = selectedModel === item.id;
+                  const isSelected = canonicalSelectedModel === item.id;
                   return (
                     <button
                       key={item.id}
@@ -214,6 +219,32 @@ export default function QuickModelSelector({
                   );
                 })}
               </div>
+
+              {(() => {
+                const isFlashLiteSelected = canonicalSelectedModel === "gemini-3.5-flash-lite";
+                return (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectModel("gemini-3.5-flash-lite")}
+                    className={`w-full px-2.5 py-1.5 border transition-all cursor-pointer flex items-center justify-between rounded-none ${
+                      isFlashLiteSelected
+                        ? "bg-[#1A1A1A] text-white border-[#1A1A1A] shadow-2xs"
+                        : "bg-white hover:bg-[#F4F4F2] text-[#1A1A1A] border-[#D1D1CF] hover:border-[#1A1A1A]"
+                    }`}
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-wider font-sans leading-tight">
+                      Flash Lite
+                    </span>
+                    <span
+                      className={`text-[8px] font-mono ${
+                        isFlashLiteSelected ? "text-stone-300" : "text-[#888884]"
+                      }`}
+                    >
+                      3.5 Lite
+                    </span>
+                  </button>
+                );
+              })()}
             </div>
 
             {/* ROW 3: Thinking Level Selection (XHIGH, HIGH, MEDIUM, LOW, MINIMAL) */}
@@ -228,7 +259,7 @@ export default function QuickModelSelector({
                   const isDisabled = !isThinkingLevelSupported(selectedModel, lvl);
                   const disabledTitle =
                     lvl === "XHIGH"
-                      ? "XHIGH reasoning is exclusively supported on Gemini 4 Hydrogen"
+                      ? "XHIGH reasoning is supported on Gemini 4 Hydrogen and Gemini 4 Neon"
                       : "MINIMAL thinking level is not supported on Gemini 4 / Pro models";
 
                   return (

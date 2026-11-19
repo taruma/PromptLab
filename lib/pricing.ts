@@ -58,6 +58,15 @@ export const MODEL_PRICING_TABLE: Record<string, ModelPricingConfig> = {
       contextCacheStoragePricePerHourPer1M: 0.50,
     },
   },
+  "gemini-4-neon": {
+    name: "Gemini 4 Neon",
+    rate: {
+      inputPricePer1M: 3.00,
+      outputPricePer1M: 15.00,
+      contextCacheBasePricePer1M: 0.15,
+      contextCacheStoragePricePerHourPer1M: 0,
+    },
+  },
   "gemini-4-carbon": {
     name: "Gemini 4 Carbon",
     rate: {

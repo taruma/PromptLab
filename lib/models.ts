@@ -19,12 +19,13 @@ export const DEFAULT_MODEL_ID = "gemini-4-hydrogen";
 export const DEFAULT_THINKING_LEVEL: ThinkingEffortLevel = "HIGH";
 
 /**
- * Model Alias mapping table (maps alias ID to canonical model ID)
+ * Legacy model alias mapping table (retained silently for backward compatibility
+ * with older saved sessions and history records)
  */
 export const MODEL_ALIASES: Record<string, string> = {
   "gemini-flash-latest": "gemini-3.8-flash",
   "gemini-flash-lite-latest": "gemini-3.5-flash-lite",
-  "gemini-pro-latest": "gemini-4-argon",
+  "gemini-pro-latest": "gemini-4-neon",
 };
 
 export interface ModelCapabilities {
@@ -44,6 +45,16 @@ const MODEL_CAPABILITY_REGISTRY: Record<string, ModelCapabilities> = {
     name: "Gemini 4 Hydrogen",
     briefLabel: "4 Hydrogen",
     isPaid: false,
+    supportsTemperature: false,
+    supportsAgenticVideo: true,
+    supportedThinkingLevels: ["XHIGH", "HIGH", "MEDIUM", "LOW"],
+    defaultThinkingLevel: "HIGH",
+  },
+  "gemini-4-neon": {
+    id: "gemini-4-neon",
+    name: "Gemini 4 Neon",
+    briefLabel: "4 Neon",
+    isPaid: true,
     supportsTemperature: false,
     supportsAgenticVideo: true,
     supportedThinkingLevels: ["XHIGH", "HIGH", "MEDIUM", "LOW"],
@@ -142,10 +153,11 @@ export function getModelCapabilities(modelId?: string): ModelCapabilities {
 
   const lower = canonicalId.toLowerCase();
   const isGemini4 = lower.startsWith("gemini-4");
-  const isPro = lower.includes("pro") || lower.includes("argon") || lower.includes("carbon");
+  const isPro = lower.includes("pro") || lower.includes("argon") || lower.includes("carbon") || lower.includes("neon");
 
   if (isGemini4) {
     const isHydrogen = lower.includes("hydrogen");
+    const supportsXHigh = isHydrogen || lower.includes("neon");
     return {
       id: canonicalId,
       name: canonicalId,
@@ -153,10 +165,10 @@ export function getModelCapabilities(modelId?: string): ModelCapabilities {
       isPaid: !isHydrogen,
       supportsTemperature: false,
       supportsAgenticVideo: true,
-      supportedThinkingLevels: isHydrogen
+      supportedThinkingLevels: supportsXHigh
         ? ["XHIGH", "HIGH", "MEDIUM", "LOW"]
         : ["HIGH", "MEDIUM", "LOW"],
-      defaultThinkingLevel: isHydrogen ? "HIGH" : "MEDIUM",
+      defaultThinkingLevel: supportsXHigh ? "HIGH" : "MEDIUM",
     };
   }
 
@@ -189,7 +201,7 @@ export function isThinkingLevelSupported(modelId: string | undefined, level: str
 
 /**
  * Clamps or normalizes a thinking level to a value supported by the target model.
- * If the current level is unsupported (e.g., MINIMAL on Gemini 4 or XHIGH on non-Hydrogen),
+ * If the current level is unsupported (e.g., MINIMAL on Gemini 4 or XHIGH on non-Hydrogen/Neon),
  * returns the model's safe default thinking level.
  */
 export function normalizeThinkingLevel(
@@ -207,19 +219,9 @@ export function normalizeThinkingLevel(
  * Returns a concise UI label for headers, tooltips, and status indicators
  */
 export function getBriefModelLabel(modelId: string): string {
-  switch (modelId) {
-    case "gemini-flash-latest":
-      return "Flash Latest";
-    case "gemini-flash-lite-latest":
-      return "Flash Lite Latest";
-    case "gemini-pro-latest":
-      return "Pro Latest";
-    default: {
-      const cleanId = modelId.replace(/^models\//, "");
-      if (MODEL_CAPABILITY_REGISTRY[cleanId]) {
-        return MODEL_CAPABILITY_REGISTRY[cleanId].briefLabel;
-      }
-      return cleanId.replace(/^gemini-/i, "");
-    }
+  const canonicalId = getCanonicalModelId(modelId);
+  if (MODEL_CAPABILITY_REGISTRY[canonicalId]) {
+    return MODEL_CAPABILITY_REGISTRY[canonicalId].briefLabel;
   }
+  return canonicalId.replace(/^gemini-/i, "");
 }

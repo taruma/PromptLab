@@ -44,7 +44,7 @@ interface ModelOption {
   promoNotice?: string;
 }
 
-const LATEST_MODELS: ModelOption[] = [
+const FEATURED_MODELS: ModelOption[] = [
   {
     id: "gemini-4-hydrogen",
     name: "Gemini 4 Hydrogen",
@@ -55,12 +55,13 @@ const LATEST_MODELS: ModelOption[] = [
     release: "Nov 12, 2026",
   },
   {
-    id: "gemini-flash-lite-latest",
-    name: "Gemini Flash-Lite Latest",
-    isNew: false,
-    subtitle: "✦ gemini-3.5-flash-lite",
+    id: "gemini-4-neon",
+    name: "Gemini 4 Neon",
+    isNew: true,
+    isPaid: true,
+    subtitle: "gemini-4-neon",
     cutoff: "Mar 2026",
-    release: "Jul 21, 2026",
+    release: "Nov 18, 2026",
   },
   {
     id: "gemini-4-carbon",
@@ -71,6 +72,14 @@ const LATEST_MODELS: ModelOption[] = [
     cutoff: "Mar 2026",
     release: "Nov 10, 2026",
     promoNotice: "Discounted through Nov 30, 2026",
+  },
+  {
+    id: "gemini-3.5-flash-lite",
+    name: "Gemini 3.5 Flash Lite",
+    isNew: false,
+    subtitle: "gemini-3.5-flash-lite",
+    cutoff: "Mar 2026",
+    release: "Jul 21, 2026",
   },
 ];
 
@@ -102,14 +111,6 @@ const SPECIFIC_MODELS: ModelOption[] = [
     cutoff: "Mar 2026",
     release: "Jul 21, 2026",
     promoNotice: "Discounted through Dec 31, 2026",
-  },
-  {
-    id: "gemini-3.5-flash-lite",
-    name: "Gemini 3.5 Flash Lite",
-    isNew: false,
-    subtitle: "gemini-3.5-flash-lite",
-    cutoff: "Mar 2026",
-    release: "Jul 21, 2026",
   },
   {
     id: "gemini-3.1-flash-lite",
@@ -163,8 +164,9 @@ export default function EngineControlsModal({
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen);
     if (isOpen) {
-      setTempModel(selectedModel);
-      setTempThinkingLevel(normalizeThinkingLevel(selectedModel, thinkingLevel));
+      const canonicalSelected = getCanonicalModelId(selectedModel);
+      setTempModel(canonicalSelected);
+      setTempThinkingLevel(normalizeThinkingLevel(canonicalSelected, thinkingLevel));
       setTempTemperature(temperature);
       setTempMaxTokens(maxTokens);
       setTempCustomApiKey(customApiKey);
@@ -172,12 +174,10 @@ export default function EngineControlsModal({
       setTempResponseSchema(responseSchema);
       setIsVaultCollapsed(true);
       setIsAdvancedCollapsed(true);
-      const isFeaturedOnOpen = LATEST_MODELS.some((m) => m.id === selectedModel);
+      const isFeaturedOnOpen = FEATURED_MODELS.some((m) => m.id === canonicalSelected);
       const isSpecificActive =
         !isFeaturedOnOpen &&
-        SPECIFIC_MODELS.some(
-          (m) => m.id === selectedModel || m.id === getCanonicalModelId(selectedModel)
-        );
+        SPECIFIC_MODELS.some((m) => m.id === canonicalSelected);
       setIsSpecificModelsCollapsed(!isSpecificActive);
 
       // Load keys vault from localStorage
@@ -475,10 +475,10 @@ export default function EngineControlsModal({
                 Select Generation Model
               </h4>
               
-              {/* Primary Latest Alias Models */}
+              {/* Primary Featured Models */}
               <div className="flex flex-col gap-2">
-                {LATEST_MODELS.map((model) => {
-                  const isSelected = tempModel === model.id;
+                {FEATURED_MODELS.map((model) => {
+                  const isSelected = getCanonicalModelId(tempModel) === model.id;
                   return (
                     <button
                       key={model.id}
@@ -584,10 +584,9 @@ export default function EngineControlsModal({
                 {!isSpecificModelsCollapsed && (
                   <div className="flex flex-col gap-2 pt-1">
                     {SPECIFIC_MODELS.map((model) => {
-                      const isFeaturedSelected = LATEST_MODELS.some((m) => m.id === tempModel);
-                      const isSelected =
-                        tempModel === model.id ||
-                        (!isFeaturedSelected && getCanonicalModelId(tempModel) === model.id);
+                      const canonicalTempModel = getCanonicalModelId(tempModel);
+                      const isFeaturedSelected = FEATURED_MODELS.some((m) => m.id === canonicalTempModel);
+                      const isSelected = !isFeaturedSelected && canonicalTempModel === model.id;
                       return (
                         <button
                           key={model.id}
@@ -682,7 +681,7 @@ export default function EngineControlsModal({
                   Reasoning Effort (Thinking Level)
                 </h4>
                 <p className="text-[10px] text-[#888884] leading-normal">
-                  Controls the model&apos;s internal reasoning depth before outputting results. <code className="font-mono text-[#1A1A1A]">XHIGH</code> is exclusive to Gemini 4 Hydrogen; <code className="font-mono text-[#1A1A1A]">MINIMAL</code> is unavailable on Gemini 4 &amp; Pro.
+                  Controls the model&apos;s internal reasoning depth before outputting results. <code className="font-mono text-[#1A1A1A]">XHIGH</code> is supported on Gemini 4 Hydrogen &amp; Neon; <code className="font-mono text-[#1A1A1A]">MINIMAL</code> is unavailable on Gemini 4 &amp; Pro.
                 </p>
                 <div className="grid grid-cols-5 gap-1.5 mt-1">
                   {ALL_THINKING_LEVELS.map((lvl) => {
@@ -690,7 +689,7 @@ export default function EngineControlsModal({
                     const isDisabled = !isThinkingLevelSupported(tempModel, lvl);
                     const disabledTitle =
                       lvl === "XHIGH"
-                        ? "XHIGH reasoning is exclusively supported on Gemini 4 Hydrogen"
+                        ? "XHIGH reasoning is supported on Gemini 4 Hydrogen and Gemini 4 Neon"
                         : "MINIMAL thinking level is not supported on Gemini 4 / Pro models";
                     return (
                       <button

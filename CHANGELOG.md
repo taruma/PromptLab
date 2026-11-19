@@ -2,6 +2,27 @@
 
 All notable changes to PromptLab, a playground for drafting and iterating on AI prompt templates.
 
+## [v2.7.7] — November 18, 2026
+
+### Added
+
+- **Gemini 4 Neon Integration (`lib/models.ts`, `lib/pricing.ts`, `components/EngineControlsModal.tsx`, `components/QuickModelSelector.tsx`).**
+  - **Model Capability Registry (`lib/models.ts`)**: Added `gemini-4-neon` (**Gemini 4 Neon**, brief label `4 Neon`) as a paid Gemini 4 engine supporting `XHIGH`, `HIGH` (default), `MEDIUM`, and `LOW` thinking levels, server-managed sampling (`supportsTemperature: false`), and Agentic Video Understanding (`supportsAgenticVideo: true`). Updated the legacy `gemini-pro-latest` alias to resolve to `gemini-4-neon` while keeping `gemini-4-hydrogen` as `DEFAULT_MODEL_ID`.
+  - **Pricing Table Integration (`lib/pricing.ts`)**: Registered `gemini-4-neon` in `MODEL_PRICING_TABLE` at `$3.00` / 1M input tokens, `$15.00` / 1M output tokens (including thinking tokens), and `$0.15` / 1M implicit cached input tokens (95% discount).
+
+### Changed & Cleaned Up
+
+- **3+1 Quick Model Switcher & 4-Card Featured Engine Layout (`components/QuickModelSelector.tsx`, `components/EngineControlsModal.tsx`)**: Arranged the Quick Model Switcher into a 3-column **Gemini 4 Trio** (**Hydrogen**, **Neon**, **Carbon**) paired with a compact full-width **Flash Lite** bar directly beneath, matched 1-to-1 by 4 featured model cards in `EngineControlsModal`. Updated `XHIGH` reasoning help text and disabled tooltips to reflect support on both **Gemini 4 Hydrogen** and **Gemini 4 Neon**.
+- **Canonical Model ID Cleanup (`components/EngineControlsModal.tsx`, `components/QuickModelSelector.tsx`, `lib/models.ts`)**: Replaced the exposed `gemini-flash-lite-latest` UI option with canonical `gemini-3.5-flash-lite`, removed the duplicate `gemini-3.5-flash-lite` entry from `SPECIFIC_MODELS`, refreshed Quick Switcher badges (`Model (Featured)`, `4 Free`, `3.5 Lite`), and simplified `getBriefModelLabel()` to resolve canonical brief labels. `MODEL_ALIASES` remains silently active under the hood for backward compatibility with existing saved sessions and history records.
+
+## [v2.7.6] — November 13, 2026
+
+### Fixed & Enhanced
+
+- **Agentic Video Processing `v1beta` Endpoint Routing (`app/api/generate/route.ts`).**
+  - **Active Agentic Video State Tracking (`hasAgenticVideo`)**: Added request-level tracking across all video attachment paths (Files API `fileData`, Files API inline Base64 fallback, YouTube URL `fileData`, and local MP4 `inlineData`) whenever `processingMode === "AGENTIC"` is enabled on a supported model.
+  - **Automatic `v1beta` API Version Routing**: Automatically injects `config.httpOptions = { apiVersion: "v1beta" }` on generation requests containing active Agentic Video parts (`MediaProcessing.AGENTIC`), ensuring compatibility with the required `v1beta` Gemini endpoint without affecting standard requests.
+
 ## [v2.7.5] — November 12, 2026
 
 ### Added
